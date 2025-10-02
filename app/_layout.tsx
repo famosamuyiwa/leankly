@@ -1,24 +1,47 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import "./global.css";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ClerkProvider } from "@clerk/clerk-expo";
+import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { useFonts } from "expo-font";
+import { Slot } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { useEffect } from "react";
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+SplashScreen.preventAutoHideAsync();
 
+export default function Layout() {
+  SplashScreen.setOptions({
+    duration: 1000,
+    fade: true,
+  });
+
+  const [fontsLoaded] = useFonts({
+    "Plus-Jakarta-Regular": require("../assets/fonts/PlusJakartaSans-Regular.ttf"),
+    "Plus-Jakarta-Medium": require("../assets/fonts/PlusJakartaSans-Medium.ttf"),
+    "Plus-Jakarta-Light": require("../assets/fonts/PlusJakartaSans-Light.ttf"),
+    "Plus-Jakarta-ExtraLight": require("../assets/fonts/PlusJakartaSans-ExtraLight.ttf"),
+    "Plus-Jakarta-Bold": require("../assets/fonts/PlusJakartaSans-Bold.ttf"),
+    "Plus-Jakarta-SemiBold": require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
+    "Plus-Jakarta-ExtraBold": require("../assets/fonts/PlusJakartaSans-ExtraBold.ttf"),
+  });
+
+  useEffect(() => {
+    const init = async () => {
+      if (fontsLoaded) {
+        await SplashScreen.hideAsync();
+        // Clear all notifications when app mounts
+        // await Notifications.dismissAllNotificationsAsync();
+      }
+    };
+
+    init();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <ClerkProvider tokenCache={tokenCache}>
+      <Slot />
+    </ClerkProvider>
   );
 }

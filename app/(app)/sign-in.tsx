@@ -8,21 +8,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { LoginProvider } from "@/constants/enums";
 import icons from "@/constants/icons";
 import images from "@/constants/images";
+import { useGoogleSSO } from "@/hooks/useGoogleSignIn";
+import { useWarmUpBrowser } from "@/hooks/useWarmUpBrowser";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 const SignIn = () => {
+  useWarmUpBrowser();
+
+  const { signInWithGoogle } = useGoogleSSO();
+
   const handleLogin = async (provider: LoginProvider) => {
     switch (provider) {
       case LoginProvider.GOOGLE:
+        signInWithGoogle();
         break;
       case LoginProvider.APPLE:
         break;
       case LoginProvider.MAIL:
+        router.navigate("/mail-auth");
         break;
       default:
         Alert.alert("Error", "Invalid login provider");
@@ -30,7 +38,7 @@ const SignIn = () => {
   };
 
   return (
-    <SafeAreaView className="bg-white h-full">
+    <View className="bg-white h-full">
       <ScrollView contentContainerClassName="h-full">
         <Image
           source={images.onboarding}
@@ -87,7 +95,7 @@ const SignIn = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

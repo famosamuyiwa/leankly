@@ -3,3 +3,9 @@ export interface ToastProps {
   description?: string;
   duration?: number;
 }
+
+export interface User {
+  avatar: string;
+  name: string;
+  email: string;
+}

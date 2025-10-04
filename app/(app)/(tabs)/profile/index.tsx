@@ -1,45 +1,53 @@
-import { useAuth } from "@clerk/clerk-expo";
-import { Ionicons } from "@expo/vector-icons";
+import images from "@/constants/images";
+import { Fontisto } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { cssInterop } from "nativewind";
 import React from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, TouchableOpacity, View } from "react-native";
 
 export default function Profile() {
-  const { signOut } = useAuth();
-
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => signOut(),
-      },
-    ]);
-  };
+  // Interop the Image component to recognize the 'className' prop
+  cssInterop(Image, {
+    className: { target: "style" },
+  });
 
   return (
-    <SafeAreaView className="flex flex-1">
-      <Text>Profile</Text>
-
-      {/* Sign Out */}
-      <View className="px-6 mb-8">
-        <TouchableOpacity
-          onPress={handleSignOut}
-          className="bg-red-600 rounded-2xl p-4 shadow-sm"
-          activeOpacity={0.8}
-        >
-          <View className="flex-row items-center justify-center">
-            <Ionicons name="log-out-outline" size={20} color="white" />
-            <Text className="text-white font-semibold text-lg ml-2">
-              Sign Out
+    <View className="flex flex-1 bg-white px-5">
+      <View>
+        {/* User Info */}
+        <View className="gap-4">
+          <TouchableOpacity
+            activeOpacity={0.6}
+            onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
+          >
+            <Fontisto
+              name="player-settings"
+              className="absolute self-end pt-10"
+              size={30}
+            />
+          </TouchableOpacity>
+          <Image
+            source={images.avatarPlaceholder}
+            className="w-20 h-20 rounded-full"
+            contentFit="contain"
+          />
+          <Text>Ayomide Balogun</Text>
+          <View className="flex-row gap-5">
+            <Text className="color-gray-400">
+              <Text className="color-black font-plus-jakarta-bold">3</Text>{" "}
+              Hosted
+            </Text>
+            <Text className="color-gray-400">
+              <Text className="color-black font-plus-jakarta-bold">1</Text>{" "}
+              Attended
             </Text>
           </View>
-        </TouchableOpacity>
+        </View>
+
+        {/* Recent Activities */}
+        <View></View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

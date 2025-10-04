@@ -6,7 +6,7 @@ import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-export default function Layout() {
+export default function RootLayout() {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
 
   if (!isLoaded) {

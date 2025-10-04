@@ -13,3 +13,9 @@ export const ImagePickerMediaTypes = {
   Videos: "videos" as any,
   Multimedia: ["images", "videos"] as any,
 };
+
+export const HeaderStyles = {
+  headerTitleStyle: {
+    fontFamily: "Plus-Jakarta-ExtraBold",
+  },
+};

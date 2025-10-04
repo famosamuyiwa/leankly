@@ -1,13 +1,21 @@
+import { HeaderStyles } from "@/constants/common";
 import { Stack } from "expo-router";
 import React from "react";
 
-function Layout() {
+function ProfileLayout() {
   return (
     <Stack>
       <Stack.Screen
         name="index"
         options={{
           title: "Profile",
+          headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerShadowVisible: false,
+        }}
+      />
+      <Stack.Screen
+        name="(settings)"
+        options={{
           headerShown: false,
         }}
       />
@@ -15,4 +23,4 @@ function Layout() {
   );
 }
 
-export default Layout;
+export default ProfileLayout;

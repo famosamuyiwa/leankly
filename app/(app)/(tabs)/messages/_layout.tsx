@@ -10,15 +10,9 @@ function ProfileLayout() {
         <Stack.Screen
           name="index"
           options={{
-            title: "Profile",
+            title: "Messages",
             headerTitleStyle: HeaderStyles.headerTitleStyle,
             headerShadowVisible: false,
-          }}
-        />
-        <Stack.Screen
-          name="(settings)"
-          options={{
-            headerShown: false,
           }}
         />
       </Stack>

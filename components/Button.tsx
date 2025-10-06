@@ -6,11 +6,15 @@ const CustomButton = ({
   onPress,
   isLoading,
   isDisabled,
+  textClassName,
+  bgClassName,
 }: {
   label: string;
   onPress: () => void;
   isLoading?: boolean;
   isDisabled?: boolean;
+  textClassName?: string;
+  bgClassName?: string;
 }) => {
   const handleOnPress = () => {
     if (isLoading) return;
@@ -22,13 +26,15 @@ const CustomButton = ({
       {!isDisabled && (
         <TouchableOpacity
           onPress={handleOnPress}
-          className={`items-center justify-center bg-primary-300 shadow-md shadow-zinc-400"
-       rounded-full py-3 h-12`}
+          className={`items-center justify-center bg-black "
+       rounded-full py-3 h-12 ${bgClassName}`}
         >
           {isLoading ? (
             <ActivityIndicator color={"white"} size="small" />
           ) : (
-            <Text className="text-white text-center font-plus-jakarta-bold">
+            <Text
+              className={`text-white text-center font-plus-jakarta-bold ${textClassName}`}
+            >
               {label}
             </Text>
           )}
@@ -38,7 +44,7 @@ const CustomButton = ({
       {isDisabled && (
         <TouchableOpacity
           onPress={handleOnPress}
-          className={`items-center justify-center bg-gray-300 rounded-full py-3 h-12`}
+          className={`items-center justify-center bg-gray-300 rounded-full py-3 h-12 `}
         >
           {isLoading ? (
             <ActivityIndicator color={"white"} size="small" />

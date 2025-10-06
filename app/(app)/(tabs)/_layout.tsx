@@ -7,7 +7,6 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
         tabBarActiveTintColor: Colors.primary,
       }}
     >
@@ -15,9 +14,19 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Entypo name="home" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Messages",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Entypo name="chat" color={color} size={size} />
           ),
         }}
       />

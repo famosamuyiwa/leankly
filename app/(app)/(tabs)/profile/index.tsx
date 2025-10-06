@@ -1,53 +1,109 @@
-import images from "@/constants/images";
+import { LeankCard } from "@/components/Cards";
+import NavBar from "@/components/NavBar";
+import { dummyBooking } from "@/constants/data";
+import { Screens } from "@/constants/enums";
+import { Leank } from "@/interfaces";
+import { useProfileContext } from "@/lib/ProfileContext";
 import { Fontisto } from "@expo/vector-icons";
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React from "react";
+import React, { useCallback } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Profile() {
+  const insets = useSafeAreaInsets();
+
+  if (!insets) {
+    return null; // Prevents glitching by waiting for insets
+  }
+
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
   });
 
-  return (
-    <View className="flex flex-1 bg-white px-5">
-      <View>
-        {/* User Info */}
-        <View className="gap-4">
-          <TouchableOpacity
-            activeOpacity={0.6}
-            onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
-          >
-            <Fontisto
-              name="player-settings"
-              className="absolute self-end pt-10"
-              size={30}
-            />
-          </TouchableOpacity>
-          <Image
-            source={images.avatarPlaceholder}
-            className="w-20 h-20 rounded-full"
-            contentFit="contain"
+  const params = useLocalSearchParams<{
+    nav?: string;
+  }>();
+
+  const { avatar, name } = useProfileContext();
+
+  const renderItem = useCallback(
+    ({ item }: { item: Leank }) => (
+      <View className="mx-5 mb-5">
+        <LeankCard item={item} />
+      </View>
+    ),
+    []
+  );
+
+  const loadMore = useCallback(() => {}, []);
+
+  const listEmptyComponent = useCallback(() => {
+    return (
+      <View className="justify-center items-center mt-10">
+        <Text className="font-plus-jakarta-semibold color-gray-400">
+          No leanks yet.
+        </Text>
+      </View>
+    );
+  }, []);
+
+  const listHeaderComponent = useCallback(
+    () => (
+      <View className="gap-4 px-5 mb-5">
+        <TouchableOpacity
+          activeOpacity={0.6}
+          onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
+        >
+          <Fontisto
+            name="player-settings"
+            className="absolute self-end pt-10"
+            size={30}
           />
-          <Text>Ayomide Balogun</Text>
-          <View className="flex-row gap-5">
-            <Text className="color-gray-400">
-              <Text className="color-black font-plus-jakarta-bold">3</Text>{" "}
-              Hosted
-            </Text>
-            <Text className="color-gray-400">
-              <Text className="color-black font-plus-jakarta-bold">1</Text>{" "}
-              Attended
-            </Text>
-          </View>
+        </TouchableOpacity>
+        <Image
+          source={avatar}
+          className="w-20 h-20 rounded-full"
+          contentFit="cover"
+        />
+        <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
+        <View className="flex-row gap-5">
+          <Text className="color-gray-400">
+            <Text className="color-black font-plus-jakarta-bold">3</Text> Hosted
+          </Text>
+          <Text className="color-gray-400">
+            <Text className="color-black font-plus-jakarta-bold">1</Text>{" "}
+            Attended
+          </Text>
         </View>
 
-        {/* Recent Activities */}
-        <View></View>
+        <View className="px-5">
+          <NavBar screen={Screens.PROFILE} />
+        </View>
       </View>
+    ),
+    [avatar, name]
+  );
+
+  return (
+    <View className="flex flex-1 bg-white">
+      {/* Recent Activities */}
+      <FlashList
+        data={dummyBooking}
+        keyExtractor={(item) => item.$id.toString()}
+        numColumns={1}
+        showsVerticalScrollIndicator={false}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeaderComponent}
+        ListEmptyComponent={listEmptyComponent}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.1}
+        scrollEventThrottle={16}
+      />
     </View>
   );
 }

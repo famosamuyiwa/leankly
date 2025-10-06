@@ -1,44 +1,33 @@
-import { Colors } from "@/constants/common";
-import { user } from "@/constants/data";
+import { useProfileContext } from "@/lib/ProfileContext";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useMemo } from "react";
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 
-export default function EditProfile() {
+function EditProfileContent() {
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [avatar, setAvatar] = useState(user?.avatar);
-  const [name, setName] = useState(user?.name);
-  const [email, setEmail] = useState(user?.email);
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  const tintColor = Colors.primary;
+  const {
+    isEditing,
+    isSaving,
+    setIsEditing,
+    avatar,
+    name,
+    email,
+    setName,
+    setEmail,
+    handleCancel: contextHandleCancel,
+  } = useProfileContext();
 
   const handleImagePress = () => {};
 
   const handleCancel = () => {
-    resetInfo();
-    setIsEditing(false);
-  };
-
-  const resetInfo = () => {
-    setAvatar(user?.avatar);
-    setName(user?.name);
-    setEmail(user?.email);
+    if (isSaving) return;
+    contextHandleCancel();
   };
 
   const handleDeleteAccount = () => {
@@ -59,17 +48,23 @@ export default function EditProfile() {
     );
   };
 
+  const memoizedAvatar = useMemo(() => {
+    return (
+      <Image
+        source={avatar}
+        className="size-32 rounded-full"
+        contentFit="cover"
+        transition={300}
+      />
+    );
+  }, [avatar]);
+
   return (
     <View className="flex flex-1 bg-gray-100 p-5 gap-10">
       {/* Avatar */}
       <View className="items-center justify-center">
         <TouchableOpacity onPress={handleImagePress}>
-          <Image
-            source={avatar}
-            className="size-32 rounded-full"
-            contentFit="cover"
-            transition={300}
-          />
+          {memoizedAvatar}
           {isEditing && (
             <View className="absolute bottom-0 right-0 p-1 rounded-full bg-gray-100">
               <MaterialIcons name="camera-enhance" size={24} />
@@ -85,7 +80,7 @@ export default function EditProfile() {
             <Text className="pl-2 font-plus-jakarta-regular">Edit</Text>
           </TouchableOpacity>
         )}
-        {isEditing && !isSaving && (
+        {isEditing && (
           <View className="flex-row items-center py-1 px-4 my-4 gap-4">
             <TouchableOpacity
               onPress={handleCancel}
@@ -101,11 +96,6 @@ export default function EditProfile() {
                 Cancel
               </Text>
             </TouchableOpacity>
-          </View>
-        )}
-        {isEditing && isSaving && (
-          <View className="flex-row items-center my-4 ">
-            <ActivityIndicator color={tintColor} size="small" />
           </View>
         )}
       </View>
@@ -137,8 +127,8 @@ export default function EditProfile() {
             value={email}
             autoCapitalize="none"
             onChangeText={setEmail}
-            className={`flex-1 ml-3 ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular`}
-            editable={isEditing}
+            className={"flex-1 ml-3 text-gray-400 font-plus-jakarta-regular"}
+            editable={false}
           />
         </View>
       </View>
@@ -158,4 +148,8 @@ export default function EditProfile() {
       </TouchableOpacity>
     </View>
   );
+}
+
+export default function EditProfile() {
+  return <EditProfileContent />;
 }

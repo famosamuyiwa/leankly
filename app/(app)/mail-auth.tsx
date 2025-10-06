@@ -2,7 +2,7 @@ import CustomButton from "@/components/Button";
 import OTPVerification from "@/components/Otp-verification";
 import { Colors } from "@/constants/common";
 import { Screens, ToastType } from "@/constants/enums";
-import { useGlobalContext } from "@/lib/global-provider";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";

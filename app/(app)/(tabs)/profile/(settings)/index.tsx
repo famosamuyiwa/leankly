@@ -1,6 +1,6 @@
-import { user } from "@/constants/data";
 import { Links, Screens } from "@/constants/enums";
-import { useGlobalContext } from "@/lib/global-provider";
+import { useGlobalContext } from "@/lib/GlobalContext";
+import { useProfileContext } from "@/lib/ProfileContext";
 import { useAuth } from "@clerk/clerk-expo";
 import {
   Feather,
@@ -12,12 +12,13 @@ import {
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { cssInterop } from "nativewind";
-import React from "react";
+import React, { useMemo } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 
 export default function Settings() {
   const { signOut } = useAuth();
   const { alertComingSoon } = useGlobalContext();
+  const { avatar, name } = useProfileContext();
 
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
@@ -57,9 +58,8 @@ export default function Settings() {
     router.navigate(route);
   };
 
-  return (
-    <View className="flex flex-1 bg-gray-100 p-5 gap-10">
-      {/* Profile */}
+  const memoizedProfile = useMemo(() => {
+    return (
       <TouchableOpacity
         activeOpacity={0.6}
         onPress={() => handleNavigation(Screens.EDIT_PROFILE)}
@@ -67,15 +67,13 @@ export default function Settings() {
       >
         <View className="flex-row gap-5">
           <Image
-            source={user.avatar}
+            source={avatar}
             className="w-16 h-16 rounded-full"
-            contentFit="contain"
+            contentFit="cover"
           />
           <View className="flex-row justify-between flex-1 items-center">
             <View className="justify-around">
-              <Text className="font-plus-jakarta-bold text-lg">
-                {user.name}
-              </Text>
+              <Text className="font-plus-jakarta-bold text-lg">{name}</Text>
               <Text className="font-plus-jakarta-regular color-gray-400">
                 Edit Profile
               </Text>
@@ -84,6 +82,13 @@ export default function Settings() {
           </View>
         </View>
       </TouchableOpacity>
+    );
+  }, [avatar, name]);
+
+  return (
+    <View className="flex flex-1 bg-gray-100 p-5 gap-10">
+      {/* Profile */}
+      {memoizedProfile}
 
       {/* Preference */}
       <View className="gap-2">

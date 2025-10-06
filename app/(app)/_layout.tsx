@@ -1,5 +1,5 @@
 import { Colors } from "@/constants/common";
-import GlobalProvider from "@/lib/global-provider";
+import GlobalProvider from "@/lib/GlobalContext";
 import { useAuth } from "@clerk/clerk-expo";
 import { Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";

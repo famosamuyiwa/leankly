@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import GradientText from "@/components/GradientText";
 import { LoginProvider } from "@/constants/enums";
 import icons from "@/constants/icons";
 import images from "@/constants/images";
@@ -46,12 +47,12 @@ const SignIn = () => {
           contentFit="contain"
         />
         <View className="px-10">
-          <Text className="text-base text-center uppercase font-plus-jakarta-regular text-black-200">
-            Welcome to Leankly
-          </Text>
+          <GradientText className="text-xl text-center font-plus-jakarta-semibold">
+            Leankly
+          </GradientText>
           <Text className="text-3xl font-plus-jakarta-bold text-black-300 text-center mt-2">
-            Let's Find You A Place {"\n"}
-            <Text className="text-primary-300">To Feel At Home</Text>
+            Connect & Do More {"\n"}
+            <Text className="text-primary-300">Join The Fun</Text>
           </Text>
 
           <TouchableOpacity

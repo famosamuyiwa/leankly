@@ -14,6 +14,9 @@ export enum Screens {
   RESET_PASSWORD = "RESET_PASSWORD",
   NOTIFICATIONS = "NOTIFICATIONS",
   EDIT_PROFILE = "EDIT_PROFILE",
+  PROFILE = "PROFILE",
+  CHAT = "CHAT",
+  HOME = "HOME",
 }
 
 export enum Links {
@@ -26,4 +29,24 @@ export enum ToastType {
   SUCCESS = "success",
   ERROR = "error",
   WARNING = "warning",
+}
+
+export enum LeankStatus {
+  ACTIVE = "Active",
+  CANCELED = "Canceled",
+  COMPLETED = "Completed",
+}
+
+export enum FilterOptions {
+  TODAY = "Today",
+  CATEGORY = "Category",
+  AGE = "Age",
+  DATE = "Date",
+}
+
+export enum NavbarOptions {
+  REQUESTS = "Requests",
+  CHATS = "Chats",
+  HOSTED = "Hosted",
+  JOINED = "Joined",
 }

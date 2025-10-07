@@ -15,6 +15,14 @@ function ProfileLayout() {
             headerShadowVisible: false,
           }}
         />
+        <Stack.Screen
+          name="[chat]"
+          options={{
+            title: "Chat",
+            headerTitleStyle: HeaderStyles.headerTitleStyle,
+            headerShadowVisible: false,
+          }}
+        />
       </Stack>
     </ProfileProvider>
   );

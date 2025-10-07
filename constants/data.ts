@@ -6,14 +6,14 @@ export const user: User = {
     "https://nyc.cloud.appwrite.io/v1/storage/buckets/68cb2bb6002b3b62070d/files/68d74390000e5794550f/view?project=68cb274e000a797620ce",
   name: "Olu",
   email: "nenling19@gmail.com",
-  age: 23,
+  age: "23",
 };
 
 export const user2: User = {
   avatar: "https://picsum.photos/200/300",
   name: "Ayo Balogun",
   email: "nanling19@gmail.com",
-  age: 21,
+  age: "21",
 };
 
 export const navbarOptions = [
@@ -54,7 +54,7 @@ export const filterCategories = [
   },
 ];
 
-export const dummyBooking: Leank[] = [
+export const dummyLeanks: Leank[] = [
   {
     $id: "1",
     title: "Run With me ! ",
@@ -103,9 +103,12 @@ export const dummyBooking: Leank[] = [
   },
 ];
 
-export const dummyRequests: LeankRequest = {
-  user: user2,
-  leank: dummyBooking[2],
-  dateCreated: new Date("2025-10-04T12:00:00.000Z"),
-  dateUpdated: new Date("2025-10-04T12:00:00.000Z"),
-};
+export const dummyRequests: LeankRequest[] = [
+  {
+    $id: "1",
+    user: user2,
+    leank: dummyLeanks[2],
+    $createdAt: new Date().toISOString(),
+    $updatedAt: new Date().toISOString(),
+  },
+];

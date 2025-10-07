@@ -1,11 +1,11 @@
 import { LeankCard } from "@/components/Cards";
 import NavBar from "@/components/NavBar";
-import { dummyBooking } from "@/constants/data";
+import { dummyLeanks } from "@/constants/data";
 import { Screens } from "@/constants/enums";
 import { Leank } from "@/interfaces";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Fontisto } from "@expo/vector-icons";
-import { FlashList } from "@shopify/flash-list";
+import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
@@ -92,8 +92,8 @@ export default function Profile() {
   return (
     <View className="flex flex-1 bg-white">
       {/* Recent Activities */}
-      <FlashList
-        data={dummyBooking}
+      <LegendList
+        data={dummyLeanks}
         keyExtractor={(item) => item.$id.toString()}
         numColumns={1}
         showsVerticalScrollIndicator={false}

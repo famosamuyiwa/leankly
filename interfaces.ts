@@ -1,3 +1,4 @@
+import { Models } from "react-native-appwrite";
 import { LeankStatus } from "./constants/enums";
 
 export interface ToastProps {
@@ -6,15 +7,14 @@ export interface ToastProps {
   duration?: number;
 }
 
-export interface User {
+export interface User extends Models.Row {
   avatar: string;
   name: string;
   email: string;
   age: string;
 }
 
-export interface Leank {
-  $id: string;
+export interface Leank extends Models.Row {
   cover: string;
   title: string;
   description: string;
@@ -27,9 +27,15 @@ export interface Leank {
   participants?: Array<String>;
 }
 
-export interface LeankRequest {
+export interface LeankRequest extends Models.Row {
   user: User;
   leank: Leank;
-  dateCreated: Date;
-  dateUpdated: Date;
+}
+
+export interface Message extends Models.Row {
+  content: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto: string;
+  chatRoomId: string;
 }

@@ -1,6 +1,6 @@
 import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
-import { dummyBooking } from "@/constants/data";
+import { dummyLeanks } from "@/constants/data";
 import { Screens } from "@/constants/enums";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { TouchableOpacity, View } from "react-native";
@@ -17,7 +17,7 @@ export default function HomeScreen() {
         <Filters screen={Screens.HOME} />
       </View>
       <View className="flex-1 px-5 pt-5">
-        <LeankCardBig item={dummyBooking[0]} />
+        <LeankCardBig item={dummyLeanks[0]} />
         <View className="flex-row gap-16 items-center justify-center flex-1">
           <TouchableOpacity
             activeOpacity={0.6}

@@ -150,7 +150,7 @@ export const RequestCard = ({
               {item.user?.name}, {item.user?.age}
             </Text>
             <Text className="font-plus-jakarta-regular text-sm text-gray-400">
-              {timeElapsed(item.dateCreated)}
+              {timeElapsed(item.$createdAt)}
             </Text>
           </View>
 
@@ -180,6 +180,32 @@ export const RequestCard = ({
   );
 };
 
-export const ChatCard = () => {
-  return <></>;
+export const ChatCard = ({
+  item,
+  onPress,
+}: {
+  item: Leank;
+  onPress: () => void;
+}) => {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.6}
+      onPress={onPress}
+      className="flex-row gap-5 mb-5"
+    >
+      <Image source={{ uri: item.cover }} className="size-20 rounded-2xl" />
+      <View className="gap-2 justify-center flex-1">
+        <View className="flex-row items-baseline justify-between">
+          <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
+          <Text className="font-plus-jakarta-regular text-sm text-gray-400">
+            {timeElapsed(item.$createdAt)}
+          </Text>
+        </View>
+
+        <Text className="font-plus-jakarta-regular color-gray-400 line-clamp-1 ">
+          Famosa: Yes i will be available
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 };

@@ -17,9 +17,13 @@ export const formatTime = (date: Date | string) => {
   });
 };
 
-export function timeElapsed(date: Date): string {
+export function timeElapsed(date: string): string {
+  const dateObj = new Date(date);
+  if (isNaN(dateObj.getTime())) {
+    return "";
+  }
   const now = new Date();
-  const diff = (now.getTime() - date.getTime()) / 1000; // difference in seconds
+  const diff = (now.getTime() - dateObj.getTime()) / 1000; // difference in seconds
 
   if (diff < 60) {
     const seconds = Math.floor(diff);
@@ -35,9 +39,9 @@ export function timeElapsed(date: Date): string {
     return `${days}d ago`;
   } else {
     // Format as MM/DD/YYYY
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const year = date.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    const year = dateObj.getFullYear();
     return `${month}/${day}/${year}`;
   }
 }

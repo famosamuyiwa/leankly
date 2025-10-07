@@ -1,4 +1,4 @@
-import { appwriteConfig, db } from "@/config/appwrite";
+import { appwriteConfig, client, db } from "@/config/appwrite";
 import { Colors } from "@/constants/common";
 import { Leank, Message } from "@/interfaces";
 import { useUser } from "@clerk/clerk-expo";
@@ -42,6 +42,15 @@ export default function Chat() {
   useEffect(() => {
     handleFirstLoad();
   }, []);
+
+  useEffect(() => {
+    const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
+    const unsubscribe = client.subscribe(channel, () => {
+      getMessages();
+    });
+
+    return () => unsubscribe();
+  }, [chatId]);
 
   const handleFirstLoad = async () => {
     try {

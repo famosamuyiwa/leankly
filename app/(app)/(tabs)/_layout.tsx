@@ -1,5 +1,5 @@
 import { Colors, HeaderStyles } from "@/constants/common";
-import { Entypo, FontAwesome } from "@expo/vector-icons";
+import { Entypo, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import React from "react";
 
@@ -17,6 +17,16 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Entypo name="home" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: "Create",
+          headerShadowVisible: false,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="add-circle" color={color} size={size} />
           ),
         }}
       />

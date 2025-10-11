@@ -1,15 +1,19 @@
+import useImagePicker from "@/hooks/useImagePicker";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import { useMemo } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 function EditProfileContent() {
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
   });
+
+  const { pickMultimedia } = useImagePicker();
 
   const {
     isEditing,
@@ -18,12 +22,15 @@ function EditProfileContent() {
     avatar,
     name,
     email,
+    age,
+    location,
     setName,
     setEmail,
+    setAge,
+    setAvatar,
+    setLocation,
     handleCancel: contextHandleCancel,
   } = useProfileContext();
-
-  const handleImagePress = () => {};
 
   const handleCancel = () => {
     if (isSaving) return;
@@ -48,6 +55,14 @@ function EditProfileContent() {
     );
   };
 
+  const handleImagePress = async () => {
+    if (!isEditing) return;
+    try {
+      const image: any = await pickMultimedia(false, true);
+      setAvatar(image.uri[0]);
+    } catch {}
+  };
+
   const memoizedAvatar = useMemo(() => {
     return (
       <Image
@@ -60,7 +75,11 @@ function EditProfileContent() {
   }, [avatar]);
 
   return (
-    <View className="flex flex-1 bg-gray-100 p-5 gap-10">
+    <Animated.View
+      layout={LinearTransition}
+      entering={FadeIn.duration(500)}
+      className="flex flex-1 bg-gray-100 p-5 gap-10"
+    >
       {/* Avatar */}
       <View className="items-center justify-center">
         <TouchableOpacity onPress={handleImagePress}>
@@ -103,7 +122,7 @@ function EditProfileContent() {
       <View className="bg-white p-5 rounded-2xl">
         <View className="w-full flex-row gap-10">
           <View className="flex-row items-center gap-3">
-            <Text className="font-plus-jakarta-semibold color-gray-400">
+            <Text className="w-14 font-plus-jakarta-semibold color-gray-400">
               Name
             </Text>
           </View>
@@ -119,7 +138,23 @@ function EditProfileContent() {
         <View className="bg-gray-100 h-[1] my-5" />
         <View className="w-full flex-row gap-10">
           <View className="flex-row items-center gap-3">
-            <Text className="font-plus-jakarta-semibold color-gray-400">
+            <Text className="w-14 font-plus-jakarta-semibold color-gray-400">
+              Age
+            </Text>
+          </View>
+          <TextInput
+            value={age}
+            autoCapitalize="none"
+            onChangeText={setAge}
+            className={`flex-1 ml-3 ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular`}
+            editable={isEditing}
+          />
+        </View>
+        {/* Separator */}
+        <View className="bg-gray-100 h-[1] my-5" />
+        <View className="w-full flex-row gap-10">
+          <View className="flex-row items-center gap-3">
+            <Text className="w-14 font-plus-jakarta-semibold color-gray-400">
               Email
             </Text>
           </View>
@@ -146,7 +181,7 @@ function EditProfileContent() {
           </Text>
         </View>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }
 

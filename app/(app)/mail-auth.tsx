@@ -267,7 +267,11 @@ const SignInMailScreen = () => {
   }
 
   return (
-    <View style={templateStyles.wrapper}>
+    <Animated.View
+      layout={LinearTransition}
+      entering={FadeIn.duration(500)}
+      style={templateStyles.wrapper}
+    >
       {/*------------------LOGIN PAGE------------------------*/}
       {currentScreen === Screens.LOGIN_1 && (
         <Animated.View
@@ -788,7 +792,7 @@ const SignInMailScreen = () => {
           </SafeAreaView>
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 };
 

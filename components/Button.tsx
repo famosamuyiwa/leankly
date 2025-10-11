@@ -26,6 +26,7 @@ const CustomButton = ({
       {!isDisabled && (
         <TouchableOpacity
           onPress={handleOnPress}
+          activeOpacity={0.6}
           className={`items-center justify-center bg-black "
        rounded-full py-3 h-12 ${bgClassName}`}
         >
@@ -44,6 +45,7 @@ const CustomButton = ({
       {isDisabled && (
         <TouchableOpacity
           onPress={handleOnPress}
+          activeOpacity={0.6}
           className={`items-center justify-center bg-gray-300 rounded-full py-3 h-12 `}
         >
           {isLoading ? (

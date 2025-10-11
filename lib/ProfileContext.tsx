@@ -20,9 +20,13 @@ interface EditProfileContextType {
   avatar: any;
   name: string;
   email: string;
+  age: string;
+  location: string;
   setAvatar: (avatar: any) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
+  setAge: (age: string) => void;
+  setLocation: (location: string) => void;
 
   // Actions
   handleSave: () => Promise<void>;
@@ -43,12 +47,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   // User data state
   const [avatar, setAvatar] = useState(user?.avatar);
   const [name, setName] = useState(user?.name);
+  const [age, setAge] = useState("21");
+  const [location, setLocation] = useState("Syracuse");
   const [email, setEmail] = useState(user?.email);
 
   // Track changes to enable/disable save button
   useEffect(() => {
     const hasChanges =
-      avatar !== user?.avatar || name !== user?.name || email !== user?.email;
+      avatar !== user?.avatar || name !== user?.name || email !== user?.email; // TODO: add age and location from user here as well
     setHasChanges(hasChanges);
   }, [avatar, name, email]);
 
@@ -56,6 +62,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setAvatar(user?.avatar);
     setName(user?.name);
     setEmail(user?.email);
+    setAge("21"); //TODO: update to users actual age and location
+    setLocation("Syracuse");
   };
 
   const handleSave = async () => {
@@ -100,9 +108,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         avatar,
         name,
         email,
+        age,
+        location,
         setAvatar,
         setName,
         setEmail,
+        setAge,
+        setLocation,
 
         // Actions
         handleSave,

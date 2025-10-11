@@ -5,7 +5,7 @@ import React, { ReactNode, createContext, useContext, useRef } from "react";
 
 interface GlobalContextType {
   displayToast: (toast: ToastProps) => void;
-  showLoader: () => void;
+  showLoader: (label?: string) => void;
   hideLoader: () => void;
   alertComingSoon: () => void;
 }
@@ -23,8 +23,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const showLoader = () => {
-    loaderRef.current.show();
+  const showLoader = (label?: string) => {
+    loaderRef.current.show(label);
   };
 
   const hideLoader = () => {

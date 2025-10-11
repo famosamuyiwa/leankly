@@ -37,5 +37,5 @@ export interface Message extends Models.Row {
   senderId: string;
   senderName: string;
   senderPhoto: string;
-  chatRoomId: string;
+  leankId: string;
 }

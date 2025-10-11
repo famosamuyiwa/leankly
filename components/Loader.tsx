@@ -9,8 +9,10 @@ import Animated, {
 
 const Loader = forwardRef(({}, ref) => {
   const [visibility, setVisibility] = useState(false);
+  const [label, setLabel] = useState("");
 
-  const show = () => {
+  const show = (lab?: string) => {
+    if (lab) setLabel(lab);
     setVisibility(true);
   };
 
@@ -21,7 +23,7 @@ const Loader = forwardRef(({}, ref) => {
   useImperativeHandle(
     ref,
     () => ({
-      show: () => show(),
+      show: (lab?: string) => show(lab),
       hide: () => hide(),
     }),
     [show, hide]
@@ -38,7 +40,9 @@ const Loader = forwardRef(({}, ref) => {
         >
           <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
             <ActivityIndicator color={Colors.primary} size="small" />
-            <Text className="font-plus-jakarta-semibold">Please wait...</Text>
+            <Text className="font-plus-jakarta-semibold">
+              {label || "Please wait..."}
+            </Text>
           </View>
         </Animated.View>
       )}

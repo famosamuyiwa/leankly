@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { useCallback } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Profile() {
@@ -90,7 +91,11 @@ export default function Profile() {
   );
 
   return (
-    <View className="flex flex-1 bg-white">
+    <Animated.View
+      layout={LinearTransition}
+      entering={FadeIn.duration(500)}
+      className="flex flex-1 bg-white"
+    >
       {/* Recent Activities */}
       <LegendList
         data={dummyLeanks}
@@ -104,6 +109,6 @@ export default function Profile() {
         onEndReachedThreshold={0.1}
         scrollEventThrottle={16}
       />
-    </View>
+    </Animated.View>
   );
 }

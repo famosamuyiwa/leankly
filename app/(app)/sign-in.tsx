@@ -17,6 +17,7 @@ import { useGoogleSSO } from "@/hooks/useGoogleSignIn";
 import { useWarmUpBrowser } from "@/hooks/useWarmUpBrowser";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 const SignIn = () => {
   useWarmUpBrowser();
@@ -39,7 +40,11 @@ const SignIn = () => {
   };
 
   return (
-    <View className="bg-white h-full">
+    <Animated.View
+      layout={LinearTransition}
+      entering={FadeIn.duration(500)}
+      className="bg-white h-full"
+    >
       <ScrollView contentContainerClassName="h-full">
         <Image
           source={images.onboarding}
@@ -96,7 +101,7 @@ const SignIn = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 };
 

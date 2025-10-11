@@ -1,12 +1,7 @@
 import images from "@/constants/images";
 import { Leank, LeankRequest } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";
-import {
-  Entypo,
-  FontAwesome5,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import React from "react";
@@ -76,10 +71,10 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
   });
 
   return (
-    <View className="rounded-3xl bg-white mb-5 shadow-md shadow-slate-200 gap-5">
+    <View className="rounded-3xl bg-white mb-5 shadow-md shadow-slate-200 gap-5 flex-1">
       <Image
         source={images.leankCover}
-        className="h-2/6 rounded-t-3xl"
+        className="h-[40%] rounded-t-3xl"
         contentFit="cover"
       />
       <View className="gap-5 px-5">
@@ -113,12 +108,7 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
 
           <Text className=" font-plus-jakarta-bold">{item.time}</Text>
         </View>
-        <View className="flex-row items-center gap-3">
-          <FontAwesome5 name="users" size={16} />
-          <Text className=" font-plus-jakarta-bold">
-            {item.peopleRequired} people required
-          </Text>
-        </View>
+
         <View className="flex-row items-center gap-3">
           <Entypo name="location" size={16} color="black" />
           <Text className=" font-plus-jakarta-bold">{item.location}</Text>

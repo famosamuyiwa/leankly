@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { useMemo } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
+import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function Settings() {
   const { signOut } = useAuth();
@@ -86,7 +87,11 @@ export default function Settings() {
   }, [avatar, name]);
 
   return (
-    <View className="flex flex-1 bg-gray-100 p-5 gap-10">
+    <Animated.View
+      layout={LinearTransition}
+      entering={FadeIn.duration(500)}
+      className="flex flex-1 bg-gray-100 p-5 gap-10"
+    >
       {/* Profile */}
       {memoizedProfile}
 
@@ -179,6 +184,6 @@ export default function Settings() {
           </Text>
         </View>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   );
 }

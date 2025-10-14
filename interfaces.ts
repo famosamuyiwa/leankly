@@ -12,6 +12,7 @@ export interface User extends Models.Row {
   name: string;
   email: string;
   age: string;
+  location: string;
 }
 
 export interface Leank extends Models.Row {

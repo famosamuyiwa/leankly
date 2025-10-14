@@ -1,4 +1,5 @@
 import { FilterOptions, Screens } from "@/constants/enums";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
@@ -7,6 +8,7 @@ import { filterCategories } from "../constants/data";
 
 const Filters = ({ screen }: { screen: Screens }) => {
   const params = useLocalSearchParams<{ categoryFilter?: string }>();
+  const { alertComingSoon } = useGlobalContext();
 
   const initialSelected = useMemo(() => {
     if (params.categoryFilter && typeof params.categoryFilter === "string") {
@@ -27,6 +29,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
   }, [initialSelected]);
 
   const handleCategoryPress = (category: string) => {
+    if (category !== FilterOptions.TODAY) return alertComingSoon();
     setSelectedCategories((prev) => {
       const exists = prev.includes(category);
       const next = exists

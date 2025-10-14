@@ -1,6 +1,7 @@
 import { appwriteConfig, client, db } from "@/config/appwrite";
 import { Colors } from "@/constants/common";
 import { Leank, Message } from "@/interfaces";
+import { useMessagesContext } from "@/lib/MessagesContext";
 import { useUser } from "@clerk/clerk-expo";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
@@ -29,12 +30,12 @@ export default function Chat() {
     className: { target: "style" },
   });
   const insets = useSafeAreaInsets();
+  const { currentLeank, setCurrentLeank } = useMessagesContext();
 
   const { chat: chatId } = useLocalSearchParams();
   const { user } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [leank, setLeank] = useState<Leank>();
   const [messageContent, setMessageContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const headerHeight = Platform.OS === "ios" ? useHeaderHeight() : 0;
@@ -72,7 +73,7 @@ export default function Chat() {
         rowId: chatId as string,
       });
 
-      setLeank(data as unknown as Leank);
+      setCurrentLeank(data as unknown as Leank);
     } catch (e) {
       console.log(e);
     }
@@ -85,7 +86,7 @@ export default function Chat() {
         tableId: appwriteConfig.tables.messages,
         queries: [
           Query.equal("leankId", chatId),
-          Query.limit(100),
+          Query.limit(50),
           Query.orderAsc("$createdAt"),
         ],
       });
@@ -132,9 +133,12 @@ export default function Chat() {
 
   const memoizedCover = useMemo(
     () => (
-      <Image source={{ uri: leank?.cover }} className="size-14 rounded-full" />
+      <Image
+        source={{ uri: currentLeank?.cover }}
+        className="size-14 rounded-full"
+      />
     ),
-    [leank]
+    [currentLeank]
   );
 
   const renderItem = useCallback(({ item }: { item: Message }) => {
@@ -201,13 +205,22 @@ export default function Chat() {
         <TouchableOpacity activeOpacity={0.6} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={30} />
         </TouchableOpacity>
-        {memoizedCover}
-        <View>
-          <Text className="font-plus-jakarta-bold text-lg">{leank?.title}</Text>
-          <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
-            {leank?.participants?.length}3 leankers
-          </Text>
-        </View>
+        <TouchableOpacity
+          onPress={() => {
+            router.push("/messages/settings/[chat]");
+          }}
+          className="flex-row gap-5 items-center flex-1"
+        >
+          {memoizedCover}
+          <View>
+            <Text className="font-plus-jakarta-bold text-lg">
+              {currentLeank?.title}
+            </Text>
+            <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
+              {currentLeank?.participants?.length}3 leankers
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView
@@ -228,7 +241,6 @@ export default function Chat() {
             maintainScrollAtEndThreshold={0.5}
             maintainVisibleContentPosition
             showsVerticalScrollIndicator={false}
-            scrollEventThrottle={16}
           />
         )}
 

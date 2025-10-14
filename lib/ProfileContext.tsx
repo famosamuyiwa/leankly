@@ -45,25 +45,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [hasChanges, setHasChanges] = useState(false);
 
   // User data state
-  const [avatar, setAvatar] = useState(user?.avatar);
-  const [name, setName] = useState(user?.name);
-  const [age, setAge] = useState("21");
-  const [location, setLocation] = useState("Syracuse");
-  const [email, setEmail] = useState(user?.email);
+  const [avatar, setAvatar] = useState(user.avatar);
+  const [name, setName] = useState(user.name);
+  const [age, setAge] = useState(user.age);
+  const [location, setLocation] = useState(user.location);
+  const [email, setEmail] = useState(user.email);
 
   // Track changes to enable/disable save button
   useEffect(() => {
     const hasChanges =
-      avatar !== user?.avatar || name !== user?.name || email !== user?.email; // TODO: add age and location from user here as well
+      avatar !== user.avatar ||
+      name !== user.name ||
+      email !== user.email ||
+      age !== user.age ||
+      location !== user.location;
+
     setHasChanges(hasChanges);
-  }, [avatar, name, email]);
+  }, [avatar, name, email, age, location]);
 
   const resetUserData = () => {
-    setAvatar(user?.avatar);
-    setName(user?.name);
-    setEmail(user?.email);
-    setAge("21"); //TODO: update to users actual age and location
-    setLocation("Syracuse");
+    setAvatar(user.avatar);
+    setName(user.name);
+    setEmail(user.email);
+    setAge(user.age); //TODO: update to users actual age and location
+    setLocation(user.location);
   };
 
   const handleSave = async () => {

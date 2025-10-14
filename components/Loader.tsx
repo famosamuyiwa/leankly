@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/common";
+import Lottie from "lottie-react-native";
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import Animated, {
@@ -10,20 +11,24 @@ import Animated, {
 const Loader = forwardRef(({}, ref) => {
   const [visibility, setVisibility] = useState(false);
   const [label, setLabel] = useState("");
+  const [pulse, setPulse] = useState(false);
 
-  const show = (lab?: string) => {
+  const show = (lab?: string, pul?: boolean) => {
     if (lab) setLabel(lab);
+    if (pul) setPulse(pul);
     setVisibility(true);
   };
 
   const hide = () => {
     setVisibility(false);
+    setPulse(false);
+    setLabel("");
   };
 
   useImperativeHandle(
     ref,
     () => ({
-      show: (lab?: string) => show(lab),
+      show: (lab?: string, pulse?: boolean) => show(lab, pulse),
       hide: () => hide(),
     }),
     [show, hide]
@@ -36,14 +41,26 @@ const Loader = forwardRef(({}, ref) => {
           layout={LinearTransition}
           entering={FadeIn.duration(500)}
           exiting={FadeOut.duration(500)}
-          className="w-full h-full absolute items-center justify-center bg-black/50 z-50"
+          className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "*:bg-black/50"} z-50`}
         >
-          <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
-            <ActivityIndicator color={Colors.primary} size="small" />
-            <Text className="font-plus-jakarta-semibold">
-              {label || "Please wait..."}
-            </Text>
-          </View>
+          {pulse ? (
+            <Lottie
+              source={require("@/assets/animations/searching.json")}
+              loop={true}
+              autoPlay={true}
+              style={{
+                width: 100,
+                height: 100,
+              }}
+            />
+          ) : (
+            <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
+              <ActivityIndicator color={Colors.primary} size="small" />
+              <Text className="font-plus-jakarta-semibold">
+                {label || "Please wait..."}
+              </Text>
+            </View>
+          )}
         </Animated.View>
       )}
     </>

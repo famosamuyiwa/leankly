@@ -2,8 +2,10 @@ import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
 import { dummyLeanks } from "@/constants/data";
 import { Screens } from "@/constants/enums";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Alert, TouchableOpacity, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,6 +14,7 @@ export default function HomeScreen() {
   if (!insets) {
     return null; // Prevents glitching by waiting for insets
   }
+  const { showLoader, hideLoader } = useGlobalContext();
 
   const onLikePress = () => {
     Alert.alert(
@@ -24,45 +27,53 @@ export default function HomeScreen() {
         },
         {
           text: "Yes",
-          onPress: () => {},
+          onPress: () => {
+            showLoader(undefined, true);
+            setTimeout(hideLoader, 1500);
+          },
         },
       ]
     );
   };
 
   return (
-    <Animated.View
-      layout={LinearTransition}
-      entering={FadeIn.duration(500)}
-      className="flex-1 bg-white"
-      style={{ paddingTop: insets.top }}
-    >
-      <View className="pl-5">
-        <Filters screen={Screens.HOME} />
-      </View>
-      <View className="flex-1 px-5 pt-5">
-        <View className="h-5/6 items-center">
-          <View className="rounded-3xl h-5 bg-white shadow-md shadow-slate-200 absolute w-5/6 bottom-2" />
-
-          <LeankCardBig item={dummyLeanks[0]} />
+    <GestureHandlerRootView className="flex-1 bg-white">
+      <Animated.View
+        layout={LinearTransition}
+        entering={FadeIn.duration(500)}
+        className="flex-1"
+        style={{ paddingTop: insets.top }}
+      >
+        <View className="pl-5">
+          <Filters screen={Screens.HOME} />
         </View>
+        <View className="flex-1 px-5 pt-5">
+          <View className="h-5/6 items-center">
+            <View className="rounded-3xl h-5 bg-white shadow-md shadow-slate-200 absolute w-5/6 bottom-2" />
 
-        <View className="flex-row gap-16 items-center justify-center flex-1">
-          <TouchableOpacity
-            activeOpacity={0.6}
-            className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
-          >
-            <Feather name="x" size={35} color="black" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.6}
-            onPress={onLikePress}
-            className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
-          >
-            <MaterialCommunityIcons name="heart" size={35} color="#dc2626" />
-          </TouchableOpacity>
+            <LeankCardBig item={dummyLeanks[0]} />
+          </View>
+
+          <View className="flex-row gap-16 items-center justify-center flex-1">
+            <TouchableOpacity
+              activeOpacity={0.6}
+              className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
+            >
+              <Feather name="x" size={35} color="black" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.6}
+              onPress={onLikePress}
+              className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
+            >
+              <MaterialCommunityIcons name="heart" size={35} color="#dc2626" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      </Animated.View>
+      {/* <Portal>
+        <FilterBottomSheet />
+      </Portal> */}
+    </GestureHandlerRootView>
   );
 }

@@ -1,11 +1,11 @@
 import { HeaderStyles } from "@/constants/common";
-import { ProfileProvider } from "@/lib/ProfileContext";
+import MessagesProvider from "@/lib/MessagesContext";
 import { Stack } from "expo-router";
 import React from "react";
 
 function ProfileLayout() {
   return (
-    <ProfileProvider>
+    <MessagesProvider>
       <Stack>
         <Stack.Screen
           name="index"
@@ -21,8 +21,14 @@ function ProfileLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="settings/[chat]"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
-    </ProfileProvider>
+    </MessagesProvider>
   );
 }
 

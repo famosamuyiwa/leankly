@@ -7,6 +7,7 @@ export const user: User = {
   name: "Olu",
   email: "nenling19@gmail.com",
   age: "23",
+  location: "Nigeria",
 };
 
 export const user2: User = {
@@ -14,7 +15,11 @@ export const user2: User = {
   name: "Ayo Balogun",
   email: "nanling19@gmail.com",
   age: "21",
+  location: "Nigeria",
 };
+
+export const defaultCover =
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68e93cda001c2a4367c4/view?project=68e45dc0001e074ea36a&mode=admin";
 
 export const navbarOptions = [
   {

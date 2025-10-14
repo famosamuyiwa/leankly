@@ -1,41 +1,39 @@
 import { HeaderLeft } from "@/components/HeaderUI";
 import { HeaderStyles } from "@/constants/common";
-import { ProfileProvider, useProfileContext } from "@/lib/ProfileContext";
+import { useProfileContext } from "@/lib/ProfileContext";
 import { Stack } from "expo-router";
 import React from "react";
 import { ActivityIndicator, Text, TouchableOpacity } from "react-native";
 
 function SettingsLayout() {
   return (
-    <ProfileProvider>
-      <Stack>
-        <Stack.Screen
-          name="index"
-          options={{
-            title: "Settings",
-            headerShadowVisible: false,
-            headerTitleStyle: HeaderStyles.headerTitleStyle,
-            headerStyle: {
-              backgroundColor: "#f3f4f6",
-            },
-            headerLeft: () => <HeaderLeft />,
-          }}
-        />
-        <Stack.Screen
-          name="edit-profile"
-          options={{
-            title: "Edit Profile",
-            headerTitleStyle: HeaderStyles.headerTitleStyle,
-            headerShadowVisible: false,
-            headerStyle: {
-              backgroundColor: "#f3f4f6",
-            },
-            headerLeft: () => <EditProfileHeaderLeft />,
-            headerRight: () => <EditProfileHeaderButton />,
-          }}
-        />
-      </Stack>
-    </ProfileProvider>
+    <Stack>
+      <Stack.Screen
+        name="index"
+        options={{
+          title: "Settings",
+          headerShadowVisible: false,
+          headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerStyle: {
+            backgroundColor: "#f3f4f6",
+          },
+          headerLeft: () => <HeaderLeft />,
+        }}
+      />
+      <Stack.Screen
+        name="edit-profile"
+        options={{
+          title: "Edit Profile",
+          headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerShadowVisible: false,
+          headerStyle: {
+            backgroundColor: "#f3f4f6",
+          },
+          headerLeft: () => <EditProfileHeaderLeft />,
+          headerRight: () => <EditProfileHeaderButton />,
+        }}
+      />
+    </Stack>
   );
 }
 

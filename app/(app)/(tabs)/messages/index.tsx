@@ -4,6 +4,7 @@ import { appwriteConfig, db } from "@/config/appwrite";
 import { dummyRequests } from "@/constants/data";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank, LeankRequest } from "@/interfaces";
+import { useUser } from "@clerk/clerk-expo";
 import { LegendList } from "@legendapp/list";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -23,13 +24,25 @@ export default function MessagesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
   const isChats = params.nav === NavbarOptions.CHATS;
+  const { user } = useUser();
 
   const fetchChatRooms = async () => {
     try {
       const { rows, total } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
-        queries: [Query.limit(100)],
+        queries: [
+          Query.limit(100),
+          Query.select([
+            "cover",
+            "title",
+            "lastMessage.senderName",
+            "lastMessage.content",
+            "lastMessage.senderId",
+            "lastMessage.$updatedAt",
+            "owner.$id",
+          ]),
+        ],
       });
       setChatRooms(rows as unknown as Leank[]);
     } catch (e) {
@@ -57,6 +70,7 @@ export default function MessagesScreen() {
       <View className="mb-5">
         <ChatCard
           item={item}
+          userId={user?.id}
           onPress={() =>
             router.push({
               pathname: "/messages/[chat]",

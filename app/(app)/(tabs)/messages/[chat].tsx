@@ -9,9 +9,16 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -39,6 +46,7 @@ export default function Chat() {
   const [messageContent, setMessageContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const headerHeight = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const listRef = useRef(null);
 
   useEffect(() => {
     handleFirstLoad();
@@ -50,7 +58,18 @@ export default function Chat() {
       getMessages();
     });
 
-    return () => unsubscribe();
+    const KeyboardDidShowlistener = Keyboard.addListener(
+      "keyboardDidShow",
+      () =>
+        setTimeout(() => {
+          listRef.current?.scrollToEnd({ animate: true });
+        }, 100)
+    );
+
+    return () => {
+      unsubscribe();
+      KeyboardDidShowlistener.remove();
+    };
   }, [chatId]);
 
   const handleFirstLoad = async () => {
@@ -92,6 +111,10 @@ export default function Chat() {
       });
 
       setMessages(rows as unknown as Message[]);
+
+      if ((rows as unknown as Message[])[total - 1].senderId !== user?.id) {
+        markAsRead();
+      }
     } catch (e) {
       console.log(e);
     }
@@ -109,7 +132,7 @@ export default function Chat() {
         leankId: chatId,
       };
 
-      await db.createRow({
+      const msg = await db.createRow({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.messages,
         rowId: ID.unique(),
@@ -123,11 +146,50 @@ export default function Chat() {
         tableId: appwriteConfig.tables.leanks,
         rowId: chatId as string,
         data: {
+          lastMessage: msg,
           $updatedAt: new Date().toISOString(),
         },
       });
     } catch (e) {
       console.log(e);
+    } finally {
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animate: true });
+      }, 100);
+    }
+  };
+
+  const markAsRead = async () => {
+    if (!user) return;
+    const { rows, total } = await db.listRows({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.userChatMeta,
+      queries: [Query.equal("leankId", chatId), Query.equal("userId", user.id)],
+    });
+
+    if (total > 0) {
+      await db.updateRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.userChatMeta,
+        rowId: rows[0].$id,
+        data: {
+          leankId: chatId,
+          userId: user.id,
+          readAt: new Date().toISOString(),
+          $updatedAt: new Date().toISOString(),
+        },
+      });
+    } else {
+      await db.createRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.userChatMeta,
+        rowId: ID.unique(),
+        data: {
+          leankId: chatId,
+          userId: user.id,
+          readAt: new Date().toISOString(),
+        },
+      });
     }
   };
 
@@ -230,6 +292,7 @@ export default function Chat() {
       >
         {messages && (
           <LegendList
+            ref={listRef}
             data={messages}
             initialScrollIndex={messages.length > 0 ? messages.length - 1 : 0}
             renderItem={renderItem}

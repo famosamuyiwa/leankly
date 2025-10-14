@@ -25,7 +25,8 @@ export interface Leank extends Models.Row {
   time: string;
   location: string;
   owner?: User;
-  participants?: Array<String>;
+  participants?: User[];
+  lastMessage?: Message;
 }
 
 export interface LeankRequest extends Models.Row {
@@ -39,4 +40,10 @@ export interface Message extends Models.Row {
   senderName: string;
   senderPhoto: string;
   leankId: string;
+}
+
+export interface userChatMeta extends Models.Row {
+  leankId: string;
+  userId: string;
+  readAt: Date;
 }

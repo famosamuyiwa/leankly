@@ -1,11 +1,13 @@
+import { appwriteConfig, client, db } from "@/config/appwrite";
 import images from "@/constants/images";
-import { Leank, LeankRequest } from "@/interfaces";
+import { Leank, LeankRequest, Message } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
+import { Query } from "react-native-appwrite";
 import CustomButton from "./Button";
 
 interface LeankProps {
@@ -172,11 +174,45 @@ export const RequestCard = ({
 
 export const ChatCard = ({
   item,
+  userId,
   onPress,
 }: {
   item: Leank;
+  userId?: string;
   onPress: () => void;
 }) => {
+  const [lastMessage, setLastMessage] = useState<Message | null>(
+    item.lastMessage ?? null
+  );
+  const isUserLastMessage = lastMessage?.senderId === userId;
+
+  useEffect(() => {
+    const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;
+    const unsubscribe = client.subscribe(channel, (res) => {
+      if (res.events.includes("databases.*.tables.*.rows.*.update")) {
+        getLastMessage();
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const getLastMessage = async () => {
+    try {
+      const data = await db.getRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        rowId: item.$id as string,
+        queries: [Query.select(["lastMessage.*"])],
+      });
+
+      setLastMessage(data as unknown as Message);
+      console.log("lastMessage: ", data);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   return (
     <TouchableOpacity
       activeOpacity={0.6}
@@ -185,15 +221,27 @@ export const ChatCard = ({
     >
       <Image source={{ uri: item.cover }} className="size-20 rounded-2xl" />
       <View className="gap-2 justify-center flex-1">
+        {!isUserLastMessage && lastMessage && (
+          <View className="bg-secondary-300 size-2 rounded-full absolute top-0 right-2" />
+        )}
+
         <View className="flex-row items-baseline justify-between">
           <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
-            {timeElapsed(item.$createdAt)}
+            {timeElapsed(
+              lastMessage ? lastMessage.$updatedAt : item.$createdAt
+            )}
           </Text>
         </View>
 
-        <Text className="font-plus-jakarta-regular color-gray-400 line-clamp-1 ">
-          Famosa: Yes i will be available
+        <Text
+          className={` ${!isUserLastMessage && lastMessage ? "font-plus-jakarta-semibold color-black" : "font-plus-jakarta-regular color-gray-400"} line-clamp-1 `}
+        >
+          {lastMessage
+            ? isUserLastMessage
+              ? `You:  ${lastMessage.content}`
+              : `${lastMessage.senderName}: ${lastMessage.content}`
+            : `Start planning to leank...⛓️‍💥`}
         </Text>
       </View>
     </TouchableOpacity>

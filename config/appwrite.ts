@@ -20,6 +20,7 @@ const appwriteConfig = {
   tables: {
     leanks: "leanks",
     messages: "messages",
+    userChatMeta: "userchatmeta",
   },
 };
 

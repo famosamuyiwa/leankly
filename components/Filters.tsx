@@ -29,7 +29,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
   }, [initialSelected]);
 
   const handleCategoryPress = (category: string) => {
-    if (category !== FilterOptions.TODAY) return alertComingSoon();
+    // if (category !== FilterOptions.TODAY) return alertComingSoon();
     setSelectedCategories((prev) => {
       const exists = prev.includes(category);
       const next = exists
@@ -40,6 +40,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
         categoryFilter: next.length
           ? next.map((c) => encodeURIComponent(c)).join(",")
           : (undefined as any),
+        clickedFilter: category,
       });
       return next;
     });

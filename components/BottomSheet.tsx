@@ -1,3 +1,4 @@
+import { FilterOptions } from "@/constants/enums";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,7 +8,6 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
 import * as Location from "expo-location";
-import { useLocalSearchParams } from "expo-router";
 import React, {
   forwardRef,
   useEffect,
@@ -19,37 +19,44 @@ import { Text, TouchableOpacity } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import SearchBar from "./SearchBar";
 
-const FilterBottomSheet = () => {
-  // ref
-  const bottomSheetRef = useRef<BottomSheet>(null);
+const FilterBottomSheet = forwardRef(
+  ({ clickedFilter }: { clickedFilter: FilterOptions | undefined }, ref) => {
+    // ref
+    const bottomSheetRef = useRef<BottomSheet>(null);
+    // expose bottom sheet methods to parent
+    useImperativeHandle(ref, () => ({
+      expand: () => bottomSheetRef.current?.expand(),
+      close: () => bottomSheetRef.current?.close(),
+      snapTo: (index: number) => bottomSheetRef.current?.snapToIndex(index),
+    }));
 
-  const {} = useFiltersContext();
+    const {} = useFiltersContext();
 
-  const { from } = useLocalSearchParams<{ from?: string }>();
-
-  // callbacks
-  const handleSheetChanges = (index: number) => {};
-
-  return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={0}
-      onChange={handleSheetChanges}
-      backdropComponent={(props) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-          opacity={0.3}
-        />
-      )}
-    >
-      <BottomSheetView className="px-4 pb-10">
-        <Text>Hello worldddd</Text>
-      </BottomSheetView>
-    </BottomSheet>
-  );
-};
+    return (
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        backdropComponent={(props) => (
+          <BottomSheetBackdrop
+            {...props}
+            disappearsOnIndex={-1}
+            appearsOnIndex={0}
+            opacity={0.3}
+          />
+        )}
+        enablePanDownToClose
+        handleStyle={{
+          borderTopLeftRadius: 100,
+          borderTopRightRadius: 100,
+        }}
+      >
+        <BottomSheetView className="px-4 pb-10">
+          <Text>Hello worldddd</Text>
+        </BottomSheetView>
+      </BottomSheet>
+    );
+  }
+);
 
 const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -59,9 +66,6 @@ const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
 
   // local state
   const [placesResults, setPlacesResults] = useState<any[]>([]);
-
-  // callbacks
-  const handleSheetChanges = (index: number) => {};
 
   useEffect(() => {
     if (query) {
@@ -172,7 +176,6 @@ const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
     <BottomSheet
       ref={bottomSheetRef}
       index={-1}
-      onChange={handleSheetChanges}
       backdropComponent={(props) => (
         <BottomSheetBackdrop
           {...props}

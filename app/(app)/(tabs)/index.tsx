@@ -1,9 +1,13 @@
+import { FilterBottomSheet } from "@/components/BottomSheet";
 import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
 import { dummyLeanks } from "@/constants/data";
-import { Screens } from "@/constants/enums";
+import { FilterOptions, Screens } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Portal } from "@gorhom/portal";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useRef } from "react";
 import { Alert, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
@@ -11,10 +15,21 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  if (!insets) {
-    return null; // Prevents glitching by waiting for insets
-  }
+  const bottomSheetRef = useRef<any>(null);
+
   const { showLoader, hideLoader } = useGlobalContext();
+
+  const { categoryFilter, clickedFilter } = useLocalSearchParams<{
+    categoryFilter?: string;
+    clickedFilter?: FilterOptions;
+  }>();
+
+  useEffect(() => {
+    console.log(clickedFilter);
+    if (clickedFilter) {
+      bottomSheetRef.current?.expand();
+    }
+  }, [clickedFilter]);
 
   const onLikePress = () => {
     Alert.alert(
@@ -35,6 +50,10 @@ export default function HomeScreen() {
       ]
     );
   };
+
+  if (!insets) {
+    return null; // Prevents glitching by waiting for insets
+  }
 
   return (
     <GestureHandlerRootView className="flex-1 bg-white">
@@ -71,9 +90,9 @@ export default function HomeScreen() {
           </View>
         </View>
       </Animated.View>
-      {/* <Portal>
-        <FilterBottomSheet />
-      </Portal> */}
+      <Portal>
+        <FilterBottomSheet ref={bottomSheetRef} clickedFilter={clickedFilter} />
+      </Portal>
     </GestureHandlerRootView>
   );
 }

@@ -9,13 +9,7 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -106,13 +100,16 @@ export default function Chat() {
         queries: [
           Query.equal("leankId", chatId),
           Query.limit(50),
-          Query.orderAsc("$createdAt"),
+          Query.orderDesc("$createdAt"),
         ],
       });
 
-      setMessages(rows as unknown as Message[]);
+      setMessages((rows as unknown as Message[]).reverse());
 
-      if ((rows as unknown as Message[])[total - 1].senderId !== user?.id) {
+      if (
+        total > 0 &&
+        (rows as unknown as Message[])[total - 1].senderId !== user?.id
+      ) {
         markAsRead();
       }
     } catch (e) {
@@ -203,7 +200,7 @@ export default function Chat() {
     [currentLeank]
   );
 
-  const renderItem = useCallback(({ item }: { item: Message }) => {
+  const renderItem = ({ item }: { item: Message }) => {
     const isSender = item.senderId === user?.id;
     return (
       <View
@@ -242,7 +239,7 @@ export default function Chat() {
         </View>
       </View>
     );
-  }, []);
+  };
 
   if (!chatId) {
     return <Text>We could not find this chat room</Text>;
@@ -279,7 +276,7 @@ export default function Chat() {
               {currentLeank?.title}
             </Text>
             <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
-              {currentLeank?.participants?.length}3 leankers
+              {Number(currentLeank?.participantIds?.length) + 1} leankers
             </Text>
           </View>
         </TouchableOpacity>

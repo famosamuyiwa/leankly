@@ -10,7 +10,6 @@ import * as Location from "expo-location";
 import { useLocalSearchParams } from "expo-router";
 import React, {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -29,7 +28,7 @@ const FilterBottomSheet = () => {
   const { from } = useLocalSearchParams<{ from?: string }>();
 
   // callbacks
-  const handleSheetChanges = useCallback((index: number) => {}, []);
+  const handleSheetChanges = (index: number) => {};
 
   return (
     <BottomSheet
@@ -62,7 +61,7 @@ const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
   const [placesResults, setPlacesResults] = useState<any[]>([]);
 
   // callbacks
-  const handleSheetChanges = useCallback((index: number) => {}, []);
+  const handleSheetChanges = (index: number) => {};
 
   useEffect(() => {
     if (query) {

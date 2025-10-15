@@ -9,7 +9,7 @@ import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useCallback } from "react";
+import React, { memo, useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,18 +32,15 @@ export default function Profile() {
 
   const { avatar, name } = useProfileContext();
 
-  const renderItem = useCallback(
-    ({ item }: { item: Leank }) => (
-      <View className="mx-5 mb-5">
-        <LeankCard item={item} />
-      </View>
-    ),
-    []
-  );
+  const renderItem = memo(({ item }: { item: Leank }) => (
+    <View className="mx-5 mb-5">
+      <LeankCard item={item} />
+    </View>
+  ));
 
-  const loadMore = useCallback(() => {}, []);
+  const loadMore = useMemo(() => {}, []);
 
-  const listEmptyComponent = useCallback(() => {
+  const listEmptyComponent = memo(() => {
     return (
       <View className="justify-center items-center mt-10">
         <Text className="font-plus-jakarta-semibold color-gray-400">
@@ -51,9 +48,9 @@ export default function Profile() {
         </Text>
       </View>
     );
-  }, []);
+  });
 
-  const listHeaderComponent = useCallback(
+  const listHeaderComponent = useMemo(
     () => (
       <View className="gap-4 px-5 mb-5">
         <TouchableOpacity

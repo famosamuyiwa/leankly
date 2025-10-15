@@ -1,5 +1,8 @@
 import { Colors } from "@/constants/common";
+import images from "@/constants/images";
+import { Image } from "expo-image";
 import Lottie from "lottie-react-native";
+import { cssInterop } from "nativewind";
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import Animated, {
@@ -9,6 +12,11 @@ import Animated, {
 } from "react-native-reanimated";
 
 const Loader = forwardRef(({}, ref) => {
+  // Interop the Image component to recognize the 'className' prop
+  cssInterop(Image, {
+    className: { target: "style" },
+  });
+
   const [visibility, setVisibility] = useState(false);
   const [label, setLabel] = useState("");
   const [pulse, setPulse] = useState(false);
@@ -41,18 +49,25 @@ const Loader = forwardRef(({}, ref) => {
           layout={LinearTransition}
           entering={FadeIn.duration(500)}
           exiting={FadeOut.duration(500)}
-          className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "*:bg-black/50"} z-50`}
+          className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "bg-black/50"} z-50`}
         >
           {pulse ? (
-            <Lottie
-              source={require("@/assets/animations/searching.json")}
-              loop={true}
-              autoPlay={true}
-              style={{
-                width: 100,
-                height: 100,
-              }}
-            />
+            <View className="items-center justify-center">
+              <Image
+                source={images.whiteIcon}
+                className="absolute size-10  z-10"
+                contentFit="contain"
+              />
+              <Lottie
+                source={require("@/assets/animations/searching.json")}
+                loop={true}
+                autoPlay={true}
+                style={{
+                  width: 120,
+                  height: 120,
+                }}
+              />
+            </View>
           ) : (
             <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
               <ActivityIndicator color={Colors.primary} size="small" />

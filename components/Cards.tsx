@@ -1,11 +1,11 @@
 import { appwriteConfig, client, db } from "@/config/appwrite";
 import images from "@/constants/images";
-import { Leank, LeankRequest, Message } from "@/interfaces";
+import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { Query } from "react-native-appwrite";
 import CustomButton from "./Button";
@@ -174,18 +174,22 @@ export const RequestCard = ({
 
 export const ChatCard = ({
   item,
+  meta,
   userId,
   onPress,
+  onItemUpdate,
 }: {
   item: Leank;
+  meta: UserChatMeta | undefined;
   userId?: string;
   onPress: () => void;
+  onItemUpdate: (item: Leank) => void;
 }) => {
-  const [lastMessage, setLastMessage] = useState<Message | null>(
-    item.lastMessage ?? null
-  );
-  const isUserLastMessage = lastMessage?.senderId === userId;
+  const isUserLastMessage = item.lastMessage?.senderId === userId;
+  const isUnread =
+    (item.lastMessage?.$createdAt || new Date()) > (meta?.readAt || new Date());
 
+  console.log("meta: ", meta);
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;
     const unsubscribe = client.subscribe(channel, (res) => {
@@ -198,16 +202,33 @@ export const ChatCard = ({
   }, []);
 
   const getLastMessage = async () => {
+    if (!userId) return;
     try {
-      const data = await db.getRow({
+      const { rows, total } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
-        rowId: item.$id as string,
-        queries: [Query.select(["lastMessage.*"])],
+        queries: [
+          Query.limit(10),
+          Query.select([
+            "cover",
+            "title",
+            "lastMessage.senderName",
+            "lastMessage.content",
+            "lastMessage.senderId",
+            "lastMessage.$createdAt",
+            "ownerId",
+            "participantIds",
+          ]),
+          Query.equal("$id", item.$id),
+          Query.or([
+            Query.equal("ownerId", userId),
+            Query.contains("participantIds", userId),
+          ]),
+        ],
       });
 
-      setLastMessage(data as unknown as Message);
-      console.log("lastMessage: ", data);
+      //send update back to parent
+      onItemUpdate(rows[0] as unknown as Leank);
     } catch (e) {
       console.log(e);
     }
@@ -221,7 +242,7 @@ export const ChatCard = ({
     >
       <Image source={{ uri: item.cover }} className="size-20 rounded-2xl" />
       <View className="gap-2 justify-center flex-1">
-        {!isUserLastMessage && lastMessage && (
+        {isUnread && !isUserLastMessage && item.lastMessage && (
           <View className="bg-secondary-300 size-2 rounded-full absolute top-0 right-2" />
         )}
 
@@ -229,18 +250,18 @@ export const ChatCard = ({
           <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
             {timeElapsed(
-              lastMessage ? lastMessage.$updatedAt : item.$createdAt
+              item.lastMessage ? item.lastMessage.$createdAt : item.$createdAt
             )}
           </Text>
         </View>
 
         <Text
-          className={` ${!isUserLastMessage && lastMessage ? "font-plus-jakarta-semibold color-black" : "font-plus-jakarta-regular color-gray-400"} line-clamp-1 `}
+          className={` ${isUnread && !isUserLastMessage && item.lastMessage ? "font-plus-jakarta-semibold color-black" : "font-plus-jakarta-regular color-gray-400"} line-clamp-1 `}
         >
-          {lastMessage
+          {item.lastMessage
             ? isUserLastMessage
-              ? `You:  ${lastMessage.content}`
-              : `${lastMessage.senderName}: ${lastMessage.content}`
+              ? `You:  ${item.lastMessage.content}`
+              : `${item.lastMessage.senderName}: ${item.lastMessage.content}`
             : `Start planning to leank...⛓️‍💥`}
         </Text>
       </View>

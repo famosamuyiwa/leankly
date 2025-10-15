@@ -34,6 +34,7 @@ export default function TabLayout() {
               options={{
                 title: "Create",
                 headerShadowVisible: false,
+                headerTitleStyle: HeaderStyles.headerTitleStyle,
                 tabBarIcon: ({ color, size }) => (
                   <MaterialIcons name="add-circle" color={color} size={size} />
                 ),

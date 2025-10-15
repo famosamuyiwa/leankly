@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903055063651",
+    "project_id": "leankly-6b6f8",
+    "storage_bucket": "leankly-6b6f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903055063651:android:a96019410a4b40ec439656",
+        "android_client_info": {
+          "package_name": "com.barrakudadev.leankly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQnuow5aDri_AFPgH4V_CwFmCdcjjurk8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

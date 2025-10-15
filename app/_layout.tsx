@@ -1,12 +1,23 @@
+import { PushNotificationProvider } from "@/lib/PushNotificationContext";
 import "./global.css";
 
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
+import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-
 import { useEffect } from "react";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 SplashScreen.preventAutoHideAsync();
 
@@ -30,8 +41,6 @@ export default function Layout() {
     const init = async () => {
       if (fontsLoaded) {
         await SplashScreen.hideAsync();
-        // Clear all notifications when app mounts
-        // await Notifications.dismissAllNotificationsAsync();
       }
     };
 
@@ -41,7 +50,9 @@ export default function Layout() {
   if (!fontsLoaded) return null;
   return (
     <ClerkProvider tokenCache={tokenCache}>
-      <Slot />
+      <PushNotificationProvider>
+        <Slot />
+      </PushNotificationProvider>
     </ClerkProvider>
   );
 }

@@ -40,7 +40,7 @@ export default function Chat() {
   const [messageContent, setMessageContent] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const headerHeight = Platform.OS === "ios" ? useHeaderHeight() : 0;
-  const listRef = useRef(null);
+  const listRef = useRef<any>(null);
 
   useEffect(() => {
     handleFirstLoad();

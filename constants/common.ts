@@ -22,6 +22,20 @@ export const HeaderStyles = {
   },
 };
 
+export const BadgeStyle = {
+  backgroundColor: Colors.accent,
+  minWidth: 14, // reduce badge width
+  height: 14, // reduce badge height
+  borderRadius: 7, // make it perfectly round
+  paddingHorizontal: 0,
+  paddingVertical: 0,
+  fontSize: 8,
+  lineHeight: 12,
+
+  color: "white",
+  fontFamily: "Plus-Jakarta-ExtraBold",
+};
+
 export const CalendarRangeTheme: CalendarTheme = {
   rowMonth: {
     content: {

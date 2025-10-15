@@ -45,12 +45,20 @@ export const filterCategories = [
     title: FilterOptions.TODAY,
     screen: Screens.HOME,
   },
+  // {
+  //   title: FilterOptions.CATEGORY,
+  //   screen: Screens.HOME,
+  // },
   {
-    title: FilterOptions.CATEGORY,
+    title: FilterOptions.AGE,
     screen: Screens.HOME,
   },
   {
-    title: FilterOptions.AGE,
+    title: FilterOptions.SEX,
+    screen: Screens.HOME,
+  },
+  {
+    title: FilterOptions.LOCATION,
     screen: Screens.HOME,
   },
   {

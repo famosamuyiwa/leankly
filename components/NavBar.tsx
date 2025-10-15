@@ -4,7 +4,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 
-const NavBar = ({ screen }: { screen: Screens }) => {
+const NavBar = ({
+  screen,
+  badgeCounts,
+}: {
+  screen: Screens;
+  badgeCounts?: Partial<Record<NavbarOptions, number>>;
+}) => {
   const params = useLocalSearchParams<{ nav?: string }>();
   const [selectedNav, setSelectedNav] = useState(
     params.nav ??
@@ -31,7 +37,7 @@ const NavBar = ({ screen }: { screen: Screens }) => {
           <TouchableOpacity
             key={index}
             onPress={() => handleCategoryPress(item.title)}
-            className={`flex-col items-center w-1/2 py-1 rounded-full ${
+            className={`flex-row justify-center items-center w-1/2 py-1 rounded-full gap-2 ${
               selectedNav === item.title ? "bg-primary-300" : ""
             }`}
           >
@@ -44,6 +50,17 @@ const NavBar = ({ screen }: { screen: Screens }) => {
             >
               {item.title}
             </Text>
+            {(badgeCounts?.[item.title] || 0) > 0 && (
+              <View
+                className={`${selectedNav === item.title ? "bg-white" : "bg-gray-100"} items-center justify-center size-4 rounded-full `}
+              >
+                <Text
+                  className={`font-plus-jakarta-bold text-center text-xs ${selectedNav === item.title ? "text-primary-300" : "text-gray-400"} `}
+                >
+                  {badgeCounts?.[item.title]}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
     </View>

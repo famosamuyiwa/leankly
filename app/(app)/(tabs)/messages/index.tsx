@@ -4,6 +4,7 @@ import { appwriteConfig, db } from "@/config/appwrite";
 import { dummyRequests } from "@/constants/data";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useUser } from "@clerk/clerk-expo";
 import { LegendList } from "@legendapp/list";
 import { router, useLocalSearchParams } from "expo-router";
@@ -14,6 +15,8 @@ import { RefreshControl } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function MessagesScreen() {
+  const { unreadCount, setUnreadCount } = useGlobalContext();
+
   const handleOnDeclinePress = () => {};
   const handleOnAcceptPress = () => {};
 
@@ -81,6 +84,20 @@ export default function MessagesScreen() {
     getChatDetails();
   }, []);
 
+  useEffect(() => {
+    const unread = chatRooms.filter((room) => {
+      const meta = chatMetas.find(
+        (m) => m.leankId === room.$id && m.userId === user?.id
+      );
+      return (
+        room.lastMessage &&
+        new Date(room.lastMessage.$createdAt) > new Date(meta?.readAt || 0) &&
+        room.lastMessage.senderId !== user?.id
+      );
+    }).length;
+    setUnreadCount(unread);
+  }, [chatRooms, chatMetas]);
+
   const memoizedRequestCard = ({ item }: { item: LeankRequest }) => (
     <RequestCard
       item={item}
@@ -97,7 +114,7 @@ export default function MessagesScreen() {
           (meta) => meta.leankId === item.$id && meta.userId === user?.id
         )}
         userId={user?.id}
-        onItemUpdate={(update) => {
+        onItemUpdate={(update, metaUpdate) => {
           setChatRooms((prev) => {
             const index = prev.findIndex((r) => r.$id === update.$id);
             if (index === -1) return prev; // not found
@@ -105,6 +122,14 @@ export default function MessagesScreen() {
             const newRooms = [...prev];
             newRooms[index] = { ...prev[index], ...update };
             return newRooms;
+          });
+          setChatMetas((prev) => {
+            const index = prev.findIndex((r) => r.$id === metaUpdate.$id);
+            if (index === -1) return prev; // not found
+
+            const newMetas = [...prev];
+            newMetas[index] = { ...prev[index], ...metaUpdate };
+            return newMetas;
           });
         }}
         onPress={() => {
@@ -116,7 +141,6 @@ export default function MessagesScreen() {
 
             const newMetas = [...prev];
             newMetas[index] = { ...prev[index], readAt: new Date() };
-            console.log("meta updated...");
             return newMetas;
           });
           router.push({
@@ -158,7 +182,10 @@ export default function MessagesScreen() {
       className="flex-1 bg-white px-5"
     >
       <View className="py-5">
-        <NavBar screen={Screens.CHAT} />
+        <NavBar
+          screen={Screens.CHAT}
+          badgeCounts={{ [NavbarOptions.CHATS]: unreadCount }}
+        />
       </View>
       {isChats ? (
         <LegendList<Leank>

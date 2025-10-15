@@ -183,13 +183,12 @@ export const ChatCard = ({
   meta: UserChatMeta | undefined;
   userId?: string;
   onPress: () => void;
-  onItemUpdate: (item: Leank) => void;
+  onItemUpdate: (item: Leank, meta: UserChatMeta) => void;
 }) => {
   const isUserLastMessage = item.lastMessage?.senderId === userId;
   const isUnread =
     (item.lastMessage?.$createdAt || new Date()) > (meta?.readAt || new Date());
 
-  console.log("meta: ", meta);
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;
     const unsubscribe = client.subscribe(channel, (res) => {
@@ -227,8 +226,22 @@ export const ChatCard = ({
         ],
       });
 
+      const { rows: metaRows, total: metaTotal } = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.userChatMeta,
+        queries: [
+          Query.and([
+            Query.equal("userId", userId),
+            Query.equal("leankId", item.$id),
+          ]),
+        ],
+      });
+
       //send update back to parent
-      onItemUpdate(rows[0] as unknown as Leank);
+      onItemUpdate(
+        rows[0] as unknown as Leank,
+        metaRows[0] as unknown as UserChatMeta
+      );
     } catch (e) {
       console.log(e);
     }

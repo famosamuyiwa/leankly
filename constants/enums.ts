@@ -40,6 +40,8 @@ export enum LeankStatus {
 export enum FilterOptions {
   TODAY = "Today",
   CATEGORY = "Category",
+  SEX = "Sex",
+  LOCATION = "Location",
   AGE = "Age",
   DATE = "Date",
 }

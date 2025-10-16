@@ -137,6 +137,7 @@ export default function Create() {
               autoCapitalize="none"
               placeholder='e.g "Study session at my house?" '
               placeholderTextColor="#9CA3AF"
+              className="p-0 "
               onChangeText={setEmail}
             />
           </View>
@@ -154,6 +155,7 @@ export default function Create() {
               multiline
               numberOfLines={3}
               placeholderTextColor="#9CA3AF"
+              className="p-0 "
               onChangeText={setDescription}
             />
           </View>

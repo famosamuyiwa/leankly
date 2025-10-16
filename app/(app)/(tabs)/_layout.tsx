@@ -33,6 +33,7 @@ export default function TabLayout() {
               name="create"
               options={{
                 title: "Create",
+                headerTitleAlign: "center",
                 headerShadowVisible: false,
                 headerTitleStyle: HeaderStyles.headerTitleStyle,
                 tabBarIcon: ({ color, size }) => (
@@ -57,6 +58,7 @@ export default function TabLayout() {
               options={{
                 title: "Profile",
                 headerShown: false,
+
                 headerTitleStyle: HeaderStyles.headerTitleStyle,
                 tabBarIcon: ({ color, size }) => (
                   <FontAwesome name="user" color={color} size={size} />

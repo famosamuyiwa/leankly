@@ -10,6 +10,8 @@ function ProfileLayout() {
         options={{
           title: "Profile",
           headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerTitleAlign: "center",
+
           headerShadowVisible: false,
         }}
       />

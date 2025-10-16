@@ -8,7 +8,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Alert, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,7 +60,7 @@ export default function HomeScreen() {
       <Animated.View
         layout={LinearTransition}
         entering={FadeIn.duration(500)}
-        className="flex-1"
+        className="flex-1 bg-white"
         style={{ paddingTop: insets.top }}
       >
         <View className="pl-5">
@@ -68,7 +68,9 @@ export default function HomeScreen() {
         </View>
         <View className="flex-1 px-5 pt-5">
           <View className="h-5/6 items-center">
-            <View className="rounded-3xl h-5 bg-white shadow-md shadow-slate-200 absolute w-5/6 bottom-2" />
+            <View
+              className={`rounded-3xl h-5 bg-white shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} absolute w-5/6 bottom-2`}
+            />
 
             <LeankCardBig item={dummyLeanks[0]} />
           </View>

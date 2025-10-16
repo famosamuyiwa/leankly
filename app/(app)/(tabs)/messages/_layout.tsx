@@ -12,6 +12,7 @@ function ProfileLayout() {
           options={{
             title: "Messages",
             headerTitleStyle: HeaderStyles.headerTitleStyle,
+            headerTitleAlign: "center",
             headerShadowVisible: false,
           }}
         />

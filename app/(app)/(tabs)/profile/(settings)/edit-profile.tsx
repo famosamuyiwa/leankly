@@ -37,7 +37,6 @@ function EditProfileContent() {
     setEmail,
     setAge,
     setAvatar,
-    setLocation,
     handleCancel: contextHandleCancel,
   } = useProfileContext();
 
@@ -139,7 +138,7 @@ function EditProfileContent() {
               value={name}
               autoCapitalize="none"
               onChangeText={setName}
-              className={`flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular`}
+              className={`p-0  flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular`}
               editable={isEditing}
             />
           </View>
@@ -153,7 +152,7 @@ function EditProfileContent() {
               value={age}
               autoCapitalize="none"
               onChangeText={setAge}
-              className={`flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular`}
+              className={`p-0  flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular `}
               editable={isEditing}
             />
           </View>
@@ -167,7 +166,7 @@ function EditProfileContent() {
               value={email}
               autoCapitalize="none"
               onChangeText={setEmail}
-              className={`flex-1 text-right  text-gray-400 font-plus-jakarta-regular`}
+              className={`p-0  flex-1 text-right  text-gray-400 font-plus-jakarta-regular`}
               editable={false}
             />
           </View>

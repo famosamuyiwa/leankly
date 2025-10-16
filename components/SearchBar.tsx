@@ -55,7 +55,7 @@ const SearchBar = ({
           onChangeText={handleSearch}
           placeholder={placeholder ?? "Search for anything"}
           placeholderTextColor={"#9CA3AF"}
-          className=" font-plus-jakarta-regular text-black-300 ml-2 flex-1"
+          className="p-0 font-plus-jakarta-regular text-black-300 ml-2 flex-1"
           onFocus={handleOnFocus}
         />
 

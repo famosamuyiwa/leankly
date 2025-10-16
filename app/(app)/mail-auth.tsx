@@ -296,10 +296,17 @@ const SignInMailScreen = () => {
               </Pressable>
             </View>
             <View style={styles.container2}>
-              <Text style={styles.heading}>Sign in to Leankly</Text>
-              <Text style={styles.subheading}>Enter your details</Text>
+              <Text className="font-plus-jakarta-bold" style={styles.heading}>
+                Sign in to Leankly
+              </Text>
+              <Text
+                className="font-plus-jakarta-regular"
+                style={styles.subheading}
+              >
+                Enter your details
+              </Text>
               <View className="mb-4">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 font-plus-jakarta-semibold mb-2">
                   Email
                 </Text>
                 <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -311,13 +318,13 @@ const SignInMailScreen = () => {
                     placeholder="Enter your email"
                     placeholderTextColor="#9CA3AF"
                     onChangeText={setEmail}
-                    className="flex-1 ml-3 text-gray-900"
+                    className="p-0 flex-1 ml-3 text-gray-900 font-plus-jakarta-regular"
                     editable={!isLoading}
                   />
                 </View>
               </View>
               <View className="mb-4">
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-sm font-medium text-gray-700 font-plus-jakarta-semibold mb-2">
                   Password
                 </Text>
                 <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -334,7 +341,7 @@ const SignInMailScreen = () => {
                     autoCapitalize="none"
                     placeholderTextColor="#9CA3AF"
                     onChangeText={setPassword}
-                    className="flex-1 ml-3 text-gray-900"
+                    className="p-0 flex-1 ml-3 text-gray-900 font-plus-jakarta-regular"
                     editable={!isLoading}
                   />
                 </View>
@@ -349,6 +356,7 @@ const SignInMailScreen = () => {
                     color: tint,
                     fontSize: 15,
                   }}
+                  className="font-plus-jakarta-regular"
                 >
                   Forgot password?
                 </Text>
@@ -379,6 +387,7 @@ const SignInMailScreen = () => {
                   color: "darkgrey",
                   fontSize: 15,
                 }}
+                className="font-plus-jakarta-regular"
               >
                 Don't have an account?
               </Text>
@@ -432,10 +441,17 @@ const SignInMailScreen = () => {
               style={{ width: "100%" }}
             >
               <View style={styles.container2}>
-                <Text style={styles.heading}>Sign up for Leankly</Text>
-                <Text style={styles.subheading}>Enter your email</Text>
+                <Text style={styles.heading} className="font-plus-jakarta-bold">
+                  Sign up for Leankly
+                </Text>
+                <Text
+                  style={styles.subheading}
+                  className="font-plus-jakarta-semibold"
+                >
+                  Enter your email
+                </Text>
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-semibold">
                     Email
                   </Text>
                   <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -447,13 +463,13 @@ const SignInMailScreen = () => {
                       placeholder="Enter your email"
                       placeholderTextColor="#9CA3AF"
                       onChangeText={setEmail}
-                      className="flex-1 ml-3 text-gray-900"
+                      className="p-0  flex-1 ml-3 text-gray-900"
                       editable={!isLoading}
                     />
                   </View>
                 </View>
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-semibold">
                     Password
                   </Text>
                   <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -470,13 +486,13 @@ const SignInMailScreen = () => {
                       autoCapitalize="none"
                       placeholderTextColor="#9CA3AF"
                       onChangeText={setPassword}
-                      className="flex-1 ml-3 text-gray-900"
+                      className="p-0 flex-1 ml-3 text-gray-900"
                       editable={!isLoading}
                     />
                   </View>
                 </View>
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-semibold">
                     Confirm Password
                   </Text>
                   <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -493,7 +509,7 @@ const SignInMailScreen = () => {
                       autoCapitalize="none"
                       placeholderTextColor="#9CA3AF"
                       onChangeText={setConfirmPassword}
-                      className="flex-1 ml-3 text-gray-900"
+                      className="p-0 flex-1 ml-3 text-gray-900"
                       editable={!isLoading}
                     />
                   </View>
@@ -520,6 +536,7 @@ const SignInMailScreen = () => {
                     color: "darkgrey",
                     fontSize: 13,
                   }}
+                  className="font-plus-jakarta-regular"
                 >
                   By signing up, you agree to our
                   <Text style={{ color: tint, fontSize: 13 }}>
@@ -551,6 +568,7 @@ const SignInMailScreen = () => {
                   color: "darkgrey",
                   fontSize: 15,
                 }}
+                className="font-plus-jakarta-regular"
               >
                 Already have an account?
               </Text>
@@ -626,15 +644,20 @@ const SignInMailScreen = () => {
             </View>
             <View style={styles.container2}>
               <View>
-                <Text style={styles.heading}>Forgot Password?</Text>
-                <Text style={{ color: "darkgrey", marginTop: 10 }}>
+                <Text className="font-plus-jakarta-bold" style={styles.heading}>
+                  Forgot Password?
+                </Text>
+                <Text
+                  className="font-plus-jakarta-regular"
+                  style={{ color: "darkgrey", marginTop: 10 }}
+                >
                   Don't worry! It happens. Please enter the email associated
                   with this account
                 </Text>
               </View>
               <View style={{ marginVertical: 30 }}>
                 <View className="mb-4">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-bold">
                     Email
                   </Text>
                   <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
@@ -646,7 +669,7 @@ const SignInMailScreen = () => {
                       placeholder="Enter your email"
                       placeholderTextColor="#9CA3AF"
                       onChangeText={setEmail}
-                      className="flex-1 ml-3 text-gray-900"
+                      className="p-0 flex-1 ml-3 text-gray-900"
                       editable={!isLoading}
                     />
                   </View>
@@ -696,8 +719,13 @@ const SignInMailScreen = () => {
               </Pressable>
             </View>
             <View style={styles.container2}>
-              <Text style={styles.heading}>Reset Password</Text>
-              <Text style={styles.subheading}>
+              <Text className="font-plus-jakarta-bold" style={styles.heading}>
+                Reset Password
+              </Text>
+              <Text
+                className="font-plus-jakarta-regular"
+                style={styles.subheading}
+              >
                 Your new password should be different from your previous
                 password.
               </Text>
@@ -716,7 +744,7 @@ const SignInMailScreen = () => {
                     autoCapitalize="none"
                     placeholderTextColor="#9CA3AF"
                     onChangeText={setPassword}
-                    className="flex-1 ml-3 text-gray-900"
+                    className="p-0 flex-1 ml-3 text-gray-900"
                     editable={!isLoading}
                   />
                 </View>
@@ -736,7 +764,7 @@ const SignInMailScreen = () => {
                     autoCapitalize="none"
                     placeholderTextColor="#9CA3AF"
                     onChangeText={setConfirmPassword}
-                    className="flex-1 ml-3 text-gray-900"
+                    className="p-0 flex-1 ml-3 text-gray-900"
                     editable={!isLoading}
                   />
                 </View>
@@ -770,6 +798,7 @@ const SignInMailScreen = () => {
                   color: "darkgrey",
                   fontSize: 15,
                 }}
+                className="font-plus-jakarta-regular"
               >
                 Have an account already?{" "}
               </Text>
@@ -784,6 +813,7 @@ const SignInMailScreen = () => {
                     color: tint,
                     fontSize: 15,
                   }}
+                  className="font-plus-jakarta-regular"
                 >
                   Log in
                 </Text>

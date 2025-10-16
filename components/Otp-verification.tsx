@@ -212,12 +212,12 @@ const OTPVerification = ({
             <View className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl items-center justify-center mb-10 shadow-lg">
               <Ionicons name="mail" size={40} color="white" />
             </View>
-            <Text className="font-geistSemiBold" style={styles.heading}>
+            <Text className="font-plus-jakarta-semibold" style={styles.heading}>
               Verify your email
             </Text>
             <Text style={{ color: "darkgrey", marginTop: 10 }}>
               We have sent a code to{" "}
-              <Text className="font-geistSemiBold">{email}</Text>
+              <Text className="font-plus-jakarta-semibold">{email}</Text>
             </Text>
           </View>
           <View style={styles.otpInputContainer}>

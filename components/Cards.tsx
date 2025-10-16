@@ -6,7 +6,7 @@ import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import React, { useEffect } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TouchableOpacity, View } from "react-native";
 import { Query } from "react-native-appwrite";
 import CustomButton from "./Button";
 
@@ -73,7 +73,9 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
   });
 
   return (
-    <View className="rounded-3xl bg-white mb-5 shadow-md shadow-slate-200 gap-5 flex-1">
+    <View
+      className={`rounded-3xl bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  gap-5 flex-1`}
+    >
       <Image
         source={images.leankCover}
         className="h-[40%] rounded-t-3xl"

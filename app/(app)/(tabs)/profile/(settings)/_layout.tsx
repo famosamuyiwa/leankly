@@ -14,6 +14,7 @@ function SettingsLayout() {
           title: "Settings",
           headerShadowVisible: false,
           headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerTitleAlign: "center",
           headerStyle: {
             backgroundColor: "#f3f4f6",
           },
@@ -25,6 +26,8 @@ function SettingsLayout() {
         options={{
           title: "Edit Profile",
           headerTitleStyle: HeaderStyles.headerTitleStyle,
+          headerTitleAlign: "center",
+
           headerShadowVisible: false,
           headerStyle: {
             backgroundColor: "#f3f4f6",

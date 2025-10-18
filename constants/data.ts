@@ -61,10 +61,10 @@ export const filterCategories = [
     title: FilterOptions.LOCATION,
     screen: Screens.HOME,
   },
-  {
-    title: FilterOptions.DATE,
-    screen: Screens.HOME,
-  },
+  // {
+  //   title: FilterOptions.DATE,
+  //   screen: Screens.HOME,
+  // },
 ];
 
 export const dummyLeanks: Leank[] = [

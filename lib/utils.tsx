@@ -1,3 +1,6 @@
+import * as AuthSession from "expo-auth-session";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+
 export const formatDate = (date: Date | "") => {
   if (date === "") return;
   return new Date(date).toLocaleDateString("en-US", {
@@ -44,4 +47,20 @@ export function timeElapsed(date: string): string {
     const year = dateObj.getFullYear();
     return `${month}/${day}/${year}`;
   }
+}
+
+/**
+ * Returns the correct redirect URL for Clerk OAuth
+ * Works in Expo Go, Dev build, and Production.
+ */
+export function getRedirectUrl() {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) {
+    // Expo Go environment
+    return AuthSession.makeRedirectUri();
+  }
+
+  // Dev or production native builds
+  return AuthSession.makeRedirectUri({
+    path: "expo-auth-session", // uses leankly://expo-auth-session
+  });
 }

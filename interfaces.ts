@@ -1,5 +1,5 @@
 import { Models } from "react-native-appwrite";
-import { LeankStatus } from "./constants/enums";
+import { LeankStatus, PushNotificationTypes } from "./constants/enums";
 
 export interface ToastProps {
   type?: "success" | "warning" | "error";
@@ -13,6 +13,8 @@ export interface User extends Models.Row {
   email: string;
   age: string;
   location: string;
+  pushToken?: string;
+  sex?: string;
 }
 
 export interface Leank extends Models.Row {
@@ -47,4 +49,9 @@ export interface UserChatMeta extends Models.Row {
   leankId: string;
   userId: string;
   readAt: Date;
+}
+
+export interface PushNotificationRequest {
+  type: PushNotificationTypes;
+  data: Message;
 }

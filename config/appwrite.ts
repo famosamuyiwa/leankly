@@ -1,4 +1,5 @@
-import { Client, TablesDB } from "react-native-appwrite";
+import { PushNotificationRequest } from "@/interfaces";
+import { Client, Functions, TablesDB } from "react-native-appwrite";
 
 if (!process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_PROJECT_ID is not set");
@@ -17,10 +18,12 @@ const appwriteConfig = {
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
   platform: "com.barrakudadev.leankly",
   db: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+  sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
   tables: {
     leanks: "leanks",
     messages: "messages",
     userChatMeta: "userchatmeta",
+    user: "user",
   },
 };
 
@@ -30,5 +33,22 @@ const client = new Client()
   .setPlatform(appwriteConfig.platform);
 
 const db = new TablesDB(client);
+const functions = new Functions(client);
 
-export { appwriteConfig, client, db };
+async function sendPushNotification(body: PushNotificationRequest) {
+  try {
+    const { type, data } = body;
+    const payload = JSON.stringify({ type, data });
+
+    const result = await functions.createExecution({
+      functionId: appwriteConfig.sendPushFunctionId, // your function ID
+      body: payload,
+    });
+
+    console.log("Push function executed:", result);
+  } catch (err) {
+    console.error("Error executing function:", err);
+  }
+}
+
+export { appwriteConfig, client, db, sendPushNotification };

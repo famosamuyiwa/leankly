@@ -6,7 +6,7 @@ import { FilterOptions, Screens } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,9 +25,20 @@ export default function HomeScreen() {
   }>();
 
   useEffect(() => {
-    console.log(clickedFilter);
-    if (clickedFilter) {
+    if (!clickedFilter) return;
+    if (clickedFilter === FilterOptions.TODAY) return;
+    const selectedFilters = categoryFilter
+      ? categoryFilter.split(",").map((s) => decodeURIComponent(s))
+      : [];
+
+    const isAlreadySelected = selectedFilters.includes(clickedFilter);
+
+    if (isAlreadySelected) {
+      // Only open bottom sheet if it's a NEW filter
       bottomSheetRef.current?.expand();
+    } else {
+      // Don’t open if user clicked an already-selected one (unselecting)
+      router.setParams({ clickedFilter: undefined });
     }
   }, [clickedFilter]);
 
@@ -49,6 +60,10 @@ export default function HomeScreen() {
         },
       ]
     );
+  };
+
+  const onFilterBottomSheetClose = () => {
+    router.setParams({ clickedFilter: undefined });
   };
 
   if (!insets) {
@@ -93,7 +108,11 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
       <Portal>
-        <FilterBottomSheet ref={bottomSheetRef} clickedFilter={clickedFilter} />
+        <FilterBottomSheet
+          ref={bottomSheetRef}
+          clickedFilter={clickedFilter}
+          onClose={onFilterBottomSheetClose}
+        />
       </Portal>
     </GestureHandlerRootView>
   );

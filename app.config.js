@@ -18,11 +18,11 @@ export default {
       adaptiveIcon: {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",
-        googleServicesFile: "./google-services.json",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.barrakudadev.leankly",
+      googleServicesFile: "./google-services.json",
     },
     web: {
       output: "static",

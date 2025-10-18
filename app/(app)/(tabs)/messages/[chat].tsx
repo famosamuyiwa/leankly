@@ -1,5 +1,11 @@
-import { appwriteConfig, client, db } from "@/config/appwrite";
+import {
+  appwriteConfig,
+  client,
+  db,
+  sendPushNotification,
+} from "@/config/appwrite";
 import { Colors } from "@/constants/common";
+import { PushNotificationTypes } from "@/constants/enums";
 import { Leank, Message } from "@/interfaces";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { useUser } from "@clerk/clerk-expo";
@@ -118,7 +124,7 @@ export default function Chat() {
   };
 
   const sendMessage = async () => {
-    if (messageContent.trim() === "") return;
+    if (messageContent.trim() === "" || !user) return;
 
     try {
       const message = {
@@ -138,7 +144,8 @@ export default function Chat() {
 
       setMessageContent("");
 
-      await db.updateRow({
+      //update leank's last message
+      db.updateRow({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         rowId: chatId as string,
@@ -146,6 +153,12 @@ export default function Chat() {
           lastMessage: msg,
           $updatedAt: new Date().toISOString(),
         },
+      });
+
+      // alert participants
+      sendPushNotification({
+        type: PushNotificationTypes.CHAT,
+        data: message as Message,
       });
     } catch (e) {
       console.log(e);

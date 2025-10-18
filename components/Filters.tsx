@@ -1,12 +1,13 @@
 import { FilterOptions, Screens } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 import { filterCategories } from "../constants/data";
 
 const Filters = ({ screen }: { screen: Screens }) => {
+  const router = useRouter();
   const params = useLocalSearchParams<{ categoryFilter?: string }>();
   const { alertComingSoon } = useGlobalContext();
 
@@ -22,6 +23,9 @@ const Filters = ({ screen }: { screen: Screens }) => {
 
   const [selectedCategories, setSelectedCategories] =
     useState<string[]>(initialSelected);
+  const [clickedFilter, setClickedFilter] = useState<string | undefined>(
+    undefined
+  );
 
   // Keep local state in sync if URL params change externally
   useEffect(() => {
@@ -29,22 +33,30 @@ const Filters = ({ screen }: { screen: Screens }) => {
   }, [initialSelected]);
 
   const handleCategoryPress = (category: string) => {
-    // if (category !== FilterOptions.TODAY) return alertComingSoon();
-    setSelectedCategories((prev) => {
-      const exists = prev.includes(category);
-      const next = exists
-        ? prev.filter((c) => c !== category)
-        : [...prev, category];
-      // Update URL params as comma-separated list (remove when empty)
-      router.setParams({
-        categoryFilter: next.length
-          ? next.map((c) => encodeURIComponent(c)).join(",")
-          : (undefined as any),
-        clickedFilter: category,
-      });
-      return next;
-    });
+    const exists = selectedCategories.includes(category);
+    const next = exists
+      ? selectedCategories.filter((c) => c !== category)
+      : [...selectedCategories, category];
+
+    // 1️⃣ Update local state first
+    setSelectedCategories(next);
+    setClickedFilter(category);
   };
+
+  // 2️⃣ Sync with router *after* render commits
+  useEffect(() => {
+    if (!clickedFilter) return;
+    const query =
+      selectedCategories.length > 0
+        ? selectedCategories.map((c) => encodeURIComponent(c)).join(",")
+        : undefined;
+
+    // Safe: runs after render
+    router.setParams({
+      categoryFilter: query,
+      clickedFilter,
+    });
+  }, [selectedCategories, clickedFilter]);
 
   return (
     <ScrollView

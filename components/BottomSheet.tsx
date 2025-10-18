@@ -1,5 +1,4 @@
 import { FilterOptions } from "@/constants/enums";
-import { useFiltersContext } from "@/lib/FiltersContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
@@ -15,12 +14,20 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import CustomButton from "./Button";
+import { AgeFilter, LocationFilter, SexFilter } from "./FilterContent";
 import SearchBar from "./SearchBar";
 
 const FilterBottomSheet = forwardRef(
-  ({ clickedFilter }: { clickedFilter: FilterOptions | undefined }, ref) => {
+  (
+    {
+      clickedFilter,
+      onClose,
+    }: { clickedFilter: FilterOptions | undefined; onClose: () => void },
+    ref
+  ) => {
     // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
     // expose bottom sheet methods to parent
@@ -30,7 +37,7 @@ const FilterBottomSheet = forwardRef(
       snapTo: (index: number) => bottomSheetRef.current?.snapToIndex(index),
     }));
 
-    const {} = useFiltersContext();
+    const onDoneClick = () => {};
 
     return (
       <BottomSheet
@@ -49,9 +56,20 @@ const FilterBottomSheet = forwardRef(
           borderTopLeftRadius: 100,
           borderTopRightRadius: 100,
         }}
+        onClose={onClose}
+        handleIndicatorStyle={{ backgroundColor: "lightgrey" }}
       >
-        <BottomSheetView className="px-4 pb-10">
-          <Text>Hello worldddd</Text>
+        <BottomSheetView className="px-5 pb-10 gap-5">
+          <Text className="font-plus-jakarta-bold text-center text-xl pt-2">
+            {clickedFilter}
+          </Text>
+          <View className="py-5 gap-5">
+            {clickedFilter === FilterOptions.AGE && <AgeFilter />}
+            {clickedFilter === FilterOptions.SEX && <SexFilter />}
+            {clickedFilter === FilterOptions.LOCATION && <LocationFilter />}
+          </View>
+
+          <CustomButton label="Done" onPress={onDoneClick} />
         </BottomSheetView>
       </BottomSheet>
     );

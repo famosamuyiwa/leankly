@@ -79,3 +79,21 @@ export enum Time {
   _10PM = "10:00 PM",
   _11PM = "11:00 PM",
 }
+
+export enum SexFilterEnum {
+  MALE = "Male",
+  FEMALE = "Female",
+  NON_BINARY = "Non binary",
+  PREFER_NOT = "Prefer not to say",
+}
+
+export enum LocationFilterEnum {
+  NEARBY = "Nearby",
+  ONLINE = "Online",
+}
+
+export enum PushNotificationTypes {
+  SYSTEM = "System",
+  ALERT = "Alert",
+  CHAT = "Chat",
+}

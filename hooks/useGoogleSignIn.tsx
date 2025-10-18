@@ -1,5 +1,5 @@
+import { getRedirectUrl } from "@/lib/utils";
 import { useSSO } from "@clerk/clerk-expo";
-import * as AuthSession from "expo-auth-session";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
@@ -9,15 +9,15 @@ WebBrowser.maybeCompleteAuthSession();
 
 export function useGoogleSSO() {
   const { startSSOFlow } = useSSO();
+  const redirectUrl = getRedirectUrl();
 
   const signInWithGoogle = useCallback(async () => {
     try {
       const { createdSessionId, setActive, signIn, signUp } =
         await startSSOFlow({
           strategy: "oauth_google",
-          redirectUrl: AuthSession.makeRedirectUri(),
+          redirectUrl,
         });
-
       if (createdSessionId) {
         // Set session active and handle navigation
         await setActive!({

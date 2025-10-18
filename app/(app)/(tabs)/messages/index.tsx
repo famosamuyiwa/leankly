@@ -1,6 +1,6 @@
+import { appwriteConfig, db } from "@/appwrite/config";
 import { ChatCard, RequestCard } from "@/components/Cards";
 import NavBar from "@/components/NavBar";
-import { appwriteConfig, db } from "@/config/appwrite";
 import { dummyRequests } from "@/constants/data";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";

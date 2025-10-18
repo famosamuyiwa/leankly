@@ -3,7 +3,7 @@ import {
   client,
   db,
   sendPushNotification,
-} from "@/config/appwrite";
+} from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { PushNotificationTypes } from "@/constants/enums";
 import { Leank, Message } from "@/interfaces";

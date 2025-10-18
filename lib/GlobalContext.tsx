@@ -1,6 +1,6 @@
+import { appwriteConfig, db } from "@/appwrite/config";
 import { Toast } from "@/components/animation-toast/components";
 import Loader from "@/components/Loader";
-import { appwriteConfig, db } from "@/config/appwrite";
 import { Leank, ToastProps, UserChatMeta } from "@/interfaces";
 import { useUser } from "@clerk/clerk-expo";
 import React, {

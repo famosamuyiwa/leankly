@@ -1,4 +1,4 @@
-import { appwriteConfig, client, db } from "@/config/appwrite";
+import { appwriteConfig, client, db } from "@/appwrite/config";
 import images from "@/constants/images";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";

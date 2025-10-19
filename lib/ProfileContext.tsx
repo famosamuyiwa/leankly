@@ -1,4 +1,6 @@
-import { user } from "@/constants/data";
+import { appwriteConfig, db } from "@/appwrite/config";
+import { useAppwriteUpload } from "@/hooks/useBucket";
+import { MediaResult } from "@/interfaces";
 import React, {
   createContext,
   ReactNode,
@@ -6,6 +8,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useGlobalContext } from "./GlobalContext";
 
 interface EditProfileContextType {
   // Editing state
@@ -23,6 +26,7 @@ interface EditProfileContextType {
   age: string;
   location: string;
   setAvatar: (avatar: any) => void;
+  setAvatarMediaResult: (media: MediaResult) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
   setAge: (age: string) => void;
@@ -39,36 +43,44 @@ const EditProfileContext = createContext<EditProfileContextType | undefined>(
 );
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const { currentUser } = useGlobalContext();
+
+  if (!currentUser) return;
+
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   // User data state
-  const [avatar, setAvatar] = useState(user.avatar);
-  const [name, setName] = useState(user.name);
-  const [age, setAge] = useState(user.age);
-  const [location, setLocation] = useState(user.location);
-  const [email, setEmail] = useState(user.email);
+  const [avatar, setAvatar] = useState(currentUser.avatar);
+  const [avatarMediaResult, setAvatarMediaResult] = useState<
+    MediaResult | undefined
+  >(undefined);
+  const [name, setName] = useState(currentUser.name);
+  const [age, setAge] = useState(currentUser.age);
+  const [location, setLocation] = useState(currentUser.location);
+  const [email, setEmail] = useState(currentUser.email);
+  const { uploadFiles, progress, isUploading } = useAppwriteUpload();
 
   // Track changes to enable/disable save button
   useEffect(() => {
     const hasChanges =
-      avatar !== user.avatar ||
-      name !== user.name ||
-      email !== user.email ||
-      age !== user.age ||
-      location !== user.location;
+      avatar !== currentUser.avatar ||
+      name !== currentUser.name ||
+      email !== currentUser.email ||
+      age !== currentUser.age ||
+      location !== currentUser.location;
 
     setHasChanges(hasChanges);
   }, [avatar, name, email, age, location]);
 
   const resetUserData = () => {
-    setAvatar(user.avatar);
-    setName(user.name);
-    setEmail(user.email);
-    setAge(user.age); //TODO: update to users actual age and location
-    setLocation(user.location);
+    setAvatar(currentUser.avatar);
+    setName(currentUser.name);
+    setEmail(currentUser.email);
+    setAge(currentUser.age); //TODO: update to users actual age and location
+    setLocation(currentUser.location);
   };
 
   const handleSave = async () => {
@@ -76,11 +88,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
-      // Add actual save logic here (API calls, etc.)
-      console.log("Saving profile...");
+      let url = undefined;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (avatarMediaResult) {
+        url = (await uploadFiles([avatarMediaResult], 3))[0]; // limit concurrency to 3
+      }
+
+      await db.updateRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.user,
+        rowId: currentUser.$id,
+        data: {
+          avatar: url || currentUser.avatar,
+          name,
+          email,
+          age,
+          location,
+        },
+      });
 
       setIsEditing(false);
       setHasChanges(false);
@@ -116,6 +141,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         age,
         location,
         setAvatar,
+        setAvatarMediaResult,
         setName,
         setEmail,
         setAge,

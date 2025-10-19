@@ -67,6 +67,15 @@ export const filterCategories = [
   // },
 ];
 
+export const filterDescriptions = {
+  [FilterOptions.TODAY]: "",
+  [FilterOptions.CATEGORY]: "",
+  [FilterOptions.DATE]: "",
+  [FilterOptions.AGE]: "Select host's age range you're open to leanking",
+  [FilterOptions.SEX]: "Select host's sex you're open to leanking",
+  [FilterOptions.LOCATION]: "Select leank meeting type",
+};
+
 export const dummyLeanks: Leank[] = [
   {
     $id: "1",

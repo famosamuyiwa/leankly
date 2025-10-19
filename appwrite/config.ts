@@ -1,5 +1,5 @@
 import { PushNotificationRequest } from "@/interfaces";
-import { Client, Functions, TablesDB } from "react-native-appwrite";
+import { Client, Functions, Storage, TablesDB } from "react-native-appwrite";
 
 if (!process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_PROJECT_ID is not set");
@@ -13,12 +13,17 @@ if (!process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_DATABASE_ID is not set");
 }
 
+if (!process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID) {
+  throw new Error("EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID is not set");
+}
+
 const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
   platform: "com.barrakudadev.leankly",
   db: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
   sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+  storage: process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID,
   tables: {
     leanks: "leanks",
     messages: "messages",
@@ -34,6 +39,7 @@ const client = new Client()
 
 const db = new TablesDB(client);
 const functions = new Functions(client);
+const storage = new Storage(client);
 
 async function sendPushNotification(body: PushNotificationRequest) {
   try {
@@ -51,4 +57,4 @@ async function sendPushNotification(body: PushNotificationRequest) {
   }
 }
 
-export { appwriteConfig, client, db, sendPushNotification };
+export { appwriteConfig, client, db, sendPushNotification, storage };

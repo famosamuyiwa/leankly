@@ -37,6 +37,7 @@ function EditProfileContent() {
     setEmail,
     setAge,
     setAvatar,
+    setAvatarMediaResult,
     handleCancel: contextHandleCancel,
   } = useProfileContext();
 
@@ -66,15 +67,16 @@ function EditProfileContent() {
   const handleImagePress = async () => {
     if (!isEditing) return;
     try {
-      const image: any = await pickMultimedia(false, true);
-      setAvatar(image.uri[0]);
+      const result: any = await pickMultimedia(false, true);
+      setAvatar(result[0].uri);
+      setAvatarMediaResult(result[0]);
     } catch {}
   };
 
   const memoizedAvatar = useMemo(() => {
     return (
       <Image
-        source={avatar}
+        source={{ uri: avatar }}
         className="size-32 rounded-full"
         contentFit="cover"
         transition={300}
@@ -152,6 +154,8 @@ function EditProfileContent() {
               value={age}
               autoCapitalize="none"
               onChangeText={setAge}
+              keyboardType="numeric"
+              returnKeyType="done"
               className={`p-0  flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular `}
               editable={isEditing}
             />

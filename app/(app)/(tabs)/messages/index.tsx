@@ -5,7 +5,6 @@ import { dummyRequests } from "@/constants/data";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
-import { useUser } from "@clerk/clerk-expo";
 import { LegendList } from "@legendapp/list";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +14,7 @@ import { RefreshControl } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function MessagesScreen() {
-  const { unreadCount, setUnreadCount } = useGlobalContext();
+  const { unreadCount, setUnreadCount, currentUser } = useGlobalContext();
 
   const handleOnDeclinePress = () => {};
   const handleOnAcceptPress = () => {};
@@ -29,10 +28,8 @@ export default function MessagesScreen() {
   const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
   const isChats = params.nav === NavbarOptions.CHATS;
 
-  const { user } = useUser();
-
   const fetchChatRooms = async () => {
-    if (!user) return;
+    if (!currentUser) return;
     try {
       const { rows, total } = await db.listRows({
         databaseId: appwriteConfig.db,
@@ -50,8 +47,8 @@ export default function MessagesScreen() {
             "participantIds",
           ]),
           Query.or([
-            Query.equal("ownerId", user.id),
-            Query.contains("participantIds", user.id),
+            Query.equal("ownerId", currentUser.$id),
+            Query.contains("participantIds", currentUser.$id),
           ]),
         ],
       });
@@ -62,12 +59,12 @@ export default function MessagesScreen() {
   };
 
   const fetchChatMeta = async () => {
-    if (!user) return;
+    if (!currentUser) return;
     try {
       const { rows, total } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.userChatMeta,
-        queries: [Query.equal("userId", user.id)],
+        queries: [Query.equal("userId", currentUser.$id)],
       });
       setChatMetas(rows as unknown as UserChatMeta[]);
     } catch (e) {
@@ -87,12 +84,12 @@ export default function MessagesScreen() {
   useEffect(() => {
     const unread = chatRooms.filter((room) => {
       const meta = chatMetas.find(
-        (m) => m.leankId === room.$id && m.userId === user?.id
+        (m) => m.leankId === room.$id && m.userId === currentUser?.$id
       );
       return (
         room.lastMessage &&
         new Date(room.lastMessage.$createdAt) > new Date(meta?.readAt || 0) &&
-        room.lastMessage.senderId !== user?.id
+        room.lastMessage.senderId !== currentUser?.$id
       );
     }).length;
     setUnreadCount(unread);
@@ -111,9 +108,10 @@ export default function MessagesScreen() {
       <ChatCard
         item={item}
         meta={chatMetas.find(
-          (meta) => meta.leankId === item.$id && meta.userId === user?.id
+          (meta) =>
+            meta.leankId === item.$id && meta.userId === currentUser?.$id
         )}
-        userId={user?.id}
+        userId={currentUser?.$id}
         onItemUpdate={(update, metaUpdate) => {
           setChatRooms((prev) => {
             const index = prev.findIndex((r) => r.$id === update.$id);
@@ -135,7 +133,8 @@ export default function MessagesScreen() {
         onPress={() => {
           setChatMetas((prev) => {
             const index = prev.findIndex(
-              (meta) => meta.leankId === item.$id && meta.userId === user?.id
+              (meta) =>
+                meta.leankId === item.$id && meta.userId === currentUser?.$id
             );
             if (index === -1) return prev; // not found
 

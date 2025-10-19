@@ -1,3 +1,5 @@
+import { generateRandomUsername } from "@/lib/utils";
+import { router } from "expo-router";
 import { Query } from "react-native-appwrite";
 import { appwriteConfig, db } from "../config";
 
@@ -24,7 +26,7 @@ export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
         tableId: appwriteConfig.tables.user,
         rowId: id,
         data: {
-          name: fullName || "",
+          name: fullName || generateRandomUsername(),
           email: email || "",
           avatar: imageUrl || "",
           age: "",
@@ -34,9 +36,8 @@ export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
         },
       });
       console.log(`✅ New user saved to Appwrite: ${email}`);
-    } else {
-      console.log(`⚠️ User already exists in Appwrite: ${email}`);
     }
+    router.replace("/");
   } catch (e) {
     console.warn("Error Saving user data to appwrite: ", e);
   }

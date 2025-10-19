@@ -64,3 +64,9 @@ export function getRedirectUrl() {
     path: "expo-auth-session", // uses leankly://expo-auth-session
   });
 }
+
+export function generateRandomUsername(prefix: string = "user"): string {
+  const randomNumber = Math.floor(100000 + Math.random() * 900000); // 6 digits
+  const timestamp = Date.now().toString().slice(-4); // last 4 digits of timestamp
+  return `${prefix}${randomNumber}${timestamp}`;
+}

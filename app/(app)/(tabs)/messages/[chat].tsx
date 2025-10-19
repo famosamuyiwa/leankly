@@ -7,8 +7,8 @@ import {
 import { Colors } from "@/constants/common";
 import { PushNotificationTypes } from "@/constants/enums";
 import { Leank, Message } from "@/interfaces";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
-import { useUser } from "@clerk/clerk-expo";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -38,9 +38,9 @@ export default function Chat() {
   });
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
+  const { currentUser } = useGlobalContext();
 
   const { chat: chatId } = useLocalSearchParams();
-  const { user } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageContent, setMessageContent] = useState("");
@@ -114,7 +114,7 @@ export default function Chat() {
 
       if (
         total > 0 &&
-        (rows as unknown as Message[])[total - 1].senderId !== user?.id
+        (rows as unknown as Message[])[total - 1].senderId !== currentUser?.$id
       ) {
         markAsRead();
       }
@@ -124,14 +124,14 @@ export default function Chat() {
   };
 
   const sendMessage = async () => {
-    if (messageContent.trim() === "" || !user) return;
+    if (messageContent.trim() === "" || !currentUser) return;
 
     try {
       const message = {
         content: messageContent,
-        senderId: user?.id,
-        senderName: user?.fullName,
-        senderPhoto: user?.imageUrl,
+        senderId: currentUser.$id,
+        senderName: currentUser.name,
+        senderPhoto: currentUser.avatar,
         leankId: chatId,
       };
 
@@ -170,11 +170,14 @@ export default function Chat() {
   };
 
   const markAsRead = async () => {
-    if (!user) return;
+    if (!currentUser) return;
     const { rows, total } = await db.listRows({
       databaseId: appwriteConfig.db,
       tableId: appwriteConfig.tables.userChatMeta,
-      queries: [Query.equal("leankId", chatId), Query.equal("userId", user.id)],
+      queries: [
+        Query.equal("leankId", chatId),
+        Query.equal("userId", currentUser.$id),
+      ],
     });
 
     if (total > 0) {
@@ -184,7 +187,7 @@ export default function Chat() {
         rowId: rows[0].$id,
         data: {
           leankId: chatId,
-          userId: user.id,
+          userId: currentUser.$id,
           readAt: new Date().toISOString(),
           $updatedAt: new Date().toISOString(),
         },
@@ -196,7 +199,7 @@ export default function Chat() {
         rowId: ID.unique(),
         data: {
           leankId: chatId,
-          userId: user.id,
+          userId: currentUser.$id,
           readAt: new Date().toISOString(),
         },
       });
@@ -214,7 +217,7 @@ export default function Chat() {
   );
 
   const renderItem = ({ item }: { item: Message }) => {
-    const isSender = item.senderId === user?.id;
+    const isSender = item.senderId === currentUser?.$id;
     return (
       <View
         className={`flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}

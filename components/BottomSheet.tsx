@@ -1,3 +1,4 @@
+import { filterDescriptions } from "@/constants/data";
 import { FilterOptions } from "@/constants/enums";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,6 +63,9 @@ const FilterBottomSheet = forwardRef(
         <BottomSheetView className="px-5 pb-10 gap-5">
           <Text className="font-plus-jakarta-bold text-center text-xl pt-2">
             {clickedFilter}
+          </Text>
+          <Text className="font-plus-jakarta-semibold text-gray-400 text-center ">
+            {filterDescriptions[clickedFilter || FilterOptions.TODAY]}
           </Text>
           <View className="py-5 gap-5">
             {clickedFilter === FilterOptions.AGE && <AgeFilter />}

@@ -1,4 +1,3 @@
-import { saveUserToDB } from "@/appwrite/actions/user.actions";
 import CustomButton from "@/components/Button";
 import OTPVerification from "@/components/Otp-verification";
 import { Colors } from "@/constants/common";
@@ -73,17 +72,6 @@ const SignInMailScreen = () => {
     },
     [currentScreen]
   );
-
-  useEffect(() => {
-    if (currentScreen !== Screens.OTP) return;
-    if (!isLoaded) return; // Clerk still loading
-    if (!isSignedIn || !user) return; // No valid session yet
-
-    const save = async () => await saveUserToDB(user, expoPushToken);
-    save();
-    router.replace("/");
-    setIsLoading(false);
-  }, [isLoaded, isSignedIn, user]);
 
   if (!insets) {
     return null; // Prevents glitching by waiting for insets
@@ -210,10 +198,8 @@ const SignInMailScreen = () => {
       // If verification was completed, set the session to active
       // and redirect the user
       if (signUpAttempt.status === "complete") {
-        if (!isLoaded) return; // Clerk still loading
-        if (!isSignedIn || !user) return; // No valid session yet
-
         await setSignUpActive({ session: signUpAttempt.createdSessionId });
+        router.replace("/expo-auth-session");
       } else {
         // If the status is not complete, check why. User may need to
         // complete further steps.
@@ -620,6 +606,7 @@ const SignInMailScreen = () => {
           <SafeAreaView>
             <OTPVerification
               email={email}
+              isLoading={isLoading}
               onBackBtn={function () {
                 setCurrentScreen(previousScreen);
               }}

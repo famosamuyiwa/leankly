@@ -1,6 +1,7 @@
 import { PushNotificationProvider } from "@/lib/PushNotificationContext";
 import "./global.css";
 
+import GlobalProvider from "@/lib/GlobalContext";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
@@ -11,7 +12,6 @@ import { useEffect } from "react";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -51,7 +51,9 @@ export default function Layout() {
   return (
     <ClerkProvider tokenCache={tokenCache}>
       <PushNotificationProvider>
-        <Slot />
+        <GlobalProvider>
+          <Slot />
+        </GlobalProvider>
       </PushNotificationProvider>
     </ClerkProvider>
   );

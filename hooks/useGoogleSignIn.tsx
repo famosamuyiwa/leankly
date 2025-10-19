@@ -1,6 +1,5 @@
 import { getRedirectUrl } from "@/lib/utils";
 import { useSSO } from "@clerk/clerk-expo";
-import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback } from "react";
 
@@ -29,7 +28,6 @@ export function useGoogleSSO() {
             }
           },
         });
-        router.replace("/");
       } else {
         // Handle MFA or additional steps via signIn / signUp
         console.warn("Additional steps required:", { signIn, signUp });

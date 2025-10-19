@@ -55,3 +55,10 @@ export interface PushNotificationRequest {
   type: PushNotificationTypes;
   data: Message;
 }
+
+export interface MediaResult {
+  uri: string;
+  name?: string;
+  type?: string;
+  size?: any;
+}

@@ -1,14 +1,13 @@
 import { ImagePickerMediaTypes } from "@/constants/common";
+import { MediaResult } from "@/interfaces";
 import * as MediaPicker from "expo-image-picker";
 import { MediaType } from "expo-image-picker";
 import { useState } from "react";
-
-interface MediaResult {
-  uri: string[];
-}
+import { useAppwriteUpload } from "./useBucket";
 
 const useImagePicker = () => {
-  const [imageUris, setImageUris] = useState<string[]>([]);
+  const [mediaResults, setMediaResults] = useState<MediaResult[]>([]);
+  const { uploadFiles, progress, isUploading } = useAppwriteUpload();
 
   async function pickMultimedia(
     isUpload: boolean,
@@ -27,24 +26,24 @@ const useImagePicker = () => {
       });
       if (result.canceled) return resolve(null);
 
-      const newMedia: MediaResult = {
-        uri: result.assets.map((asset: any) => asset.uri),
-      };
+      const newMedia: MediaResult[] = result.assets.map((asset: any) => ({
+        uri: asset.uri,
+        type: asset.mimeType,
+        size: asset.fileSize,
+      }));
 
-      setImageUris((prevImages) => [...prevImages, ...newMedia.uri]);
+      setMediaResults((prevResults) => [...prevResults, ...newMedia]);
 
       if (isUpload) {
         try {
-          // Upload each image and collect URLs
-          // const uploadPromises = newMedia.uri.map((uri: string) =>
-          //   uploadToR2(uri)
-          // );
-          // const downloadUrls = await Promise.all(uploadPromises);
-          // setImageUris([]);
-          // // Return promise resolve on successful upload
-          // resolve({
-          //   downloadUrls,
-          // });
+          //Upload each image and collect URLs
+          const urls = await uploadFiles(newMedia, 3); // limit concurrency to 3
+
+          setMediaResults([]);
+          // Return promise resolve on successful upload
+          resolve({
+            urls,
+          });
         } catch (error) {
           reject(error);
         }
@@ -54,7 +53,7 @@ const useImagePicker = () => {
     });
   }
 
-  return { imageUris, pickMultimedia, setImageUris };
+  return { mediaResults, pickMultimedia, setMediaResults };
 };
 
 export default useImagePicker;

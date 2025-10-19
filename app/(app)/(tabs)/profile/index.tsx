@@ -17,10 +17,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function Profile() {
   const insets = useSafeAreaInsets();
 
-  if (!insets) {
-    return null; // Prevents glitching by waiting for insets
-  }
-
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
@@ -38,7 +34,7 @@ export default function Profile() {
     </View>
   ));
 
-  const loadMore = useMemo(() => {}, []);
+  const loadMore = () => {};
 
   const listEmptyComponent = memo(() => {
     return (
@@ -52,19 +48,16 @@ export default function Profile() {
 
   const listHeaderComponent = useMemo(
     () => (
-      <View className="gap-4 px-5 mb-5">
+      <View className="gap-4 px-5 my-5">
         <TouchableOpacity
           activeOpacity={0.6}
+          className="p-5 absolute self-end "
           onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
         >
-          <Fontisto
-            name="player-settings"
-            className="absolute self-end pt-10"
-            size={30}
-          />
+          <Fontisto name="player-settings" size={30} />
         </TouchableOpacity>
         <Image
-          source={avatar}
+          source={{ uri: avatar }}
           className="w-20 h-20 rounded-full"
           contentFit="cover"
         />
@@ -86,6 +79,10 @@ export default function Profile() {
     ),
     [avatar, name]
   );
+
+  if (!insets) {
+    return null; // Prevents glitching by waiting for insets
+  }
 
   return (
     <Animated.View

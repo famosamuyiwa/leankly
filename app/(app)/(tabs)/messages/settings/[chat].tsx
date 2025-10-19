@@ -1,6 +1,6 @@
 import { user2 } from "@/constants/data";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
-import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,9 +21,9 @@ export default function Settings() {
   cssInterop(Image, {
     className: { target: "style" },
   });
-  const { user } = useUser();
 
   const { currentLeank } = useMessagesContext();
+  const { currentUser } = useGlobalContext();
 
   const memoizedCover = useMemo(
     () => (
@@ -127,7 +127,9 @@ export default function Settings() {
           <View className="flex-row items-center justify-center">
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text className="text-white font-plus-jakarta-semibold text-lg ml-2">
-              {user?.id === currentLeank?.owner?.$id ? "Close" : "Leave"}
+              {currentUser?.$id === currentLeank?.owner?.$id
+                ? "Close"
+                : "Leave"}
             </Text>
           </View>
         </TouchableOpacity>

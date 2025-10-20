@@ -23,13 +23,13 @@ interface EditProfileContextType {
   avatar: any;
   name: string;
   email: string;
-  age: string;
+  age: number;
   location: string;
   setAvatar: (avatar: any) => void;
   setAvatarMediaResult: (media: MediaResult) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
-  setAge: (age: string) => void;
+  setAge: (age: number) => void;
   setLocation: (location: string) => void;
 
   // Actions
@@ -79,7 +79,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setAvatar(currentUser.avatar);
     setName(currentUser.name);
     setEmail(currentUser.email);
-    setAge(currentUser.age); //TODO: update to users actual age and location
+    setAge(currentUser.age);
     setLocation(currentUser.location);
   };
 

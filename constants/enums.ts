@@ -97,3 +97,9 @@ export enum PushNotificationTypes {
   ALERT = "Alert",
   CHAT = "Chat",
 }
+
+export enum ReactionAction {
+  LIKE = "Like",
+  SKIP = "Skip",
+  PREVIOUS = "Previous",
+}

@@ -53,10 +53,10 @@ export const filterCategories = [
     title: FilterOptions.AGE,
     screen: Screens.HOME,
   },
-  {
-    title: FilterOptions.SEX,
-    screen: Screens.HOME,
-  },
+  // {
+  //   title: FilterOptions.SEX,
+  //   screen: Screens.HOME,
+  // },
   {
     title: FilterOptions.LOCATION,
     screen: Screens.HOME,
@@ -133,4 +133,11 @@ export const dummyRequests: LeankRequest[] = [
     $createdAt: new Date().toISOString(),
     $updatedAt: new Date().toISOString(),
   },
+];
+
+export const defaultCovers = [
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3b6003cb5a604cc/view?project=68e45dc0001e074ea36a",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3a9002404f136d2/view?project=68e45dc0001e074ea36a",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3a20021eb2cdc53/view?project=68e45dc0001e074ea36a",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a39c000939308631/view?project=68e45dc0001e074ea36a",
 ];

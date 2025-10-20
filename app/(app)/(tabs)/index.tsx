@@ -1,14 +1,15 @@
+import { recordLeankAction } from "@/appwrite/actions/leank.actions";
 import { FilterBottomSheet } from "@/components/BottomSheet";
 import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
-import { dummyLeanks } from "@/constants/data";
 import { FilterOptions, Screens } from "@/constants/enums";
+import { useLeanksFeed } from "@/hooks/useLeanksFeed";
 import { useGlobalContext } from "@/lib/GlobalContext";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef } from "react";
-import { Alert, Platform, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,6 +17,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<any>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);
+
+  const { currentUser } = useGlobalContext();
+  const { leanks, fetchLeanks, loading, hasMore } = useLeanksFeed(
+    currentUser?.$id
+  );
+  const currentLeank = leanks[currentIndex];
 
   const { showLoader, hideLoader } = useGlobalContext();
 
@@ -42,6 +51,49 @@ export default function HomeScreen() {
     }
   }, [clickedFilter]);
 
+  useEffect(() => {
+    if (currentIndex >= leanks.length - 3 && hasMore && !loading) {
+      fetchLeanks(); // prefetch next batch
+    }
+  }, [currentIndex]);
+
+  const handleReactionPress = async (isLiked: boolean) => {
+    try {
+      showLoader(undefined, true);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 1s delay
+
+      if (currentLeank && currentUser) {
+        setPreviousIndexes((prev) => [...prev, currentIndex]);
+
+        await recordLeankAction(currentUser.$id, currentLeank.$id, isLiked);
+      }
+      setCurrentIndex((prev) => prev + 1);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const handleUndo = async () => {
+    showLoader(undefined, true);
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1s delay
+
+    setCurrentIndex((prev) => {
+      if (previousIndexes.length === 0) return prev; // nothing to undo
+
+      // get last viewed index
+      const lastIndex = previousIndexes[previousIndexes.length - 1];
+
+      // remove it from the stack
+      setPreviousIndexes((p) => p.slice(0, -1));
+
+      return lastIndex;
+    });
+
+    hideLoader();
+  };
+
   const onLikePress = () => {
     Alert.alert(
       "Interest",
@@ -53,10 +105,7 @@ export default function HomeScreen() {
         },
         {
           text: "Yes",
-          onPress: () => {
-            showLoader(undefined, true);
-            setTimeout(hideLoader, 1500);
-          },
+          onPress: () => handleReactionPress(true),
         },
       ]
     );
@@ -81,31 +130,55 @@ export default function HomeScreen() {
         <View className="pl-5">
           <Filters screen={Screens.HOME} />
         </View>
-        <View className="flex-1 px-5 pt-5">
-          <View className="h-5/6 items-center">
-            <View
-              className={`rounded-3xl h-5 bg-white shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} absolute w-5/6 bottom-2`}
-            />
+        {currentLeank ? (
+          <View className="flex-1 px-5 pt-5">
+            <View className="h-5/6 items-center">
+              <View
+                className={`rounded-3xl h-5 bg-white shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} absolute w-5/6 bottom-2`}
+              />
 
-            <LeankCardBig item={dummyLeanks[0]} />
-          </View>
+              <LeankCardBig item={currentLeank} />
+            </View>
 
-          <View className="flex-row gap-16 items-center justify-center flex-1">
-            <TouchableOpacity
-              activeOpacity={0.6}
-              className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
-            >
-              <Feather name="x" size={35} color="black" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.6}
-              onPress={onLikePress}
-              className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
-            >
-              <MaterialCommunityIcons name="heart" size={35} color="#dc2626" />
-            </TouchableOpacity>
+            <View className="flex-row gap-16 items-center justify-center flex-1">
+              <TouchableOpacity
+                activeOpacity={0.6}
+                onPress={handleUndo}
+                className="absolute left-0 bottom-5 bg-white shadow-md rounded-full size-14  shadow-gray-300 items-center justify-center"
+              >
+                <Ionicons
+                  name="return-down-back"
+                  size={20}
+                  color={previousIndexes.length > 0 ? "black" : "lightgrey"}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.6}
+                onPress={() => handleReactionPress(false)}
+                className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
+              >
+                <Feather name="x" size={35} color="black" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.6}
+                onPress={onLikePress}
+                className="bg-white shadow-md rounded-full size-20  shadow-gray-300 items-center justify-center"
+              >
+                <MaterialCommunityIcons
+                  name="heart"
+                  size={35}
+                  color="#dc2626"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View className="flex-1 items-center justify-center">
+            <Text className="font-plus-jakarta-semibold text-lg">
+              No more Leanks to show at this moment 👏
+            </Text>
+          </View>
+        )}
       </Animated.View>
       <Portal>
         <FilterBottomSheet

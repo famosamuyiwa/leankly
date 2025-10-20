@@ -1,13 +1,20 @@
 import { Colors } from "@/constants/common";
-import React, { useState } from "react";
+import React from "react";
 import { Switch, Text, View } from "react-native";
 
-export const ToggleItem = ({ title }: { title: string }) => {
-  const [isEnabled, setIsEnabled] = useState(false);
+export const ToggleItem = ({
+  title,
+  isToggleEnabled,
+  setIsToggleEnabled,
+}: {
+  title: string;
+  isToggleEnabled: boolean;
+  setIsToggleEnabled: (toggle: boolean) => void;
+}) => {
   const tabIconSelected = Colors.primary;
 
   const toggleSwitch = () => {
-    setIsEnabled(!isEnabled);
+    setIsToggleEnabled(!isToggleEnabled);
   };
 
   return (
@@ -16,7 +23,7 @@ export const ToggleItem = ({ title }: { title: string }) => {
       <Switch
         trackColor={{ false: "#767577", true: tabIconSelected }}
         onValueChange={toggleSwitch}
-        value={isEnabled}
+        value={isToggleEnabled}
       />
     </View>
   );

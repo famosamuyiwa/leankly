@@ -1,5 +1,4 @@
 import { appwriteConfig, client, db } from "@/appwrite/config";
-import images from "@/constants/images";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -74,11 +73,11 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
 
   return (
     <View
-      className={`rounded-3xl bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  gap-5 flex-1`}
+      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  gap-5 flex-1`}
     >
       <Image
-        source={images.leankCover}
-        className="h-[40%] rounded-t-3xl"
+        source={{ uri: item.cover }}
+        className="h-[35%] rounded-t-3xl"
         contentFit="cover"
       />
       <View className="gap-5 px-5">
@@ -110,7 +109,7 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
             color="black"
           />
 
-          <Text className=" font-plus-jakarta-bold">{item.time}</Text>
+          <Text className=" font-plus-jakarta-bold">{item.time || "--"}</Text>
         </View>
 
         <View className="flex-row items-center gap-3">

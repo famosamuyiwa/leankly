@@ -70,7 +70,9 @@ function EditProfileContent() {
       const result: any = await pickMultimedia(false, true);
       setAvatar(result[0].uri);
       setAvatarMediaResult(result[0]);
-    } catch {}
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const memoizedAvatar = useMemo(() => {
@@ -151,9 +153,9 @@ function EditProfileContent() {
               Age
             </Text>
             <TextInput
-              value={age}
+              value={age ? age.toString() : ""}
               autoCapitalize="none"
-              onChangeText={setAge}
+              onChangeText={(value) => setAge(Number(value))}
               keyboardType="numeric"
               returnKeyType="done"
               className={`p-0  flex-1 text-right ${isEditing ? "text-gray-900" : "text-gray-400"} font-plus-jakarta-regular `}

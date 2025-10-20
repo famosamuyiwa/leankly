@@ -16,7 +16,7 @@ interface GlobalContextType {
   currentUser: User | undefined;
   unreadCount: number;
   setUnreadCount: (val: number) => void;
-  setCurrentUser: (user: User) => void;
+  setCurrentUser: (user: User | undefined) => void;
   displayToast: (toast: ToastProps) => void;
   showLoader: (label?: string, pulse?: boolean) => void;
   hideLoader: () => void;
@@ -95,6 +95,8 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
       setUnreadCount(0);
     };
   }, [currentUser]);
+
+  const refetchCurrentUser = () => {};
 
   const showLoader = (label?: string, pulse?: boolean) => {
     loaderRef.current.show(label, pulse);

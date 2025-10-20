@@ -1,8 +1,17 @@
+import { appwriteConfig, db } from "@/appwrite/config";
 import CustomButton from "@/components/Button";
 import Calendar from "@/components/Calendar";
 import { ToggleItem } from "@/components/Toggle";
-import { Time } from "@/constants/enums";
+import { defaultCovers } from "@/constants/data";
+import {
+  LeankStatus,
+  LocationFilterEnum,
+  Time,
+  ToastType,
+} from "@/constants/enums";
+import { useAppwriteUpload } from "@/hooks/useBucket";
 import useImagePicker from "@/hooks/useImagePicker";
+import { MediaResult } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import {
   Ionicons,
@@ -21,6 +30,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { ID } from "react-native-appwrite";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -36,19 +46,23 @@ export default function Create() {
   });
 
   const insets = useSafeAreaInsets();
-  if (!insets) {
-    return null; // Prevents glitching by waiting for insets
-  }
 
   const [cover, setCover] = useState("");
-  const [email, setEmail] = useState("");
+  const [coverMediaResult, setCoverMediaResult] = useState<
+    MediaResult | undefined
+  >(undefined);
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const { pickMultimedia } = useImagePicker();
   const { showLoader, hideLoader } = useGlobalContext();
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
+  const [isToggleEnabled, setIsToggleEnabled] = useState(false);
   const [modalContent, setModalContent] = useState<ModalType | null>(null);
+  const { currentUser, displayToast } = useGlobalContext();
+
+  const { uploadFiles, progress, isUploading } = useAppwriteUpload();
 
   const memoizedCover = useMemo(() => {
     return cover ? (
@@ -71,8 +85,9 @@ export default function Create() {
 
   const handleCoverPress = async () => {
     try {
-      const image: any = await pickMultimedia(false, true);
-      setCover(image.uri[0]);
+      const result: any = await pickMultimedia(false, true);
+      setCover(result[0].uri);
+      setCoverMediaResult(result[0]);
     } catch (e) {
       console.log(e);
     }
@@ -85,9 +100,65 @@ export default function Create() {
     resetModal();
   };
 
-  const onPostLeank = () => {
+  const reset = () => {
+    setCover("");
+    setTitle("");
+    setDescription("");
+    setDate(undefined);
+    setTime("");
+    setIsToggleEnabled(false);
+  };
+
+  const onPostLeank = async () => {
+    if (!title || !date) {
+      return displayToast({
+        type: ToastType.ERROR,
+        description: `Please fill both Title and Date`,
+      });
+    }
+
     showLoader("Posting leank...");
-    setTimeout(hideLoader, 3000);
+
+    let url = undefined;
+
+    if (coverMediaResult) {
+      url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
+    }
+
+    const data = {
+      cover:
+        url || defaultCovers[Math.floor(Math.random() * defaultCovers.length)],
+      title,
+      description,
+      date,
+      time,
+      location: isToggleEnabled
+        ? LocationFilterEnum.ONLINE
+        : currentUser?.location,
+      status: LeankStatus.ACTIVE,
+      ownerId: currentUser?.$id,
+      owner: currentUser?.$id,
+    };
+
+    try {
+      const leank = await db.createRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        rowId: ID.unique(),
+        data,
+      });
+
+      displayToast({
+        type: ToastType.SUCCESS,
+        description: `Leank has been posted successfully!`,
+      });
+
+      reset();
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      hideLoader();
+    }
   };
 
   const openModal = (type: ModalType) => {
@@ -108,6 +179,10 @@ export default function Create() {
     }
     resetModal();
   };
+
+  if (!insets) {
+    return null; // Prevents glitching by waiting for insets
+  }
 
   return (
     <Animated.ScrollView
@@ -133,12 +208,12 @@ export default function Create() {
           <Text className="text-sm font-medium text-gray-700 mb-2">Title</Text>
           <View className=" h-14 bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
             <TextInput
-              value={email}
+              value={title}
               autoCapitalize="none"
               placeholder='e.g "Study session at my house?" '
               placeholderTextColor="#9CA3AF"
               className="p-0 "
-              onChangeText={setEmail}
+              onChangeText={setTitle}
             />
           </View>
         </View>
@@ -194,7 +269,11 @@ export default function Create() {
           </View>
         </View>
 
-        <ToggleItem title="Online" />
+        <ToggleItem
+          title="Online"
+          isToggleEnabled={isToggleEnabled}
+          setIsToggleEnabled={setIsToggleEnabled}
+        />
         <CustomButton label="Post Leank" onPress={onPostLeank} />
       </View>
 

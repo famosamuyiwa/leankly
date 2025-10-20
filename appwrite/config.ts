@@ -29,6 +29,7 @@ const appwriteConfig = {
     messages: "messages",
     userChatMeta: "userchatmeta",
     user: "user",
+    reactions: "reactions",
   },
 };
 

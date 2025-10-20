@@ -11,7 +11,7 @@ export interface User extends Models.Row {
   avatar: string;
   name: string;
   email: string;
-  age: string;
+  age: number;
   location: string;
   pushToken?: string;
   sex?: string;
@@ -30,6 +30,12 @@ export interface Leank extends Models.Row {
   ownerId: string;
   participantIds?: string[];
   lastMessage?: Message;
+}
+
+export interface Reactions extends Models.Row {
+  userId: string;
+  leankId: string;
+  isLiked: string;
 }
 
 export interface LeankRequest extends Models.Row {

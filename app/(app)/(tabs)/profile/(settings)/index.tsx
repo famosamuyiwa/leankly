@@ -18,7 +18,7 @@ import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function Settings() {
   const { signOut } = useAuth();
-  const { alertComingSoon } = useGlobalContext();
+  const { alertComingSoon, setCurrentUser } = useGlobalContext();
   const { avatar, name } = useProfileContext();
 
   // Interop the Image component to recognize the 'className' prop
@@ -35,7 +35,10 @@ export default function Settings() {
       {
         text: "Sign Out",
         style: "destructive",
-        onPress: () => signOut(),
+        onPress: () => {
+          setCurrentUser(undefined);
+          signOut();
+        },
       },
     ]);
   };

@@ -37,13 +37,8 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           "owner.name",
           "participantIds",
         ]),
-        Query.or([
-          Query.isNull("participantIds"),
-          Query.and([
-            Query.notEqual("ownerId", userId),
-            Query.notContains("participantIds", userId),
-          ]),
-        ]),
+        Query.notEqual("ownerId", userId),
+        Query.notContains("participantIds", userId),
         Query.orderDesc("$createdAt"),
       ];
 
@@ -56,12 +51,15 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           queries.push(Query.equal("date", today));
         }
 
-        if (filters[FilterOptions.LOCATION].length) {
-          queries.push(Query.contains("location", filters.Location));
+        if (filters[FilterOptions.LOCATION]?.length) {
+          const locationValues = Array.isArray(filters[FilterOptions.LOCATION])
+            ? filters[FilterOptions.LOCATION]
+            : [filters[FilterOptions.LOCATION]];
+          queries.push(Query.contains("location", locationValues));
         }
 
         if (filters[FilterOptions.AGE]) {
-          const { min, max } = filters.Age;
+          const { min, max } = filters[FilterOptions.AGE];
           queries.push(Query.greaterThanEqual("owner.age", min));
           queries.push(Query.lessThanEqual("owner.age", max));
         }

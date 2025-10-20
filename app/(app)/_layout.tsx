@@ -1,6 +1,7 @@
 import { appwriteConfig, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { User } from "@/interfaces";
+import { FiltersProvider } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useAuth } from "@clerk/clerk-expo";
 import { Stack } from "expo-router";
@@ -62,17 +63,19 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <Stack>
-          <Stack.Protected guard={isSignedIn && isCurrentUserReady}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack.Protected>
-          <Stack.Protected guard={!isSignedIn}>
-            <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-            <Stack.Screen name="mail-auth" options={{ headerShown: false }} />
-          </Stack.Protected>
-        </Stack>
-      </SafeAreaProvider>
+      <FiltersProvider>
+        <SafeAreaProvider>
+          <Stack>
+            <Stack.Protected guard={isSignedIn && isCurrentUserReady}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack.Protected>
+            <Stack.Protected guard={!isSignedIn}>
+              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+              <Stack.Screen name="mail-auth" options={{ headerShown: false }} />
+            </Stack.Protected>
+          </Stack>
+        </SafeAreaProvider>
+      </FiltersProvider>
     </GestureHandlerRootView>
   );
 }

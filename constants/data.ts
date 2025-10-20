@@ -44,26 +44,34 @@ export const filterCategories = [
   {
     title: FilterOptions.TODAY,
     screen: Screens.HOME,
+    opensBottomSheet: false,
   },
   // {
   //   title: FilterOptions.CATEGORY,
   //   screen: Screens.HOME,
+  //  opensBottomSheet: true
   // },
   {
     title: FilterOptions.AGE,
     screen: Screens.HOME,
+    opensBottomSheet: true,
   },
   // {
   //   title: FilterOptions.SEX,
   //   screen: Screens.HOME,
+  //opensBottomSheet: true
+
   // },
   {
     title: FilterOptions.LOCATION,
     screen: Screens.HOME,
+    opensBottomSheet: true,
   },
   // {
   //   title: FilterOptions.DATE,
   //   screen: Screens.HOME,
+  //opensBottomSheet: true
+
   // },
 ];
 

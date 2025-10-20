@@ -1,14 +1,12 @@
 import { recordLeankAction } from "@/appwrite/actions/leank.actions";
-import { FilterBottomSheet } from "@/components/BottomSheet";
 import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
-import { FilterOptions, Screens } from "@/constants/enums";
+import { Screens } from "@/constants/enums";
 import { useLeanksFeed } from "@/hooks/useLeanksFeed";
+import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Portal } from "@gorhom/portal";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
@@ -16,40 +14,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const bottomSheetRef = useRef<any>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);
 
   const { currentUser } = useGlobalContext();
+  const { filters } = useFiltersContext();
+
   const { leanks, fetchLeanks, loading, hasMore } = useLeanksFeed(
-    currentUser?.$id
+    currentUser?.$id,
+    filters
   );
   const currentLeank = leanks[currentIndex];
 
   const { showLoader, hideLoader } = useGlobalContext();
 
-  const { categoryFilter, clickedFilter } = useLocalSearchParams<{
-    categoryFilter?: string;
-    clickedFilter?: FilterOptions;
-  }>();
-
   useEffect(() => {
-    if (!clickedFilter) return;
-    if (clickedFilter === FilterOptions.TODAY) return;
-    const selectedFilters = categoryFilter
-      ? categoryFilter.split(",").map((s) => decodeURIComponent(s))
-      : [];
-
-    const isAlreadySelected = selectedFilters.includes(clickedFilter);
-
-    if (isAlreadySelected) {
-      // Only open bottom sheet if it's a NEW filter
-      bottomSheetRef.current?.expand();
-    } else {
-      // Don’t open if user clicked an already-selected one (unselecting)
-      router.setParams({ clickedFilter: undefined });
-    }
-  }, [clickedFilter]);
+    fetchLeanks();
+  }, [filters]);
 
   useEffect(() => {
     if (currentIndex >= leanks.length - 3 && hasMore && !loading) {
@@ -109,10 +90,6 @@ export default function HomeScreen() {
         },
       ]
     );
-  };
-
-  const onFilterBottomSheetClose = () => {
-    router.setParams({ clickedFilter: undefined });
   };
 
   if (!insets) {
@@ -180,13 +157,6 @@ export default function HomeScreen() {
           </View>
         )}
       </Animated.View>
-      <Portal>
-        <FilterBottomSheet
-          ref={bottomSheetRef}
-          clickedFilter={clickedFilter}
-          onClose={onFilterBottomSheetClose}
-        />
-      </Portal>
     </GestureHandlerRootView>
   );
 }

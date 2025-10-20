@@ -1,4 +1,5 @@
 import { appwriteConfig, db } from "@/appwrite/config";
+import { FilterOptions } from "@/constants/enums";
 import { useCallback, useState } from "react";
 import { Query } from "react-native-appwrite";
 
@@ -12,7 +13,6 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     if (loading || !hasMore || !userId) return;
     setLoading(true);
     const LIMIT = 15;
-    setLoading(true);
 
     try {
       const reactedRes = await db.listRows({
@@ -48,8 +48,24 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
       ];
 
       if (reactedIds.length) queries.push(Query.notContains("$id", reactedIds));
-      //   if (filters[FilterOptions.LOCATION])
-      //     queries.push(Query.equal("location", filters[FilterOptions.LOCATION]));
+      //  Apply Filters Dynamically
+      if (filters) {
+        if (filters[FilterOptions.TODAY]) {
+          // Filter by today's date
+          const today = new Date().toISOString().split("T")[0];
+          queries.push(Query.equal("date", today));
+        }
+
+        if (filters[FilterOptions.LOCATION].length) {
+          queries.push(Query.contains("location", filters.Location));
+        }
+
+        if (filters[FilterOptions.AGE]) {
+          const { min, max } = filters.Age;
+          queries.push(Query.greaterThanEqual("owner.age", min));
+          queries.push(Query.lessThanEqual("owner.age", max));
+        }
+      }
       if (lastId) queries.push(Query.cursorAfter(lastId));
 
       const { rows } = await db.listRows({
@@ -71,7 +87,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     } finally {
       setLoading(false);
     }
-  }, [userId, hasMore, loading]);
+  }, [userId, hasMore, loading, filters]);
 
   return { leanks, fetchLeanks, loading, hasMore };
 };

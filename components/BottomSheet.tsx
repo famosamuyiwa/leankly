@@ -1,5 +1,6 @@
 import { filterDescriptions } from "@/constants/data";
 import { FilterOptions } from "@/constants/enums";
+import { useFiltersContext } from "@/lib/FiltersContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
@@ -18,67 +19,83 @@ import React, {
 import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import CustomButton from "./Button";
-import { AgeFilter, LocationFilter, SexFilter } from "./FilterContent";
+import { AgeFilter, LocationFilter } from "./FilterContent";
 import SearchBar from "./SearchBar";
 
-const FilterBottomSheet = forwardRef(
-  (
-    {
-      clickedFilter,
-      onClose,
-    }: { clickedFilter: FilterOptions | undefined; onClose: () => void },
-    ref
-  ) => {
-    // ref
-    const bottomSheetRef = useRef<BottomSheet>(null);
-    // expose bottom sheet methods to parent
-    useImperativeHandle(ref, () => ({
-      expand: () => bottomSheetRef.current?.expand(),
-      close: () => bottomSheetRef.current?.close(),
-      snapTo: (index: number) => bottomSheetRef.current?.snapToIndex(index),
-    }));
+const FilterBottomSheet = forwardRef(({}, ref) => {
+  // ref
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  // expose bottom sheet methods to parent
+  useImperativeHandle(ref, () => ({
+    expand: () => bottomSheetRef.current?.expand(),
+    close: () => bottomSheetRef.current?.close(),
+    snapTo: (index: number) => bottomSheetRef.current?.snapToIndex(index),
+  }));
 
-    const onDoneClick = () => {};
+  const { setPendingFilter, confirmPendingFilter, pendingFilter, filters } =
+    useFiltersContext();
 
-    return (
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop
-            {...props}
-            disappearsOnIndex={-1}
-            appearsOnIndex={0}
-            opacity={0.3}
-          />
-        )}
-        enablePanDownToClose
-        handleStyle={{
-          borderTopLeftRadius: 100,
-          borderTopRightRadius: 100,
-        }}
-        onClose={onClose}
-        handleIndicatorStyle={{ backgroundColor: "lightgrey" }}
-      >
-        <BottomSheetView className="px-5 pb-10 gap-5">
-          <Text className="font-plus-jakarta-bold text-center text-xl pt-2">
-            {clickedFilter}
-          </Text>
-          <Text className="font-plus-jakarta-semibold text-gray-400 text-center ">
-            {filterDescriptions[clickedFilter || FilterOptions.TODAY]}
-          </Text>
-          <View className="py-5 gap-5">
-            {clickedFilter === FilterOptions.AGE && <AgeFilter />}
-            {clickedFilter === FilterOptions.SEX && <SexFilter />}
-            {clickedFilter === FilterOptions.LOCATION && <LocationFilter />}
-          </View>
+  return (
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      backdropComponent={(props) => (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.3}
+        />
+      )}
+      enablePanDownToClose
+      handleStyle={{
+        borderTopLeftRadius: 100,
+        borderTopRightRadius: 100,
+      }}
+      handleIndicatorStyle={{ backgroundColor: "lightgrey" }}
+    >
+      <BottomSheetView className="px-5 pb-10 gap-5">
+        <Text className="font-plus-jakarta-bold text-center text-xl pt-2">
+          {pendingFilter?.key}
+        </Text>
+        <Text className="font-plus-jakarta-semibold text-gray-400 text-center ">
+          {filterDescriptions[pendingFilter?.key || FilterOptions.TODAY]}
+        </Text>
+        <View className="py-5 gap-5">
+          {pendingFilter?.key === FilterOptions.AGE && (
+            <AgeFilter
+              range={
+                (filters?.[FilterOptions.AGE] as any) || { min: 16, max: 28 }
+              }
+              onChange={(range) => setPendingFilter(FilterOptions.AGE, range)}
+            />
+          )}
+          {pendingFilter?.key === FilterOptions.LOCATION && (
+            <LocationFilter
+              selected={
+                (filters?.[FilterOptions.LOCATION] as unknown as string[]) || []
+              }
+              onChange={(values) =>
+                setPendingFilter(
+                  FilterOptions.LOCATION,
+                  values.length > 0 ? values : null
+                )
+              }
+            />
+          )}
+        </View>
 
-          <CustomButton label="Done" onPress={onDoneClick} />
-        </BottomSheetView>
-      </BottomSheet>
-    );
-  }
-);
+        <CustomButton
+          label="Done"
+          onPress={() => {
+            bottomSheetRef.current?.close();
+            confirmPendingFilter();
+          }}
+        />
+      </BottomSheetView>
+    </BottomSheet>
+  );
+});
 
 const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
   const bottomSheetRef = useRef<BottomSheet>(null);

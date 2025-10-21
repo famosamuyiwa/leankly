@@ -3,7 +3,7 @@ import { useFiltersContext } from "@/lib/FiltersContext";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { Portal } from "@gorhom/portal";
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 import { filterCategories } from "../constants/data";
 import { FilterBottomSheet } from "./BottomSheet";
@@ -11,10 +11,6 @@ import { FilterBottomSheet } from "./BottomSheet";
 const Filters = ({ screen }: { screen: Screens }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const { filters, setFilter, setPendingFilter } = useFiltersContext();
-
-  useEffect(() => {
-    handleChipPress(FilterOptions.TODAY, false);
-  }, []);
 
   const handleChipPress = (
     filterKey: FilterOptions,

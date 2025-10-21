@@ -208,7 +208,6 @@ export const ChatCard = ({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         queries: [
-          Query.limit(10),
           Query.select([
             "cover",
             "title",

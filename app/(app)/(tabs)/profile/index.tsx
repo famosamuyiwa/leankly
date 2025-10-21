@@ -1,16 +1,18 @@
+import { appwriteConfig, db } from "@/appwrite/config";
 import { LeankCard } from "@/components/Cards";
 import NavBar from "@/components/NavBar";
-import { dummyLeanks } from "@/constants/data";
-import { Screens } from "@/constants/enums";
+import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank } from "@/interfaces";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Fontisto } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { memo, useMemo } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import React, { memo, useEffect, useMemo, useState } from "react";
+import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import { Query } from "react-native-appwrite";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,8 +27,25 @@ export default function Profile() {
   const params = useLocalSearchParams<{
     nav?: string;
   }>();
+  const nav = params.nav ?? NavbarOptions.HOSTED;
+
+  const [refreshing, setRefreshing] = useState(false);
 
   const { avatar, name } = useProfileContext();
+  const { currentUser } = useGlobalContext();
+  const [leanks, setLeanks] = useState<Leank[]>([]);
+  const [leankCounts, setLeankCounts] = useState({
+    hosted: 0,
+    attended: 0,
+  });
+
+  useEffect(() => {
+    getLeankDetails();
+  }, [nav]);
+
+  useEffect(() => {
+    getLeankCounts();
+  }, []);
 
   const renderItem = memo(({ item }: { item: Leank }) => (
     <View className="mx-5 mb-5">
@@ -46,6 +65,79 @@ export default function Profile() {
     );
   });
 
+  const getLeankCounts = async () => {
+    if (!currentUser) return;
+
+    try {
+      // Hosted
+      const hosted = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        queries: [Query.equal("ownerId", currentUser?.$id)],
+      });
+
+      // Attended
+      const attended = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        queries: [Query.contains("participantIds", currentUser?.$id)],
+      });
+
+      setLeankCounts({
+        hosted: hosted.total ?? hosted.rows.length,
+        attended: attended.total ?? attended.rows.length,
+      });
+    } catch (e) {
+      console.error("Error counting leanks:", e);
+    }
+  };
+
+  const getLeankDetails = async () => {
+    if (!currentUser) return;
+
+    try {
+      const queries = [
+        Query.limit(10),
+        Query.select([
+          "cover",
+          "title",
+          "date",
+          "time",
+          "ownerId",
+          "location",
+          "participantIds",
+        ]),
+      ];
+
+      if (nav === NavbarOptions.HOSTED) {
+        queries.push(Query.equal("ownerId", currentUser.$id));
+      } else {
+        queries.push(Query.contains("participantIds", currentUser.$id));
+      }
+
+      const { rows, total } = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        queries,
+      });
+      setLeanks(rows as unknown as Leank[]);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await getLeankDetails();
+      await getLeankCounts();
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const listHeaderComponent = useMemo(
     () => (
       <View className="gap-4 px-5 my-5">
@@ -64,10 +156,15 @@ export default function Profile() {
         <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
         <View className="flex-row gap-5">
           <Text className="color-gray-400">
-            <Text className="color-black font-plus-jakarta-bold">3</Text> Hosted
+            <Text className="color-black font-plus-jakarta-bold">
+              {leankCounts.hosted}
+            </Text>{" "}
+            Hosted
           </Text>
           <Text className="color-gray-400">
-            <Text className="color-black font-plus-jakarta-bold">1</Text>{" "}
+            <Text className="color-black font-plus-jakarta-bold">
+              {leankCounts.attended}
+            </Text>{" "}
             Attended
           </Text>
         </View>
@@ -77,7 +174,7 @@ export default function Profile() {
         </View>
       </View>
     ),
-    [avatar, name]
+    [avatar, name, leankCounts]
   );
 
   if (!insets) {
@@ -90,18 +187,16 @@ export default function Profile() {
       entering={FadeIn.duration(500)}
       className="flex flex-1 bg-white"
     >
-      {/* Recent Activities */}
-      <LegendList
-        data={dummyLeanks}
-        keyExtractor={(item) => item.$id.toString()}
-        numColumns={1}
-        showsVerticalScrollIndicator={false}
+      <LegendList<Leank>
+        data={leanks}
         renderItem={renderItem}
-        ListHeaderComponent={listHeaderComponent}
+        keyExtractor={(i) => i.$id}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         ListEmptyComponent={listEmptyComponent}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.1}
-        scrollEventThrottle={16}
+        ListHeaderComponent={listHeaderComponent}
       />
     </Animated.View>
   );

@@ -1,6 +1,7 @@
 import { appwriteConfig, db } from "@/appwrite/config";
 import { Toast } from "@/components/animation-toast/components";
 import Loader from "@/components/Loader";
+import { LeankStatus } from "@/constants/enums";
 import { Leank, ToastProps, User, UserChatMeta } from "@/interfaces";
 import React, {
   ReactNode,
@@ -15,6 +16,7 @@ import { Query } from "react-native-appwrite";
 interface GlobalContextType {
   currentUser: User | undefined;
   unreadCount: number;
+  refetchCurrentUser: () => void;
   setUnreadCount: (val: number) => void;
   setCurrentUser: (user: User | undefined) => void;
   displayToast: (toast: ToastProps) => void;
@@ -54,11 +56,13 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
               "lastMessage.$createdAt",
               "ownerId",
               "participantIds",
+              "status",
             ]),
             Query.or([
               Query.equal("ownerId", currentUser.$id),
               Query.contains("participantIds", currentUser.$id),
             ]),
+            Query.equal("status", LeankStatus.ACTIVE),
           ],
         });
         const chatRooms = rows as unknown as Leank[];
@@ -96,7 +100,18 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [currentUser]);
 
-  const refetchCurrentUser = () => {};
+  const refetchCurrentUser = async () => {
+    if (!currentUser) return;
+    const user = await db.getRow({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.user,
+      rowId: currentUser?.$id,
+    });
+
+    if (user) {
+      setCurrentUser(user as unknown as User);
+    }
+  };
 
   const showLoader = (label?: string, pulse?: boolean) => {
     loaderRef.current.show(label, pulse);
@@ -115,6 +130,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
       value={{
         unreadCount,
         currentUser,
+        refetchCurrentUser,
         setCurrentUser,
         setUnreadCount,
         displayToast,

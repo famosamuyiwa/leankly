@@ -35,10 +35,13 @@ export interface Leank extends Models.Row {
 export interface Reactions extends Models.Row {
   userId: string;
   leankId: string;
-  isLiked: string;
+  isLiked: boolean;
+  isDeclined: boolean;
 }
 
 export interface LeankRequest extends Models.Row {
+  userId: string;
+  leankId: string;
   user: User;
   leank: Leank;
 }
@@ -57,9 +60,14 @@ export interface UserChatMeta extends Models.Row {
   readAt: Date;
 }
 
+export interface PNAlert {
+  title: string;
+  content: string;
+}
+
 export interface PushNotificationRequest {
   type: PushNotificationTypes;
-  data: Message;
+  data: Message | PNAlert;
 }
 
 export interface MediaResult {
@@ -67,4 +75,9 @@ export interface MediaResult {
   name?: string;
   type?: string;
   size?: any;
+}
+
+export interface Participants extends Models.Row {
+  leank: Leank;
+  user: User;
 }

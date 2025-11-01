@@ -103,3 +103,9 @@ export enum ReactionAction {
   SKIP = "Skip",
   PREVIOUS = "Previous",
 }
+
+export enum RequestAction {
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  PENDING = "PENDING",
+}

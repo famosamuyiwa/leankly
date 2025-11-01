@@ -1,32 +1,149 @@
-import { appwriteConfig, db } from "@/appwrite/config";
+import { updateArrayRow } from "@/appwrite/actions/leank.actions";
+import { appwriteConfig, db, sendPushNotification } from "@/appwrite/config";
 import { ChatCard, RequestCard } from "@/components/Cards";
 import NavBar from "@/components/NavBar";
-import { dummyRequests } from "@/constants/data";
-import { NavbarOptions, Screens } from "@/constants/enums";
-import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
+import { emptyScreenImages } from "@/constants/data";
+import {
+  LeankStatus,
+  NavbarOptions,
+  PushNotificationTypes,
+  RequestAction,
+  Screens,
+} from "@/constants/enums";
+import { Leank, LeankRequest, PNAlert, User, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { LegendList } from "@legendapp/list";
-import { router, useLocalSearchParams } from "expo-router";
+import { Image } from "expo-image";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
-import { Query } from "react-native-appwrite";
+import { ID, Query } from "react-native-appwrite";
 import { RefreshControl } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function MessagesScreen() {
-  const { unreadCount, setUnreadCount, currentUser } = useGlobalContext();
-
-  const handleOnDeclinePress = () => {};
-  const handleOnAcceptPress = () => {};
-
   const params = useLocalSearchParams<{
     nav?: string;
   }>();
 
+  const { unreadCount, setUnreadCount, currentUser } = useGlobalContext();
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
   const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
+  const [requests, setRequests] = useState<LeankRequest[]>([]);
+  const { showLoader, hideLoader } = useGlobalContext();
+
   const isChats = params.nav === NavbarOptions.CHATS;
+
+  const handleOnAcceptPress = async (
+    reqId: string,
+    leank: Leank,
+    user: User
+  ) => {
+    showLoader();
+    try {
+      await updateArrayRow({
+        tableId: appwriteConfig.tables.leanks,
+        rowId: leank.$id,
+        field: "participantIds",
+        values: [user.$id],
+        action: "add",
+      });
+
+      await db.createRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.participants,
+        rowId: ID.unique(),
+        data: {
+          leank: leank.$id,
+          user: user.$id,
+        },
+      });
+
+      await db.updateRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.reactions,
+        rowId: reqId,
+        data: {
+          status: RequestAction.ACCEPTED,
+          $updatedAt: new Date().toISOString(),
+        },
+      });
+
+      const pn = {
+        token: user.pushToken,
+        title: "Leank request accepted",
+        content: `${leank.title}`,
+      };
+
+      // alert participant
+      sendPushNotification({
+        type: PushNotificationTypes.ALERT,
+        data: pn as PNAlert,
+      });
+      setRequests((prev) => prev.filter((r) => r.$id !== reqId));
+    } catch (e) {
+      console.log(e);
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const handleOnDeclinePress = async (reqId: string, leank: Leank) => {
+    showLoader();
+    try {
+      await db.updateRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.reactions,
+        rowId: reqId,
+        data: {
+          status: RequestAction.DECLINED,
+          $updatedAt: new Date().toISOString(),
+        },
+      });
+
+      setRequests((prev) => prev.filter((r) => r.$id !== reqId));
+    } catch (e) {
+      console.log(e);
+    } finally {
+      hideLoader();
+    }
+  };
+
+  const fetchRequests = async () => {
+    if (!currentUser) return;
+
+    const queries: any[] = [
+      Query.select([
+        "isLiked",
+        "userId",
+        "leankId",
+        "user.name",
+        "user.age",
+        "user.avatar",
+        "user.pushToken",
+        "leank.title",
+        "leank.ownerId",
+      ]),
+      Query.equal("leank.ownerId", currentUser.$id),
+      Query.equal("isLiked", true),
+      Query.equal("status", RequestAction.PENDING),
+      Query.orderDesc("$createdAt"),
+    ];
+
+    try {
+      const { rows, total } = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.reactions,
+        queries,
+      });
+
+      setRequests(rows as unknown as LeankRequest[]);
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const fetchChatRooms = async () => {
     if (!currentUser) return;
@@ -35,7 +152,6 @@ export default function MessagesScreen() {
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         queries: [
-          Query.limit(10),
           Query.select([
             "cover",
             "title",
@@ -45,11 +161,13 @@ export default function MessagesScreen() {
             "lastMessage.$createdAt",
             "ownerId",
             "participantIds",
+            "status",
           ]),
           Query.or([
             Query.equal("ownerId", currentUser.$id),
             Query.contains("participantIds", currentUser.$id),
           ]),
+          Query.equal("status", LeankStatus.ACTIVE),
         ],
       });
       setChatRooms(rows as unknown as Leank[]);
@@ -77,9 +195,10 @@ export default function MessagesScreen() {
     fetchChatMeta();
   };
 
-  useEffect(() => {
+  useFocusEffect(() => {
     getChatDetails();
-  }, []);
+    fetchRequests();
+  });
 
   useEffect(() => {
     const unread = chatRooms.filter((room) => {
@@ -98,8 +217,8 @@ export default function MessagesScreen() {
   const memoizedRequestCard = ({ item }: { item: LeankRequest }) => (
     <RequestCard
       item={item}
-      onDeclinePress={handleOnDeclinePress}
-      onAcceptPress={handleOnAcceptPress}
+      onDeclinePress={() => handleOnDeclinePress(item.$id, item.leank)}
+      onAcceptPress={() => handleOnAcceptPress(item.$id, item.leank, item.user)}
     />
   );
 
@@ -114,37 +233,49 @@ export default function MessagesScreen() {
         userId={currentUser?.$id}
         onItemUpdate={(update, metaUpdate) => {
           setChatRooms((prev) => {
-            const index = prev.findIndex((r) => r.$id === update.$id);
-            if (index === -1) return prev; // not found
+            if (!Array.isArray(prev) || prev.length === 0 || !update?.$id)
+              return prev ?? [];
+
+            const index = prev.findIndex((r) => r && r.$id === update.$id);
+            if (index === -1) return prev;
 
             const newRooms = [...prev];
-            newRooms[index] = { ...prev[index], ...update };
+            newRooms[index] = { ...(prev[index] || {}), ...update };
             return newRooms;
           });
+
           setChatMetas((prev) => {
-            const index = prev.findIndex((r) => r.$id === metaUpdate.$id);
-            if (index === -1) return prev; // not found
+            if (!Array.isArray(prev) || prev.length === 0 || !metaUpdate?.$id)
+              return prev ?? [];
+
+            const index = prev.findIndex((r) => r && r.$id === metaUpdate.$id);
+            if (index === -1) return prev;
 
             const newMetas = [...prev];
-            newMetas[index] = { ...prev[index], ...metaUpdate };
+            newMetas[index] = { ...(prev[index] || {}), ...metaUpdate };
             return newMetas;
           });
         }}
         onPress={() => {
           setChatMetas((prev) => {
+            if (!Array.isArray(prev) || prev.length === 0) return prev ?? [];
+
             const index = prev.findIndex(
               (meta) =>
-                meta.leankId === item.$id && meta.userId === currentUser?.$id
+                meta &&
+                meta.leankId === item?.$id &&
+                meta.userId === currentUser?.$id
             );
-            if (index === -1) return prev; // not found
+            if (index === -1) return prev;
 
             const newMetas = [...prev];
-            newMetas[index] = { ...prev[index], readAt: new Date() };
+            newMetas[index] = { ...(prev[index] || {}), readAt: new Date() };
             return newMetas;
           });
+
           router.push({
             pathname: "/messages/[chat]",
-            params: { chat: item.$id },
+            params: { chat: item?.$id ?? "" },
           });
         }}
       />
@@ -154,7 +285,11 @@ export default function MessagesScreen() {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await getChatDetails();
+      if (isChats) {
+        await getChatDetails();
+      } else {
+        await fetchRequests();
+      }
     } catch (e) {
       console.log(e);
     } finally {
@@ -164,11 +299,18 @@ export default function MessagesScreen() {
 
   const listEmptyComponent = useMemo(() => {
     return (
-      <View className="mt-10 px-10">
-        <Text className="font-plus-jakarta-semibold color-gray-400 text-center">
-          {isChats
-            ? "No chats started yet. Post a leank or join one nearby!"
-            : "Nothing to see here yet."}
+      <View className="mt-10 px-10 justify-center items-center gap-5">
+        <Image
+          source={{ uri: emptyScreenImages[isChats ? "Chats" : "Requests"] }}
+          className="h-60 w-full rounded-t-3xl"
+          contentFit="contain"
+        />
+        <Text className="font-plus-jakarta-extrabold text-gray-400 text-3xl ">
+          No {isChats ? "Chats" : "Requests"}
+        </Text>
+        <Text className="text-center  text-gray-400 ">
+          You don't have any {isChats ? "chats" : "requests"} at the moment.
+          Check back later!
         </Text>
       </View>
     );
@@ -200,13 +342,14 @@ export default function MessagesScreen() {
         />
       ) : (
         <LegendList<LeankRequest>
-          data={dummyRequests}
+          data={requests}
           renderItem={memoizedRequestCard}
           keyExtractor={(i) => i.$id}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
+          ListEmptyComponent={listEmptyComponent}
         />
       )}
     </Animated.View>

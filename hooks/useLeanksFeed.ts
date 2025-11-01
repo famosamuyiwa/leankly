@@ -1,9 +1,8 @@
 import { appwriteConfig, db } from "@/appwrite/config";
-import { FilterOptions } from "@/constants/enums";
+import { FilterOptions, LeankStatus } from "@/constants/enums";
+import { Leank } from "@/interfaces";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Query } from "react-native-appwrite";
-
-type Leank = any;
 
 const PAGE_SIZE = 10;
 
@@ -51,9 +50,11 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           "owner.avatar",
           "owner.age",
           "owner.name",
+          "owner.pushToken",
           "participantIds",
         ]),
         Query.orderDesc("$createdAt"),
+        Query.equal("status", LeankStatus.ACTIVE),
       ];
 
       // Exclude reacted
@@ -123,7 +124,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
       });
 
       if (myReq !== reqIdRef.current) return;
-      setItems(rows);
+      setItems(rows as unknown as Leank[]);
       setCursor(rows.length ? rows[rows.length - 1].$id : null);
       setHasMore(rows.length === PAGE_SIZE);
     } catch (err) {
@@ -155,7 +156,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
       });
 
       if (myReq !== reqIdRef.current) return;
-      setItems((prev) => mergeDedup(prev, rows));
+      setItems((prev) => mergeDedup(prev, rows as unknown as Leank[]));
       setCursor(rows.length ? rows[rows.length - 1].$id : cursor);
       setHasMore(rows.length === PAGE_SIZE);
     } catch (err) {

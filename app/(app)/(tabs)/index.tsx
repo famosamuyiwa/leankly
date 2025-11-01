@@ -1,9 +1,11 @@
 import { recordLeankAction } from "@/appwrite/actions/leank.actions";
+import { sendPushNotification } from "@/appwrite/config";
 import { LeankCardBig } from "@/components/Cards";
 import Filters from "@/components/Filters";
-import { Screens } from "@/constants/enums";
+import { PushNotificationTypes, Screens } from "@/constants/enums";
 import images from "@/constants/images";
 import { useLeanksFeed } from "@/hooks/useLeanksFeed";
+import { PNAlert } from "@/interfaces";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -69,6 +71,19 @@ export default function HomeScreen() {
         setPreviousIndexes((prev) => [...prev, currentIndex]);
         await recordLeankAction(currentUser.$id, currentLeank.$id, isLiked);
       }
+
+      const pn = {
+        token: currentLeank.owner?.pushToken,
+        title: "New leank request",
+        content: `${currentUser?.name} wants to join ${currentLeank.title}`,
+      };
+
+      // alert leank owner
+      sendPushNotification({
+        type: PushNotificationTypes.ALERT,
+        data: pn as PNAlert,
+      });
+
       setCurrentIndex((prev) => prev + 1);
     } catch (err) {
       console.error("Reaction error:", err);

@@ -17,18 +17,23 @@ if (!process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID is not set");
 }
 
+if (!process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID) {
+  throw new Error("EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID is not set");
+}
+
 const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
   platform: "com.barrakudadev.leankly",
   db: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
-  sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
+  sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID,
   storage: process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID,
   tables: {
     leanks: "leanks",
     messages: "messages",
     userChatMeta: "userchatmeta",
     user: "user",
+    participants: "participants",
     reactions: "reactions",
   },
 };
@@ -51,8 +56,6 @@ async function sendPushNotification(body: PushNotificationRequest) {
       functionId: appwriteConfig.sendPushFunctionId, // your function ID
       body: payload,
     });
-
-    console.log("Push function executed:", result);
   } catch (err) {
     console.error("Error executing function:", err);
   }

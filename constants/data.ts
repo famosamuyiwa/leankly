@@ -149,3 +149,10 @@ export const defaultCovers = [
   "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3a20021eb2cdc53/view?project=68e45dc0001e074ea36a",
   "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a39c000939308631/view?project=68e45dc0001e074ea36a",
 ];
+
+export const emptyScreenImages = {
+  [NavbarOptions.REQUESTS]:
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f9a44d003620bc1e29/view?project=68e45dc0001e074ea36a",
+  [NavbarOptions.CHATS]:
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f9a453001914585e5a/view?project=68e45dc0001e074ea36a",
+};

@@ -2,6 +2,7 @@ import { PushNotificationProvider } from "@/lib/PushNotificationContext";
 import "./global.css";
 
 import GlobalProvider from "@/lib/GlobalContext";
+import { currentScreenRef } from "@/lib/ScreenTracker";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useFonts } from "expo-font";
@@ -11,12 +12,27 @@ import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
+  handleNotification: async (notification) => {
+    const current = currentScreenRef.current;
+    const { leankId } = notification.request.content.data;
+
+    // Example: suppress notifications on Leank screens
+    if (current?.includes(`/messages/${leankId}`)) {
+      return {
+        shouldShowBanner: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+        shouldShowList: false,
+      };
+    }
+
+    return {
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    };
+  },
 });
 
 SplashScreen.preventAutoHideAsync();

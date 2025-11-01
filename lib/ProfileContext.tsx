@@ -43,7 +43,7 @@ const EditProfileContext = createContext<EditProfileContextType | undefined>(
 );
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { currentUser } = useGlobalContext();
+  const { currentUser, refetchCurrentUser } = useGlobalContext();
 
   if (!currentUser) return;
 
@@ -107,6 +107,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         },
       });
 
+      refetchCurrentUser();
       setIsEditing(false);
       setHasChanges(false);
     } catch (error) {

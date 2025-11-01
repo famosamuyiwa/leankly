@@ -1,4 +1,5 @@
 import { appwriteConfig, client, db } from "@/appwrite/config";
+import { RequestAction } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -217,12 +218,14 @@ export const ChatCard = ({
             "lastMessage.$createdAt",
             "ownerId",
             "participantIds",
+            "status",
           ]),
           Query.equal("$id", item.$id),
           Query.or([
             Query.equal("ownerId", userId),
             Query.contains("participantIds", userId),
           ]),
+          Query.equal("status", RequestAction.PENDING),
         ],
       });
 

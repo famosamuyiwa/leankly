@@ -1,9 +1,12 @@
 import { HeaderStyles } from "@/constants/common";
+import { useScreenTracker } from "@/hooks/useScreenTracker";
 import MessagesProvider from "@/lib/MessagesContext";
 import { Stack } from "expo-router";
 import React from "react";
 
 function ProfileLayout() {
+  useScreenTracker();
+
   return (
     <MessagesProvider>
       <Stack>

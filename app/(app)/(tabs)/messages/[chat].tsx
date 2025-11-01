@@ -90,6 +90,9 @@ export default function Chat() {
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         rowId: chatId as string,
+        queries: [
+          Query.select(["*", "owner.$id", "owner.avatar", "owner.name"]),
+        ],
       });
 
       setCurrentLeank(data as unknown as Leank);

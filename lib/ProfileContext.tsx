@@ -44,38 +44,51 @@ const EditProfileContext = createContext<EditProfileContextType | undefined>(
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { currentUser, refetchCurrentUser } = useGlobalContext();
-
-  if (!currentUser) return;
-
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // User data state
-  const [avatar, setAvatar] = useState(currentUser.avatar);
+  // User data state (initialize safely before currentUser is ready)
+  const [avatar, setAvatar] = useState(currentUser?.avatar ?? "");
   const [avatarMediaResult, setAvatarMediaResult] = useState<
     MediaResult | undefined
   >(undefined);
-  const [name, setName] = useState(currentUser.name);
-  const [age, setAge] = useState(currentUser.age);
-  const [location, setLocation] = useState(currentUser.location);
-  const [email, setEmail] = useState(currentUser.email);
+  const [name, setName] = useState(currentUser?.name ?? "");
+  const [age, setAge] = useState<number>(currentUser?.age ?? 0);
+  const [location, setLocation] = useState(currentUser?.location ?? "");
+  const [email, setEmail] = useState(currentUser?.email ?? "");
   const { uploadFiles, progress, isUploading } = useAppwriteUpload();
 
   // Track changes to enable/disable save button
   useEffect(() => {
-    const hasChanges =
+    if (!currentUser) {
+      setHasChanges(false);
+      return;
+    }
+
+    const changed =
       avatar !== currentUser.avatar ||
       name !== currentUser.name ||
       email !== currentUser.email ||
       age !== currentUser.age ||
       location !== currentUser.location;
 
-    setHasChanges(hasChanges);
-  }, [avatar, name, email, age, location]);
+    setHasChanges(changed);
+  }, [avatar, name, email, age, location, currentUser]);
+
+  // When currentUser becomes available, sync local state
+  useEffect(() => {
+    if (!currentUser) return;
+    setAvatar(currentUser.avatar);
+    setName(currentUser.name);
+    setEmail(currentUser.email);
+    setAge(currentUser.age);
+    setLocation(currentUser.location);
+  }, [currentUser]);
 
   const resetUserData = () => {
+    if (!currentUser) return;
     setAvatar(currentUser.avatar);
     setName(currentUser.name);
     setEmail(currentUser.email);
@@ -88,6 +101,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     setIsSaving(true);
     try {
+      if (!currentUser) return;
       let url = undefined;
 
       if (avatarMediaResult) {

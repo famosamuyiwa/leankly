@@ -38,6 +38,7 @@ export default function Settings() {
         onPress: () => {
           setCurrentUser(undefined);
           signOut();
+          router.replace("/(app)/sign-in");
         },
       },
     ]);

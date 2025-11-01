@@ -1,5 +1,6 @@
 import { appwriteConfig, db } from "@/appwrite/config";
 import { LeankCard } from "@/components/Cards";
+import EmptyLeanks from "@/components/EmptyLeanks";
 import NavBar from "@/components/NavBar";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank } from "@/interfaces";
@@ -57,10 +58,13 @@ export default function Profile() {
 
   const listEmptyComponent = memo(() => {
     return (
-      <View className="justify-center items-center mt-10">
-        <Text className="font-plus-jakarta-semibold color-gray-400">
-          No leanks yet.
-        </Text>
+      <View className="h-3/4 items-center justify-center">
+        <EmptyLeanks
+          onPrimaryAction={() => router.push("/create")}
+          title="No leanks yet"
+          subtitle=""
+          primaryLabel="Create a Leank"
+        />
       </View>
     );
   });

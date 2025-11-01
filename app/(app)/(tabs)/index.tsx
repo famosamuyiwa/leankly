@@ -1,6 +1,7 @@
 import { recordLeankAction } from "@/appwrite/actions/leank.actions";
 import { sendPushNotification } from "@/appwrite/config";
 import { LeankCardBig } from "@/components/Cards";
+import EmptyLeanks from "@/components/EmptyLeanks";
 import Filters from "@/components/Filters";
 import { PushNotificationTypes, Screens } from "@/constants/enums";
 import images from "@/constants/images";
@@ -10,16 +11,18 @@ import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import Lottie from "lottie-react-native";
 import { cssInterop } from "nativewind";
 import { useEffect, useState } from "react";
-import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
@@ -206,9 +209,7 @@ export default function HomeScreen() {
                 />
               </View>
             ) : (
-              <Text className="font-plus-jakarta-semibold text-lg">
-                No more leanks to show right now 👏
-              </Text>
+              <EmptyLeanks />
             )}
           </Animated.View>
         )}

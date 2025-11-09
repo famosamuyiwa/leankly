@@ -19,6 +19,8 @@ import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { usePremium } from "@/lib/PremiumContext";
+import { FreeLimits, canUse, increment } from "@/lib/featureGates";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -33,6 +35,7 @@ export default function HomeScreen() {
 
   const { currentUser, showLoader, hideLoader } = useGlobalContext();
   const { filters } = useFiltersContext();
+  const { isPro, openPaywall } = usePremium();
 
   // ✅ use the new hook version
   const { leanks, loading, hasMore, refresh, loadMore } = useLeanksFeed(
@@ -67,6 +70,22 @@ export default function HomeScreen() {
   // ———————————————————————————
   const handleReactionPress = async (isLiked: boolean) => {
     try {
+      if (!currentUser?.$id) {
+        Alert.alert("Please sign in to continue");
+        return;
+      }
+      // Only gate and count when liking a leank; skips do not count
+      if (isLiked && !isPro) {
+        const allowed = await canUse(
+          currentUser.$id,
+          "swipe",
+          FreeLimits.SWIPES_PER_DAY
+        );
+        if (!allowed) {
+          openPaywall("Unlimited swipes");
+          return;
+        }
+      }
       showLoader(undefined, true);
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -88,6 +107,8 @@ export default function HomeScreen() {
       });
 
       setCurrentIndex((prev) => prev + 1);
+      // count only after a successful LIKE for free users
+      if (isLiked && !isPro) await increment(currentUser.$id, "swipe");
     } catch (err) {
       console.error("Reaction error:", err);
     } finally {
@@ -100,6 +121,14 @@ export default function HomeScreen() {
   // ———————————————————————————
   const handleUndo = async () => {
     if (previousIndexes.length === 0) return;
+    if (!currentUser?.$id) return;
+    if (!isPro) {
+      const allowed = await canUse(currentUser.$id, "undo", FreeLimits.UNDOS_PER_DAY);
+      if (!allowed) {
+        openPaywall("Unlimited rewinds");
+        return;
+      }
+    }
     showLoader(undefined, true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -111,6 +140,9 @@ export default function HomeScreen() {
     });
 
     hideLoader();
+    if (!isPro && currentUser?.$id) {
+      await increment(currentUser.$id, "undo");
+    }
   };
 
   const onLikePress = () => {

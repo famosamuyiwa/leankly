@@ -1,6 +1,10 @@
 import { updateArrayRow } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db, sendPushNotification } from "@/appwrite/config";
-import { ChatCard, RequestCard } from "@/components/Cards";
+import {
+  ChatCard,
+  LockedRequestPlaceholder,
+  RequestCard,
+} from "@/components/Cards";
 import NavBar from "@/components/NavBar";
 import { emptyScreenImages } from "@/constants/data";
 import {
@@ -12,6 +16,8 @@ import {
 } from "@/constants/enums";
 import { Leank, LeankRequest, PNAlert, User, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { usePremium } from "@/lib/PremiumContext";
+import { FreeLimits } from "@/lib/featureGates";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -27,6 +33,7 @@ export default function MessagesScreen() {
   }>();
 
   const { unreadCount, setUnreadCount, currentUser } = useGlobalContext();
+  const { isPro, openPaywall } = usePremium();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
@@ -215,11 +222,15 @@ export default function MessagesScreen() {
   }, [chatRooms, chatMetas]);
 
   const memoizedRequestCard = ({ item }: { item: LeankRequest }) => (
-    <RequestCard
-      item={item}
-      onDeclinePress={() => handleOnDeclinePress(item.$id, item.leank)}
-      onAcceptPress={() => handleOnAcceptPress(item.$id, item.leank, item.user)}
-    />
+    <View className="mb-5">
+      <RequestCard
+        item={item}
+        onDeclinePress={() => handleOnDeclinePress(item.$id, item.leank)}
+        onAcceptPress={() =>
+          handleOnAcceptPress(item.$id, item.leank, item.user)
+        }
+      />
+    </View>
   );
 
   const memoizedChatCard = ({ item }: { item: Leank }) => (
@@ -316,6 +327,23 @@ export default function MessagesScreen() {
     );
   }, [isChats]);
 
+  const requestsFooter = useMemo(() => {
+    if (isChats) return null;
+    if (isPro) return null;
+    if (!requests || requests.length <= FreeLimits.REQUESTS_VISIBLE)
+      return null;
+    return (
+      <View className="py-6">
+        <LockedRequestPlaceholder />
+      </View>
+    );
+  }, [isChats, isPro, requests]);
+
+  const visibleRequests = useMemo(() => {
+    if (isPro) return requests;
+    return requests.slice(0, FreeLimits.REQUESTS_VISIBLE);
+  }, [isPro, requests]);
+
   return (
     <Animated.View
       layout={LinearTransition}
@@ -342,7 +370,7 @@ export default function MessagesScreen() {
         />
       ) : (
         <LegendList<LeankRequest>
-          data={requests}
+          data={visibleRequests}
           renderItem={memoizedRequestCard}
           keyExtractor={(i) => i.$id}
           showsVerticalScrollIndicator={false}
@@ -350,6 +378,7 @@ export default function MessagesScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
           ListEmptyComponent={listEmptyComponent}
+          ListFooterComponent={requestsFooter as any}
         />
       )}
     </Animated.View>

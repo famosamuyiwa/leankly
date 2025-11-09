@@ -1,6 +1,8 @@
 import { appwriteConfig, client, db } from "@/appwrite/config";
+import { Colors } from "@/constants/common";
 import { RequestAction } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
+import { usePremium } from "@/lib/PremiumContext";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -88,7 +90,9 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
             className="size-20 rounded-full"
           />
           <View className="gap-2 justify-center">
-            <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
+            <Text className="font-plus-jakarta-bold text-lg max-w-[90%]">
+              {item.title}
+            </Text>
             <Text className="font-plus-jakarta-regular color-gray-400">
               {item.owner?.name}, {item.owner?.age}
             </Text>
@@ -280,6 +284,42 @@ export const ChatCard = ({
               : `${item.lastMessage.senderName}: ${item.lastMessage.content}`
             : `Start planning to leank...⛓️‍💥`}
         </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+// A blurred/locked placeholder shaped like RequestCard
+export const LockedRequestPlaceholder = () => {
+  const { isPro, openPaywall } = usePremium();
+
+  return (
+    <TouchableOpacity onPress={() => openPaywall("See all requests")}>
+      <View className="flex-row gap-5 mb-5 items-center opacity-60">
+        <View className="size-20 rounded-full bg-gray-200" />
+        <View className="gap-3 justify-center flex-1">
+          <View className="flex-row items-baseline justify-between">
+            <View className="h-4 bg-gray-200 rounded w-1/3" />
+            <View className="h-3 bg-gray-200 rounded w-10" />
+          </View>
+          <View className="h-4 bg-gray-200 rounded w-2/3" />
+        </View>
+      </View>
+      <View className="flex-row justify-between opacity-60">
+        <View className="w-[47.5%] h-12 bg-gray-200 rounded-2xl" />
+        <View className="w-[47.5%] h-12 bg-gray-200 rounded-2xl" />
+      </View>
+      <View className="absolute inset-0 items-center justify-center">
+        <View className="bg-white/80 px-4 py-2 rounded-2xl border border-gray-200 flex-row items-center gap-2">
+          <MaterialCommunityIcons
+            name="crown"
+            size={16}
+            color={Colors.accent}
+          />
+          <Text className="font-plus-jakarta-semibold text-gray-700">
+            Unlock all requests
+          </Text>
+        </View>
       </View>
     </TouchableOpacity>
   );

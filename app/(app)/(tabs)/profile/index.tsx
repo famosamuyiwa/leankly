@@ -5,7 +5,9 @@ import NavBar from "@/components/NavBar";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import { Leank } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { usePremium } from "@/lib/PremiumContext";
 import { useProfileContext } from "@/lib/ProfileContext";
+import { FreeLimits, getCount } from "@/lib/featureGates";
 import { Fontisto } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
@@ -34,11 +36,13 @@ export default function Profile() {
 
   const { avatar, name } = useProfileContext();
   const { currentUser } = useGlobalContext();
+  const { isPro, togglePro } = usePremium();
   const [leanks, setLeanks] = useState<Leank[]>([]);
   const [leankCounts, setLeankCounts] = useState({
     hosted: 0,
     attended: 0,
   });
+  const [swipesLeft, setSwipesLeft] = useState<number | null>(null);
 
   useEffect(() => {
     getLeankDetails();
@@ -47,6 +51,19 @@ export default function Profile() {
   useEffect(() => {
     getLeankCounts();
   }, []);
+
+  useEffect(() => {
+    const loadSwipesLeft = async () => {
+      if (!currentUser?.$id || isPro) {
+        setSwipesLeft(null);
+        return;
+      }
+      const used = await getCount(currentUser.$id, "swipe");
+      const left = Math.max(0, FreeLimits.SWIPES_PER_DAY - used);
+      setSwipesLeft(left);
+    };
+    loadSwipesLeft();
+  }, [currentUser?.$id, isPro]);
 
   const renderItem = memo(({ item }: { item: Leank }) => (
     <View className="mx-5 mb-5">
@@ -158,6 +175,24 @@ export default function Profile() {
           contentFit="cover"
         />
         <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
+        <View className="flex-row items-center gap-3">
+          {!isPro && swipesLeft !== null && (
+            <Text className="text-secondary-300 font-plus-jakarta-regular">
+              {swipesLeft} likes left
+            </Text>
+          )}
+          <TouchableOpacity
+            onPress={togglePro}
+            activeOpacity={0.7}
+            className={`${isPro ? "bg-green-500" : "bg-gray-200"} px-3 py-1 rounded-xl`}
+          >
+            <Text
+              className={`${isPro ? "text-white" : "text-black"} font-plus-jakarta-semibold`}
+            >
+              Pro: {isPro ? "On" : "Off"}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View className="flex-row gap-5">
           <Text className="color-gray-400">
             <Text className="color-black font-plus-jakarta-bold">
@@ -178,7 +213,7 @@ export default function Profile() {
         </View>
       </View>
     ),
-    [avatar, name, leankCounts]
+    [avatar, name, leankCounts, isPro, swipesLeft]
   );
 
   if (!insets) {

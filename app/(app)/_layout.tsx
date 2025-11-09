@@ -61,11 +61,15 @@ export default function RootLayout() {
     if (!currentUser) return;
 
     const hasName =
-      typeof currentUser?.name === "string" && currentUser.name.trim().length >= 2;
+      typeof currentUser?.name === "string" &&
+      currentUser.name.trim().length >= 2;
     const hasAge =
-      typeof currentUser?.age === "number" && Number.isFinite(currentUser.age) && currentUser.age > 0;
+      typeof currentUser?.age === "number" &&
+      Number.isFinite(currentUser.age) &&
+      currentUser.age > 0;
     const hasLocation =
-      typeof currentUser?.location === "string" && currentUser.location.trim().length > 0;
+      typeof currentUser?.location === "string" &&
+      currentUser.location.trim().length > 0;
 
     const needsOnboarding = !(hasName && hasAge && hasLocation);
 
@@ -100,6 +104,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Protected guard={isSignedIn && isCurrentUserReady}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="paywall" options={{ headerShown: false }} />
               <Stack.Screen
                 name="onboarding"
                 options={{

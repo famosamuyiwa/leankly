@@ -2,6 +2,7 @@ import { PushNotificationProvider } from "@/lib/PushNotificationContext";
 import "./global.css";
 
 import GlobalProvider from "@/lib/GlobalContext";
+import PremiumProvider from "@/lib/PremiumContext";
 import { currentScreenRef } from "@/lib/ScreenTracker";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
@@ -68,7 +69,9 @@ export default function Layout() {
     <ClerkProvider tokenCache={tokenCache}>
       <PushNotificationProvider>
         <GlobalProvider>
-          <Slot />
+          <PremiumProvider>
+            <Slot />
+          </PremiumProvider>
         </GlobalProvider>
       </PushNotificationProvider>
     </ClerkProvider>

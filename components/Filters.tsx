@@ -1,16 +1,20 @@
+import { Colors } from "@/constants/common";
 import { FilterOptions, Screens } from "@/constants/enums";
 import { useFiltersContext } from "@/lib/FiltersContext";
-import { Ionicons } from "@expo/vector-icons";
+import { usePremium } from "@/lib/PremiumContext";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { Portal } from "@gorhom/portal";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 import { filterCategories } from "../constants/data";
 import { FilterBottomSheet } from "./BottomSheet";
 
 const Filters = ({ screen }: { screen: Screens }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const { filters, setFilter, setPendingFilter } = useFiltersContext();
+  const { filters, setFilter, setPendingFilter, clearFilter } =
+    useFiltersContext();
+  const { isPro, openPaywall } = usePremium();
 
   const handleChipPress = (
     filterKey: FilterOptions,
@@ -25,6 +29,30 @@ const Filters = ({ screen }: { screen: Screens }) => {
       setFilter(filterKey, !isActive);
     }
   };
+
+  // Gated press handler: only TODAY is available on Home for free users
+  const onFilterPress = (
+    filterKey: FilterOptions,
+    isBottomSheetFilter: boolean
+  ) => {
+    const isHome = screen === Screens.HOME;
+    const isLocked = !isPro && isHome && filterKey !== FilterOptions.TODAY;
+    if (isLocked) {
+      openPaywall("Advanced filters");
+      return;
+    }
+    handleChipPress(filterKey, isBottomSheetFilter);
+  };
+
+  // Ensure free users can't keep other filters applied on Home
+  useEffect(() => {
+    if (screen !== Screens.HOME || isPro) return;
+    Object.keys(filters).forEach((key) => {
+      if (key !== FilterOptions.TODAY && filters[key]) {
+        clearFilter(key);
+      }
+    });
+  }, [isPro, screen]);
 
   return (
     <>
@@ -42,7 +70,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
             return (
               <TouchableOpacity
                 key={index}
-                onPress={() => handleChipPress(item.title, isSheetFilter)}
+                onPress={() => onFilterPress(item.title, isSheetFilter)}
                 className={`flex-row items-center gap-2 mr-4 px-4 py-2 rounded-full ${
                   isSelected
                     ? "bg-primary-300"
@@ -58,13 +86,20 @@ const Filters = ({ screen }: { screen: Screens }) => {
                 >
                   {item.title}
                 </Text>
-                {isSheetFilter && (
-                  <Ionicons
-                    name="chevron-down"
-                    size={14}
-                    color={isSelected ? "white" : "black"}
-                  />
-                )}
+                {isSheetFilter &&
+                  (isPro ? (
+                    <Ionicons
+                      name="chevron-down"
+                      size={14}
+                      color={isSelected ? "white" : "black"}
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name="crown"
+                      size={16}
+                      color={Colors.accent}
+                    />
+                  ))}
               </TouchableOpacity>
             );
           })}

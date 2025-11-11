@@ -42,7 +42,7 @@ export default function Profile() {
     hosted: 0,
     attended: 0,
   });
-  const [swipesLeft, setSwipesLeft] = useState<number | null>(null);
+  const [interestsLeft, setInterestsLeft] = useState<number | null>(null);
 
   useEffect(() => {
     getLeankDetails();
@@ -53,17 +53,17 @@ export default function Profile() {
   }, []);
 
   useEffect(() => {
-    const loadSwipesLeft = async () => {
+    const loadInterestsLeft = async () => {
       if (!currentUser?.$id || isPro) {
-        setSwipesLeft(null);
+        setInterestsLeft(null);
         return;
       }
-      const used = await getCount(currentUser.$id, "swipe");
-      const left = Math.max(0, FreeLimits.SWIPES_PER_DAY - used);
-      setSwipesLeft(left);
+      const used = await getCount(currentUser.$id, "interest");
+      const left = Math.max(0, FreeLimits.INTERESTS_PER_DAY - used);
+      setInterestsLeft(left);
     };
-    loadSwipesLeft();
-  }, [currentUser?.$id, isPro]);
+    loadInterestsLeft();
+  }, [currentUser?.$id, currentUser?.referralCount, isPro]);
 
   const renderItem = memo(({ item }: { item: Leank }) => (
     <View className="mx-5 mb-5">
@@ -176,9 +176,12 @@ export default function Profile() {
         />
         <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
         <View className="flex-row items-center gap-3">
-          {!isPro && swipesLeft !== null && (
+          {!isPro && interestsLeft !== null && (
             <Text className="text-secondary-300 font-plus-jakarta-regular">
-              {swipesLeft} likes left
+              {interestsLeft} interests left today
+              {currentUser?.bonusInterests && currentUser.bonusInterests > 0
+                ? ` (+${currentUser.bonusInterests} bonus)`
+                : ""}
             </Text>
           )}
           <TouchableOpacity
@@ -213,7 +216,7 @@ export default function Profile() {
         </View>
       </View>
     ),
-    [avatar, name, leankCounts, isPro, swipesLeft]
+    [avatar, name, leankCounts, isPro, interestsLeft]
   );
 
   if (!insets) {

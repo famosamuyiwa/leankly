@@ -21,6 +21,8 @@ function SettingsLayout() {
           headerLeft: () => <HeaderLeft />,
         }}
       />
+      <Stack.Screen name="referrals" options={{ headerShown: false }} />
+
       <Stack.Screen
         name="edit-profile"
         options={{

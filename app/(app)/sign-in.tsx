@@ -15,7 +15,11 @@ import icons from "@/constants/icons";
 import images from "@/constants/images";
 import { useGoogleSSO } from "@/hooks/useGoogleSignIn";
 import { useWarmUpBrowser } from "@/hooks/useWarmUpBrowser";
-import { AntDesign, Ionicons } from "@expo/vector-icons";
+import {
+  AntDesign,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { router } from "expo-router";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
@@ -56,9 +60,23 @@ const SignIn = () => {
             Leankly
           </GradientText>
           <Text className="text-3xl font-plus-jakarta-bold text-black-300 text-center mt-2">
-            Connect & Do More {"\n"}
-            <Text className="text-primary-300">Join The Fun</Text>
+            Side Questing For
           </Text>
+          <View className="flex-row justify-center items-center">
+            <MaterialCommunityIcons
+              name="star-four-points-small"
+              color="gold"
+              size={40}
+            />
+            <Text className="text-3xl font-plus-jakarta-bold text-primary-300 ">
+              The Plot
+            </Text>
+            <MaterialCommunityIcons
+              name="star-four-points-small"
+              color="gold"
+              size={40}
+            />
+          </View>
 
           <TouchableOpacity
             onPress={() => handleLogin(LoginProvider.GOOGLE)}

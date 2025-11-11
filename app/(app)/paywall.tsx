@@ -31,7 +31,7 @@ export default function PaywallScreen() {
         <View className="flex-row items-center gap-3">
           <Ionicons name="infinite" size={20} color="#111" />
           <Text className="text-base font-plus-jakarta-medium">
-            Unlimited likes
+            Unlimited interests
           </Text>
         </View>
         <View className="flex-row items-center gap-3">

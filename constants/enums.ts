@@ -17,6 +17,7 @@ export enum Screens {
   PROFILE = "PROFILE",
   CHAT = "CHAT",
   HOME = "HOME",
+  REFER_A_FRIEND = "REFER_A_FRIEND",
 }
 
 export enum Links {

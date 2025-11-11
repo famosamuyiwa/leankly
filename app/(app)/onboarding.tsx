@@ -8,7 +8,7 @@ import { Portal, PortalProvider } from "@gorhom/portal";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -18,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { applyReferralCode } from "@/appwrite/actions/user.actions";
 
 function OnboardingContent() {
   cssInterop(Image, { className: { target: "style" } });
@@ -31,6 +32,8 @@ function OnboardingContent() {
   } = useGlobalContext();
   const { pickMultimedia } = useImagePicker();
   const bottomSheetRef = useRef<any>({});
+  const [referralCode, setReferralCode] = useState("");
+  const [referralApplied, setReferralApplied] = useState<null | "ok" | "invalid" | "self" | "error">(null);
 
   const {
     isEditing,
@@ -79,6 +82,23 @@ function OnboardingContent() {
     try {
       if (!currentUser) return;
       showLoader("Saving profile...");
+      // Optionally apply referral code if provided
+      if (referralCode?.trim()) {
+        try {
+          const res = await applyReferralCode(currentUser.$id, referralCode.trim());
+          if (res.ok) {
+            displayToast({ type: "success" as any, description: "Referral applied" });
+            setReferralApplied("ok");
+          } else if (res.reason === "INVALID_CODE") {
+            displayToast({ type: "warning" as any, description: "Invalid referral code" });
+          } else if (res.reason === "SELF_REFERRAL") {
+            displayToast({ type: "warning" as any, description: "You cannot refer yourself" });
+          }
+        } catch (e) {
+          // Do not block onboarding on referral failure
+          displayToast({ type: "error" as any, description: "Could not apply referral code" });
+        }
+      }
       await handleSave();
       await refetchCurrentUser();
       displayToast({ type: "success" as any, description: "Profile saved" });
@@ -93,6 +113,8 @@ function OnboardingContent() {
       hideLoader();
     }
   };
+
+  // Removed explicit Apply button; handled in Continue
 
   return (
     <KeyboardAvoidingView
@@ -170,6 +192,23 @@ function OnboardingContent() {
               {location || "Select location"}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Optional Referral Code */}
+        <View className="bg-white p-5 rounded-2xl gap-4 mt-5">
+          <Text className="font-plus-jakarta-semibold color-gray-400">Referral code (optional)</Text>
+          <View className="w-full flex-row items-center">
+            <TextInput
+              value={referralCode}
+              onChangeText={setReferralCode}
+              autoCapitalize="characters"
+              placeholder="e.g. USER-1234"
+              className="p-0 flex-1 text-right text-gray-900 font-plus-jakarta-regular"
+            />
+          </View>
+          {referralApplied === "ok" && (
+            <Text className="text-green-600 font-plus-jakarta-regular">Referral applied</Text>
+          )}
         </View>
 
         <View className="mt-8">

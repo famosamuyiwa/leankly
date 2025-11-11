@@ -1,4 +1,5 @@
 import { appwriteConfig, db } from "@/appwrite/config";
+import { ToastType } from "@/constants/enums";
 import { useAppwriteUpload } from "@/hooks/useBucket";
 import { MediaResult } from "@/interfaces";
 import React, {
@@ -43,7 +44,7 @@ const EditProfileContext = createContext<EditProfileContextType | undefined>(
 );
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { currentUser, refetchCurrentUser } = useGlobalContext();
+  const { currentUser, refetchCurrentUser, displayToast } = useGlobalContext();
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -99,6 +100,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const handleSave = async () => {
     if (!isEditing || isSaving) return;
 
+    if (!name) {
+      return displayToast({
+        type: ToastType.ERROR,
+        description: "Name cannot be empty",
+      });
+    }
+    if (!age || age < 16) {
+      return displayToast({
+        type: ToastType.ERROR,
+        description: "Age cannot be empty or less than 16",
+      });
+    }
+
     setIsSaving(true);
     try {
       if (!currentUser) return;
@@ -124,8 +138,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       refetchCurrentUser();
       setIsEditing(false);
       setHasChanges(false);
-    } catch (error) {
-      console.error("Save failed:", error);
+    } catch (err: any) {
+      console.log(err);
     } finally {
       setIsSaving(false);
     }

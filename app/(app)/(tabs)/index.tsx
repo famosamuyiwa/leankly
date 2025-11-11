@@ -1,4 +1,5 @@
 import { recordLeankAction } from "@/appwrite/actions/leank.actions";
+import { consumeBonusInterest } from "@/appwrite/actions/user.actions";
 import { sendPushNotification } from "@/appwrite/config";
 import { LeankCardBig } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
@@ -9,6 +10,8 @@ import { useLeanksFeed } from "@/hooks/useLeanksFeed";
 import { PNAlert } from "@/interfaces";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { usePremium } from "@/lib/PremiumContext";
+import { FreeLimits, canUse, increment } from "@/lib/featureGates";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -19,8 +22,6 @@ import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { usePremium } from "@/lib/PremiumContext";
-import { FreeLimits, canUse, increment } from "@/lib/featureGates";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -33,7 +34,7 @@ export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);
 
-  const { currentUser, showLoader, hideLoader } = useGlobalContext();
+  const { currentUser, showLoader, hideLoader, setCurrentUser } = useGlobalContext();
   const { filters } = useFiltersContext();
   const { isPro, openPaywall } = usePremium();
 
@@ -76,14 +77,23 @@ export default function HomeScreen() {
       }
       // Only gate and count when liking a leank; skips do not count
       if (isLiked && !isPro) {
-        const allowed = await canUse(
+        const dailyAllowed = await canUse(
           currentUser.$id,
-          "swipe",
-          FreeLimits.SWIPES_PER_DAY
+          "interest",
+          FreeLimits.INTERESTS_PER_DAY
         );
-        if (!allowed) {
-          openPaywall("Unlimited swipes");
-          return;
+        if (!dailyAllowed) {
+          const bonus = await consumeBonusInterest(currentUser.$id);
+          if (!bonus.ok) {
+            openPaywall("Unlimited interests");
+            return;
+          }
+          // Optimistically reflect bonus deduction in global user
+          setCurrentUser((prev: any) =>
+            prev
+              ? { ...prev, bonusInterests: Math.max(0, (prev.bonusInterests || 0) - 1) }
+              : prev
+          );
         }
       }
       showLoader(undefined, true);
@@ -108,7 +118,7 @@ export default function HomeScreen() {
 
       setCurrentIndex((prev) => prev + 1);
       // count only after a successful LIKE for free users
-      if (isLiked && !isPro) await increment(currentUser.$id, "swipe");
+      if (isLiked && !isPro) await increment(currentUser.$id, "interest");
     } catch (err) {
       console.error("Reaction error:", err);
     } finally {
@@ -117,13 +127,17 @@ export default function HomeScreen() {
   };
 
   // ———————————————————————————
-  // 4️⃣ Undo last swipe
+  // 4️⃣ Undo last interest
   // ———————————————————————————
   const handleUndo = async () => {
     if (previousIndexes.length === 0) return;
     if (!currentUser?.$id) return;
     if (!isPro) {
-      const allowed = await canUse(currentUser.$id, "undo", FreeLimits.UNDOS_PER_DAY);
+      const allowed = await canUse(
+        currentUser.$id,
+        "undo",
+        FreeLimits.UNDOS_PER_DAY
+      );
       if (!allowed) {
         openPaywall("Unlimited rewinds");
         return;

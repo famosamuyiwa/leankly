@@ -35,6 +35,7 @@ const appwriteConfig = {
     user: "user",
     participants: "participants",
     reactions: "reactions",
+    referrals: "referrals",
   },
 };
 

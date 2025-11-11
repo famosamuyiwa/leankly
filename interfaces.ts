@@ -15,6 +15,9 @@ export interface User extends Models.Row {
   location: string;
   pushToken?: string;
   sex?: string;
+  referralCode?: string;
+  bonusInterests: number;
+  referralCount?: number;
 }
 
 export interface Leank extends Models.Row {

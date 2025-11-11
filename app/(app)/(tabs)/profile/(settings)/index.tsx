@@ -10,6 +10,7 @@ import {
   Octicons,
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { useMemo } from "react";
@@ -49,12 +50,19 @@ export default function Settings() {
     switch (action) {
       case Screens.NOTIFICATIONS:
       case Links.CONTACT_SUPPORT:
+        Linking.openURL("https://www.leankly.com/contact");
+        break;
       case Links.PRIVACY_POLICY:
+        Linking.openURL("https://www.leankly.com/privacy");
+        break;
       case Links.SOCIAL_MEDIA:
-        alertComingSoon();
+        Linking.openURL("https://x.com/leanklyapp");
         break;
       case Screens.EDIT_PROFILE:
         route = "/(app)/(tabs)/profile/(settings)/edit-profile";
+        break;
+      case Screens.REFER_A_FRIEND:
+        route = "/(app)/(tabs)/profile/(settings)/referrals";
         break;
       default:
         route = "/";
@@ -91,16 +99,17 @@ export default function Settings() {
   }, [avatar, name]);
 
   return (
-    <Animated.View
+    <Animated.ScrollView
       layout={LinearTransition}
       entering={FadeIn.duration(500)}
-      className="flex flex-1 bg-gray-100 p-5 gap-10"
+      className="flex flex-1 bg-gray-100 p-5 "
+      showsVerticalScrollIndicator={false}
     >
       {/* Profile */}
       {memoizedProfile}
 
       {/* Preference */}
-      <View className="gap-2">
+      <View className="gap-2 mt-10">
         <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
           PREFERENCE
         </Text>
@@ -120,26 +129,25 @@ export default function Settings() {
       </View>
 
       {/* Resources */}
-      <View className="gap-2">
+      <View className="gap-2 mt-10">
         <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
           RESOURCES
         </Text>
         <View className="bg-white p-5 rounded-2xl">
           <TouchableOpacity
             activeOpacity={0.6}
-            onPress={() => handleNavigation(Links.CONTACT_SUPPORT)}
+            onPress={() => handleNavigation(Screens.REFER_A_FRIEND)}
             className="w-full flex-row justify-between "
           >
             <View className="flex-row items-center gap-3">
-              <View className="bg-blue-600 rounded-2xl p-2">
-                <Ionicons name="mail" color="white" />
+              <View className="bg-green-600 rounded-2xl p-2">
+                <MaterialCommunityIcons name="account-plus" color="white" />
               </View>
-              <Text className="font-plus-jakarta-semibold">
-                Contact Support
-              </Text>
+              <Text className="font-plus-jakarta-semibold">Refer and Earn</Text>
             </View>
-            <Feather name="external-link" color="#d1d5db" size={20} />
+            <Ionicons name="chevron-forward" color="#d1d5db" size={20} />
           </TouchableOpacity>
+
           {/* Separator */}
           <View className="bg-gray-100 h-[1] my-5" />
           <TouchableOpacity
@@ -159,6 +167,23 @@ export default function Settings() {
           <View className="bg-gray-100 h-[1] my-5" />
           <TouchableOpacity
             activeOpacity={0.6}
+            onPress={() => handleNavigation(Links.CONTACT_SUPPORT)}
+            className="w-full flex-row justify-between "
+          >
+            <View className="flex-row items-center gap-3">
+              <View className="bg-blue-600 rounded-2xl p-2">
+                <Ionicons name="mail" color="white" />
+              </View>
+              <Text className="font-plus-jakarta-semibold">
+                Contact Support
+              </Text>
+            </View>
+            <Feather name="external-link" color="#d1d5db" size={20} />
+          </TouchableOpacity>
+          {/* Separator */}
+          <View className="bg-gray-100 h-[1] my-5" />
+          <TouchableOpacity
+            activeOpacity={0.6}
             onPress={() => handleNavigation(Links.SOCIAL_MEDIA)}
             className="w-full flex-row justify-between "
           >
@@ -167,7 +192,7 @@ export default function Settings() {
                 <FontAwesome6 name="x-twitter" color="white" />
               </View>
               <Text className="font-plus-jakarta-semibold">
-                Follow @Leankly
+                Follow @leanklyapp
               </Text>
             </View>
             <Feather name="external-link" color="#d1d5db" size={20} />
@@ -178,7 +203,7 @@ export default function Settings() {
       {/* Sign Out */}
       <TouchableOpacity
         onPress={handleSignOut}
-        className="bg-red-600 rounded-2xl p-4 shadow-sm"
+        className="bg-red-600 rounded-2xl p-4 shadow-sm my-10"
         activeOpacity={0.6}
       >
         <View className="flex-row items-center justify-center">
@@ -188,6 +213,6 @@ export default function Settings() {
           </Text>
         </View>
       </TouchableOpacity>
-    </Animated.View>
+    </Animated.ScrollView>
   );
 }

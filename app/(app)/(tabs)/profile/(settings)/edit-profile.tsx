@@ -1,15 +1,19 @@
 import { ProfileBottomSheet } from "@/components/BottomSheet";
 import useImagePicker from "@/hooks/useImagePicker";
 import { useProfileContext } from "@/lib/ProfileContext";
+import { useGlobalContext } from "@/lib/GlobalContext";
+import { appwriteConfig, db } from "@/appwrite/config";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
 import { Image } from "expo-image";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { useUser } from "@clerk/clerk-expo";
 import { cssInterop } from "nativewind";
 import { useMemo, useRef } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { Query } from "react-native-appwrite";
 
 function EditProfileContent() {
   // Interop the Image component to recognize the 'className' prop
@@ -21,6 +25,8 @@ function EditProfileContent() {
   }>();
 
   const { pickMultimedia } = useImagePicker();
+  const { currentUser, showLoader, hideLoader, displayToast } = useGlobalContext();
+  const { user } = useUser();
 
   const bottomSheetRef = useRef<any>({});
 
@@ -58,7 +64,109 @@ function EditProfileContent() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {},
+          onPress: async () => {
+            if (!currentUser?.$id) return;
+            const uid = currentUser.$id;
+
+            const safeDeleteRows = async (tableId: string, queries: any[]) => {
+              try {
+                const { rows } = await db.listRows({
+                  databaseId: appwriteConfig.db,
+                  tableId,
+                  queries,
+                });
+                for (const row of rows) {
+                  try {
+                    await db.deleteRow({
+                      databaseId: appwriteConfig.db,
+                      tableId,
+                      rowId: row.$id,
+                    });
+                  } catch (e) {
+                    console.log(`Failed deleting ${tableId} ${row.$id}`, e);
+                  }
+                }
+              } catch (e) {
+                console.log(`List failed for ${tableId}`, e);
+              }
+            };
+
+            const deleteUserData = async () => {
+              // Delete leanks the user owns and related rows
+              try {
+                const { rows: owned } = await db.listRows({
+                  databaseId: appwriteConfig.db,
+                  tableId: appwriteConfig.tables.leanks,
+                  queries: [Query.equal("ownerId", uid)],
+                });
+                for (const leank of owned) {
+                  const leankId = leank.$id;
+                  await safeDeleteRows(appwriteConfig.tables.participants, [
+                    Query.equal("leank", leankId),
+                  ]);
+                  await safeDeleteRows(appwriteConfig.tables.reactions, [
+                    Query.equal("leankId", leankId),
+                  ]);
+                  await safeDeleteRows(appwriteConfig.tables.messages, [
+                    Query.equal("leankId", leankId),
+                  ]);
+                  try {
+                    await db.deleteRow({
+                      databaseId: appwriteConfig.db,
+                      tableId: appwriteConfig.tables.leanks,
+                      rowId: leankId,
+                    });
+                  } catch (e) {
+                    console.log("Failed deleting leank", leankId, e);
+                  }
+                }
+              } catch (e) {
+                console.log("Failed to fetch owned leanks", e);
+              }
+
+              // Delete user-related rows
+              await safeDeleteRows(appwriteConfig.tables.participants, [
+                Query.equal("user", uid),
+              ]);
+              await safeDeleteRows(appwriteConfig.tables.reactions, [
+                Query.equal("userId", uid),
+              ]);
+              await safeDeleteRows(appwriteConfig.tables.messages, [
+                Query.equal("senderId", uid),
+              ]);
+              await safeDeleteRows(appwriteConfig.tables.userChatMeta, [
+                Query.equal("userId", uid),
+              ]);
+
+              // Delete user row
+              try {
+                await db.deleteRow({
+                  databaseId: appwriteConfig.db,
+                  tableId: appwriteConfig.tables.user,
+                  rowId: uid,
+                });
+              } catch (e) {
+                console.log("Failed deleting user row", e);
+              }
+            };
+
+            try {
+              showLoader("Deleting account...", true);
+              await deleteUserData();
+              try {
+                await user?.delete();
+              } catch (e) {
+                console.log("Failed deleting Clerk user", e);
+              }
+              displayToast({ type: "success", description: "Account deleted" });
+              router.replace("/sign-in");
+            } catch (e) {
+              console.error("Delete account failed", e);
+              Alert.alert("Error", "Failed to delete account. Please try again.");
+            } finally {
+              hideLoader();
+            }
+          },
         },
       ]
     );

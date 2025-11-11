@@ -89,10 +89,8 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
             source={{ uri: item.owner?.avatar }}
             className="size-20 rounded-full"
           />
-          <View className="gap-2 justify-center">
-            <Text className="font-plus-jakarta-bold text-lg max-w-[90%]">
-              {item.title}
-            </Text>
+          <View className="gap-2 justify-center  max-w-[90%]">
+            <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
             <Text className="font-plus-jakarta-regular color-gray-400">
               {item.owner?.name}, {item.owner?.age}
             </Text>

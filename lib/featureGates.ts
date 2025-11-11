@@ -1,12 +1,23 @@
 import * as SecureStore from "expo-secure-store";
 
 export const FreeLimits = {
-  SWIPES_PER_DAY: 10,
+  // Base daily interests for free users (formerly "interests")
+  INTERESTS_PER_DAY: 1,
+  // Bonus interests per successful referral
+  INTERESTS_BONUS_PER_REFERRAL: 10,
   UNDOS_PER_DAY: 1,
   REQUESTS_VISIBLE: 1,
 };
 
-export type GateFeature = "swipe" | "undo";
+export function dailyInterestLimit(referralCount?: number) {
+  const count = typeof referralCount === "number" ? referralCount : 0;
+  return (
+    FreeLimits.INTERESTS_PER_DAY +
+    count * FreeLimits.INTERESTS_BONUS_PER_REFERRAL
+  );
+}
+
+export type GateFeature = "interest" | "undo";
 
 const todayKey = (userId: string | undefined, feature: GateFeature) => {
   const d = new Date();

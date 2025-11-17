@@ -1,65 +1,193 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import * as SecureStore from "expo-secure-store";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "expo-router";
+import Purchases, {
+  CustomerInfo,
+  CustomerInfoUpdateListener,
+  PurchasesErrorCode,
+  PurchasesOffering,
+  PurchasesPackage,
+} from "react-native-purchases";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import {
+  ensureRevenueCatConfigured,
+  hasActiveEntitlement,
+} from "./revenuecat";
 
 type PremiumContextType = {
   isPro: boolean;
   loading: boolean;
-  upgradeToPro: () => Promise<void>;
+  customerInfo: CustomerInfo | null;
+  packages: PurchasesPackage[];
+  currentOffering: PurchasesOffering | null;
+  upgradeToPro: (selectedPackage?: PurchasesPackage) => Promise<boolean>;
+  restorePurchases: () => Promise<boolean>;
   openPaywall: (reason?: string) => void;
-  togglePro: () => Promise<void>;
 };
 
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
 
 export const PremiumProvider = ({ children }: { children: React.ReactNode }) => {
   const { currentUser } = useGlobalContext();
-  const [isPro, setIsPro] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [currentOffering, setCurrentOffering] = useState<PurchasesOffering | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const storageKey = useMemo(() => {
-    const id = currentUser?.$id || "anon";
-    // SecureStore keys must be alphanumeric or ".", "-", "_"
-    return `premium_${id.replace(/[^A-Za-z0-9._-]/g, "_")}`;
-  }, [currentUser?.$id]);
+  const fetchOfferings = useCallback(async () => {
+    if (!ensureRevenueCatConfigured()) return;
+    try {
+      const offerings = await Purchases.getOfferings();
+      setCurrentOffering(offerings.current ?? null);
+    } catch (error) {
+      console.warn("[RevenueCat] Failed to load offerings", error);
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
+    const configured = ensureRevenueCatConfigured();
+    if (!configured) {
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const bootstrap = async () => {
       try {
-        setLoading(true);
-        const v = await SecureStore.getItemAsync(storageKey);
-        if (!mounted) return;
-        setIsPro(v === "true");
+        const info = await Purchases.getCustomerInfo();
+        if (!cancelled) {
+          setCustomerInfo(info);
+        }
+        await fetchOfferings();
+      } catch (error) {
+        console.warn("[RevenueCat] Unable to fetch customer info", error);
       } finally {
-        if (mounted) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    load();
-    return () => {
-      mounted = false;
+
+    bootstrap();
+    const listener: CustomerInfoUpdateListener = (info) => {
+      setCustomerInfo(info);
     };
-  }, [storageKey]);
+    Purchases.addCustomerInfoUpdateListener(listener);
 
-  const upgradeToPro = async () => {
-    await SecureStore.setItemAsync(storageKey, "true");
-    setIsPro(true);
-  };
+    return () => {
+      cancelled = true;
+      Purchases.removeCustomerInfoUpdateListener(listener);
+    };
+  }, [fetchOfferings]);
 
-  const togglePro = async () => {
-    const next = !isPro;
-    await SecureStore.setItemAsync(storageKey, next ? "true" : "false");
-    setIsPro(next);
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const identify = async () => {
+      const configured = ensureRevenueCatConfigured();
+      if (!configured) return;
+
+      try {
+        if (currentUser?.$id) {
+          const { customerInfo: info } = await Purchases.logIn(currentUser.$id);
+          if (!cancelled) {
+            setCustomerInfo(info);
+          }
+        } else {
+          await Purchases.logOut();
+          if (!cancelled) {
+            const info = await Purchases.getCustomerInfo();
+            setCustomerInfo(info);
+          }
+        }
+      } catch (error) {
+        console.warn("[RevenueCat] Unable to sync user identity", error);
+      }
+    };
+
+    identify();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.$id]);
+
+  const upgradeToPro = useCallback(
+    async (selectedPackage?: PurchasesPackage) => {
+      const configured = ensureRevenueCatConfigured();
+      if (!configured) {
+        throw new Error("RevenueCat API keys are not configured.");
+      }
+
+      const packageToBuy =
+        selectedPackage ?? currentOffering?.availablePackages[0];
+      if (!packageToBuy) {
+        throw new Error("No purchasable packages are available at the moment.");
+      }
+
+      try {
+        setLoading(true);
+        const { customerInfo: info } = await Purchases.purchasePackage(packageToBuy);
+        setCustomerInfo(info);
+        await fetchOfferings();
+        return hasActiveEntitlement(info);
+      } catch (error: any) {
+        if (error?.code === PurchasesErrorCode.PurchaseCancelledError) {
+          return false;
+        }
+        console.error("[RevenueCat] Purchase failed", error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentOffering, fetchOfferings]
+  );
+
+  const restorePurchases = useCallback(async () => {
+    const configured = ensureRevenueCatConfigured();
+    if (!configured) return false;
+    try {
+      setLoading(true);
+      const info = await Purchases.restorePurchases();
+      setCustomerInfo(info);
+      await fetchOfferings();
+      return hasActiveEntitlement(info);
+    } catch (error) {
+      console.error("[RevenueCat] Restore failed", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchOfferings]);
+
+  const isPro = useMemo(() => hasActiveEntitlement(customerInfo), [customerInfo]);
+  const packages = useMemo(
+    () => currentOffering?.availablePackages ?? [],
+    [currentOffering]
+  );
 
   const openPaywall = (reason?: string) => {
     router.push({ pathname: "/paywall", params: reason ? { reason } : undefined });
   };
 
   return (
-    <PremiumContext.Provider value={{ isPro, loading, upgradeToPro, openPaywall, togglePro }}>
+    <PremiumContext.Provider
+      value={{
+        isPro,
+        loading,
+        customerInfo,
+        packages,
+        currentOffering,
+        upgradeToPro,
+        restorePurchases,
+        openPaywall,
+      }}
+    >
       {children}
     </PremiumContext.Provider>
   );

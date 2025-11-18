@@ -21,7 +21,7 @@ import { FreeLimits } from "@/lib/featureGates";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { ID, Query } from "react-native-appwrite";
 import { RefreshControl } from "react-native-gesture-handler";
@@ -118,7 +118,7 @@ export default function MessagesScreen() {
     }
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     if (!currentUser) return;
 
     const queries: any[] = [
@@ -150,9 +150,9 @@ export default function MessagesScreen() {
     } catch (e) {
       console.log(e);
     }
-  };
+  }, [currentUser?.$id]);
 
-  const fetchChatRooms = async () => {
+  const fetchChatRooms = useCallback(async () => {
     if (!currentUser) return;
     try {
       const { rows, total } = await db.listRows({
@@ -181,9 +181,9 @@ export default function MessagesScreen() {
     } catch (e) {
       console.log(e);
     }
-  };
+  }, [currentUser?.$id]);
 
-  const fetchChatMeta = async () => {
+  const fetchChatMeta = useCallback(async () => {
     if (!currentUser) return;
     try {
       const { rows, total } = await db.listRows({
@@ -195,17 +195,18 @@ export default function MessagesScreen() {
     } catch (e) {
       console.log(e);
     }
-  };
+  }, [currentUser?.$id]);
 
-  const getChatDetails = async () => {
-    fetchChatRooms();
-    fetchChatMeta();
-  };
+  const getChatDetails = useCallback(async () => {
+    await Promise.all([fetchChatRooms(), fetchChatMeta()]);
+  }, [fetchChatRooms, fetchChatMeta]);
 
-  useFocusEffect(() => {
-    getChatDetails();
-    fetchRequests();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      getChatDetails();
+      fetchRequests();
+    }, [fetchRequests, getChatDetails])
+  );
 
   useEffect(() => {
     const unread = chatRooms.filter((room) => {

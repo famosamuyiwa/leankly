@@ -14,7 +14,7 @@ import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { Alert, RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { Query } from "react-native-appwrite";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -175,44 +175,27 @@ export default function Profile() {
           contentFit="cover"
         />
         <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
-        <View className="flex-row items-center gap-3 flex-wrap">
-          {!isPro && interestsLeft !== null && (
-            <Text className="text-secondary-300 font-plus-jakarta-regular">
-              {interestsLeft} interests left today
-              {currentUser?.bonusInterests && currentUser.bonusInterests > 0
-                ? ` (+${currentUser.bonusInterests} bonus)`
-                : ""}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={async () => {
-              if (!isPro) {
-                openPaywall("Unlock Leankly+");
-                return;
-              }
-              try {
-                const stillActive = await restorePurchases();
-                if (!stillActive) {
-                  Alert.alert(
-                    "Subscription not found",
-                    "We couldn't find an active subscription tied to this store account."
-                  );
-                }
-              } catch (error: any) {
-                Alert.alert(
-                  "Refresh failed",
-                  error?.message || "Please try again in a moment."
-                );
-              }
-            }}
-            activeOpacity={0.7}
-            className={`${isPro ? "bg-green-500" : "bg-black"} px-4 py-2 rounded-xl`}
-          >
-            <Text className="text-white font-plus-jakarta-semibold">
-              {isPro ? "Refresh membership" : "Unlock Leankly+"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {!isPro && (
+          <View className="flex-row items-center gap-3 flex-wrap">
+            {interestsLeft !== null && (
+              <Text className="text-secondary-300 font-plus-jakarta-regular">
+                {interestsLeft} interests left today
+                {currentUser?.bonusInterests && currentUser.bonusInterests > 0
+                  ? ` (+${currentUser.bonusInterests} bonus)`
+                  : ""}
+              </Text>
+            )}
+            <TouchableOpacity
+              onPress={async () => openPaywall("Unlock Leankly+")}
+              activeOpacity={0.7}
+              className={"bg-black px-4 py-2 rounded-xl"}
+            >
+              <Text className="text-white font-plus-jakarta-semibold">
+                Unlock Leankly+
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <View className="flex-row gap-5">
           <Text className="color-gray-400">
             <Text className="color-black font-plus-jakarta-bold">

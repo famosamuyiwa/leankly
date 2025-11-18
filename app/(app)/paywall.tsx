@@ -195,7 +195,7 @@ export default function PaywallScreen() {
                     ) : null}
                   </View>
                   <Text className="mt-1 text-2xl font-plus-jakarta-bold text-black-300">
-                    {pkg.product?.priceString ?? "--"}
+                    {pkg.product?.pricePerWeekString ?? "--"}/wk
                   </Text>
                   <Text className="text-xs font-plus-jakarta-medium text-gray-500">
                     {getBillingCopy(pkg.identifier)}

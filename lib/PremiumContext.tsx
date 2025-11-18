@@ -1,3 +1,5 @@
+import { useGlobalContext } from "@/lib/GlobalContext";
+import { useRouter } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -6,19 +8,14 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { useRouter } from "expo-router";
 import Purchases, {
   CustomerInfo,
   CustomerInfoUpdateListener,
-  PurchasesErrorCode,
+  PURCHASES_ERROR_CODE,
   PurchasesOffering,
   PurchasesPackage,
 } from "react-native-purchases";
-import { useGlobalContext } from "@/lib/GlobalContext";
-import {
-  ensureRevenueCatConfigured,
-  hasActiveEntitlement,
-} from "./revenuecat";
+import { ensureRevenueCatConfigured, hasActiveEntitlement } from "./revenuecat";
 
 type PremiumContextType = {
   isPro: boolean;
@@ -33,10 +30,15 @@ type PremiumContextType = {
 
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
 
-export const PremiumProvider = ({ children }: { children: React.ReactNode }) => {
+export const PremiumProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const { currentUser } = useGlobalContext();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [currentOffering, setCurrentOffering] = useState<PurchasesOffering | null>(null);
+  const [currentOffering, setCurrentOffering] =
+    useState<PurchasesOffering | null>(null);
   const [loading, setLoading] = useState(true);
   const [userResolved, setUserResolved] = useState(false);
   const router = useRouter();
@@ -139,12 +141,13 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
 
       try {
         setLoading(true);
-        const { customerInfo: info } = await Purchases.purchasePackage(packageToBuy);
+        const { customerInfo: info } =
+          await Purchases.purchasePackage(packageToBuy);
         setCustomerInfo(info);
         await fetchOfferings();
         return hasActiveEntitlement(info);
       } catch (error: any) {
-        if (error?.code === PurchasesErrorCode.PurchaseCancelledError) {
+        if (error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
           return false;
         }
         console.error("[RevenueCat] Purchase failed", error);
@@ -173,14 +176,20 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
     }
   }, [fetchOfferings]);
 
-  const isPro = useMemo(() => hasActiveEntitlement(customerInfo), [customerInfo]);
+  const isPro = useMemo(
+    () => hasActiveEntitlement(customerInfo),
+    [customerInfo]
+  );
   const packages = useMemo(
     () => currentOffering?.availablePackages ?? [],
     [currentOffering]
   );
 
   const openPaywall = (reason?: string) => {
-    router.push({ pathname: "/paywall", params: reason ? { reason } : undefined });
+    router.push({
+      pathname: "/paywall",
+      params: reason ? { reason } : undefined,
+    });
   };
 
   return (

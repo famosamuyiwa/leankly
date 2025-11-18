@@ -258,7 +258,12 @@ export const ChatCard = ({
       onPress={onPress}
       className="flex-row gap-5 mb-5"
     >
-      <Image source={{ uri: item.cover }} className="size-20 rounded-2xl" />
+      <Image
+        source={{ uri: item.cover }}
+        className="size-20 rounded-2xl"
+        transition={300}
+        cachePolicy="memory-disk"
+      />
       <View className="gap-2 justify-center flex-1">
         {isUnread && !isUserLastMessage && item.lastMessage && (
           <View className="bg-secondary-300 size-2 rounded-full absolute top-0 right-2" />

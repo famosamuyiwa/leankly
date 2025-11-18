@@ -35,9 +35,10 @@ export default function PaywallScreen() {
         router.back();
       }
     } catch (error: any) {
+      console.log("error: ", error);
       Alert.alert(
         "Purchase failed",
-        error?.message || "We couldn't complete the purchase. Try again later."
+        "We couldn't complete the purchase. Try again later."
       );
     } finally {
       setProcessing(false);
@@ -82,11 +83,6 @@ export default function PaywallScreen() {
       >
         Leankly+
       </GradientText>
-      {reason && (
-        <Text className="text-center text-gray-500 font-plus-jakarta-regular mb-4">
-          {reason}
-        </Text>
-      )}
 
       <View className="mt-4 mb-8 gap-4">
         <View className="flex-row items-center gap-3">

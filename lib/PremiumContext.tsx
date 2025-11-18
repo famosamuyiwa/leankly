@@ -38,6 +38,7 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [currentOffering, setCurrentOffering] = useState<PurchasesOffering | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userResolved, setUserResolved] = useState(false);
   const router = useRouter();
 
   const fetchOfferings = useCallback(async () => {
@@ -87,8 +88,15 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
   }, [fetchOfferings]);
 
   useEffect(() => {
+    if (currentUser !== undefined) {
+      setUserResolved(true);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
     let cancelled = false;
     const identify = async () => {
+      if (!userResolved) return;
       const configured = ensureRevenueCatConfigured();
       if (!configured) return;
 
@@ -114,7 +122,7 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.$id]);
+  }, [currentUser?.$id, userResolved]);
 
   const upgradeToPro = useCallback(
     async (selectedPackage?: PurchasesPackage) => {

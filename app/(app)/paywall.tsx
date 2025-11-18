@@ -2,7 +2,7 @@ import GradientText from "@/components/GradientText";
 import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,11 +16,47 @@ export default function PaywallScreen() {
   const router = useRouter();
   const { reason } = useLocalSearchParams<{ reason?: string }>();
   const [processing, setProcessing] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
+    null
+  );
   const defaultPackage = packages[0];
   const isBusy = loading || processing;
 
+  useEffect(() => {
+    if (!selectedPackageId && defaultPackage?.identifier) {
+      setSelectedPackageId(defaultPackage.identifier);
+    }
+  }, [defaultPackage?.identifier, selectedPackageId]);
+
+  const selectedPackage = useMemo(() => {
+    if (!packages.length) return undefined;
+    const found = packages.find((pkg) => pkg.identifier === selectedPackageId);
+    return found ?? packages[0];
+  }, [packages, selectedPackageId]);
+
+  const highlightedPackageId = useMemo(() => {
+    const monthly = packages.find((pkg) =>
+      pkg.identifier?.toLowerCase().includes("month")
+    );
+    return monthly?.identifier ?? packages[packages.length - 1]?.identifier;
+  }, [packages]);
+
+  const getPlanLabel = (pkgIdentifier?: string) => {
+    const id = pkgIdentifier?.toLowerCase() ?? "";
+    if (id.includes("week")) return "Weekly plan";
+    if (id.includes("month")) return "Monthly plan";
+    if (id.includes("year")) return "Yearly plan";
+    return "Subscription";
+  };
+
+  const getBillingCopy = (pkgIdentifier?: string) => {
+    const label = getPlanLabel(pkgIdentifier);
+    if (label === "Subscription") return "Recurring billing";
+    return `Billed ${label.split(" ")[0].toLowerCase()}`;
+  };
+
   const handleUnlock = async () => {
-    if (!defaultPackage) {
+    if (!selectedPackage) {
       Alert.alert(
         "Store unavailable",
         "Subscription products are still loading. Please try again in a moment."
@@ -30,7 +66,7 @@ export default function PaywallScreen() {
 
     try {
       setProcessing(true);
-      const success = await upgradeToPro(defaultPackage);
+      const success = await upgradeToPro(selectedPackage);
       if (success) {
         router.back();
       }
@@ -67,8 +103,8 @@ export default function PaywallScreen() {
     }
   };
 
-  const priceLabel = defaultPackage?.product?.priceString
-    ? `Unlock for ${defaultPackage.product.priceString}`
+  const priceLabel = selectedPackage?.product?.priceString
+    ? `Unlock for ${selectedPackage.product.priceString}`
     : "Unlock Leankly+";
 
   return (
@@ -124,6 +160,56 @@ export default function PaywallScreen() {
           <Text className="text-base font-plus-jakarta-medium">
             Get rid of ads
           </Text>
+        </View>
+      </View>
+
+      <View className="mb-8">
+        <Text className="text-xs font-plus-jakarta-medium uppercase text-gray-500">
+          Choose your plan
+        </Text>
+        <View className="mt-3 gap-3">
+          {packages.length ? (
+            packages.map((pkg) => {
+              const isSelected = pkg.identifier === selectedPackage?.identifier;
+              const isHighlighted = pkg.identifier === highlightedPackageId;
+              return (
+                <TouchableOpacity
+                  key={pkg.identifier}
+                  className={`rounded-2xl border px-4 py-3 ${isSelected ? "border-black-300 bg-black-300/5" : "border-gray-200 bg-white"}`}
+                  disabled={isBusy}
+                  onPress={() => setSelectedPackageId(pkg.identifier)}
+                  activeOpacity={0.9}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text
+                      className={`text-sm font-plus-jakarta-semibold ${isSelected ? "text-black-300" : "text-gray-600"}`}
+                    >
+                      {getPlanLabel(pkg.identifier)}
+                    </Text>
+                    {isHighlighted ? (
+                      <View className="rounded-full bg-black-300/10 px-2 py-0.5">
+                        <Text className="text-[10px] font-plus-jakarta-bold text-black-300">
+                          Most Popular
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text className="mt-1 text-2xl font-plus-jakarta-bold text-black-300">
+                    {pkg.product?.priceString ?? "--"}
+                  </Text>
+                  <Text className="text-xs font-plus-jakarta-medium text-gray-500">
+                    {getBillingCopy(pkg.identifier)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View className="rounded-2xl border border-dashed border-gray-200 px-4 py-3">
+              <Text className="text-sm font-plus-jakarta-medium text-gray-500">
+                Subscription options will appear here shortly.
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 

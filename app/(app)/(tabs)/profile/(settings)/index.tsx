@@ -49,6 +49,8 @@ export default function Settings() {
     let route: any;
     switch (action) {
       case Screens.NOTIFICATIONS:
+        alertComingSoon();
+        break;
       case Links.CONTACT_SUPPORT:
         Linking.openURL("https://www.leankly.com/contact");
         break;

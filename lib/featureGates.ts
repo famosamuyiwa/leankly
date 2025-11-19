@@ -2,7 +2,7 @@ import * as SecureStore from "expo-secure-store";
 
 export const FreeLimits = {
   // Base daily interests for free users (formerly "interests")
-  INTERESTS_PER_DAY: 1,
+  INTERESTS_PER_DAY: 5,
   // Bonus interests per successful referral
   INTERESTS_BONUS_PER_REFERRAL: 10,
   UNDOS_PER_DAY: 1,

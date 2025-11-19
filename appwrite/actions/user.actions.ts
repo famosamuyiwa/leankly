@@ -29,7 +29,7 @@ export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
           name: fullName || generateRandomUsername(),
           email: email || "",
           avatar: imageUrl || "",
-          age: "",
+          age: null,
           location: "",
           sex: "",
           pushToken: expoPushToken || "",

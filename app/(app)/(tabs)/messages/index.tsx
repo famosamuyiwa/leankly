@@ -314,7 +314,7 @@ export default function MessagesScreen() {
       <View className="mt-10 px-10 justify-center items-center gap-5">
         <Image
           source={{ uri: emptyScreenImages[isChats ? "Chats" : "Requests"] }}
-          className="h-60 w-full rounded-t-3xl"
+          className="h-60 w-full rounded-t-3xl border-1"
           contentFit="contain"
         />
         <Text className="font-plus-jakarta-extrabold text-gray-400 text-3xl ">

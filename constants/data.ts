@@ -144,15 +144,15 @@ export const dummyRequests: LeankRequest[] = [
 ];
 
 export const defaultCovers = [
-  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3b6003cb5a604cc/view?project=68e45dc0001e074ea36a",
-  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3a9002404f136d2/view?project=68e45dc0001e074ea36a",
-  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a3a20021eb2cdc53/view?project=68e45dc0001e074ea36a",
-  "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f5a39c000939308631/view?project=68e45dc0001e074ea36a",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20d00037f52f1934/view?project=691cc816003116a83a09",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20c800326fa5037c/view?project=691cc816003116a83a09",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20c10013191cc2df/view?project=691cc816003116a83a09",
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20b90010fa9220cf/view?project=691cc816003116a83a09",
 ];
 
 export const emptyScreenImages = {
   [NavbarOptions.REQUESTS]:
-    "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f9a44d003620bc1e29/view?project=68e45dc0001e074ea36a",
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20970036c05c83f7/view?project=691cc816003116a83a09",
   [NavbarOptions.CHATS]:
-    "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68f9a453001914585e5a/view?project=68e45dc0001e074ea36a",
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20a1000f1908d19a/view?project=691cc816003116a83a09",
 };

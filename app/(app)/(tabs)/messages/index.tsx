@@ -1,5 +1,5 @@
 import { updateArrayRow } from "@/appwrite/actions/leank.actions";
-import { appwriteConfig, db, sendPushNotification } from "@/appwrite/config";
+import { appwriteConfig, client, db, sendPushNotification } from "@/appwrite/config";
 import {
   ChatCard,
   LockedRequestPlaceholder,
@@ -207,6 +207,70 @@ export default function MessagesScreen() {
       fetchRequests();
     }, [fetchRequests, getChatDetails])
   );
+
+  useEffect(() => {
+    if (!currentUser?.$id) return;
+    const currentUserId = currentUser.$id as string;
+
+    const hasMutationEvent = (events: string[] = []) =>
+      events.some((event) =>
+        ["create", "update", "delete"].some((action) =>
+          event.endsWith(action) || event.includes(`.${action}`)
+        )
+      );
+
+    const requestChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.reactions}.rows`;
+    const chatChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows`;
+    const chatMetaChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.userChatMeta}.rows`;
+
+    const unsubscribeRequests = client.subscribe(requestChannel, (event) => {
+      if (!hasMutationEvent(event.events)) return;
+      const payload: any = event.payload;
+      const leankOwnerId =
+        payload?.leank?.ownerId ||
+        payload?.leank?.owner?.$id ||
+        payload?.ownerId;
+      if (leankOwnerId === currentUserId) {
+        fetchRequests();
+      }
+    });
+
+    const unsubscribeChats = client.subscribe(chatChannel, (event) => {
+      if (!hasMutationEvent(event.events)) return;
+      const payload: any = event.payload;
+      const participantIds: string[] = Array.isArray(payload?.participantIds)
+        ? payload.participantIds
+        : payload?.participantIds?.values || [];
+      const isRelevant =
+        payload?.ownerId === currentUserId ||
+        participantIds.includes(currentUserId);
+      if (isRelevant) {
+        getChatDetails();
+      }
+    });
+
+    const unsubscribeChatMeta = client.subscribe(
+      chatMetaChannel,
+      (event) => {
+        if (!hasMutationEvent(event.events)) return;
+        const payload: any = event.payload;
+        if (payload?.userId === currentUserId) {
+          fetchChatMeta();
+        }
+      }
+    );
+
+    return () => {
+      unsubscribeRequests();
+      unsubscribeChats();
+      unsubscribeChatMeta();
+    };
+  }, [
+    currentUser?.$id,
+    fetchRequests,
+    getChatDetails,
+    fetchChatMeta,
+  ]);
 
   useEffect(() => {
     const unread = chatRooms.filter((room) => {

@@ -52,10 +52,10 @@ export default function Settings() {
         alertComingSoon();
         break;
       case Links.CONTACT_SUPPORT:
-        Linking.openURL("https://www.leankly.com/contact");
+        Linking.openURL("https://leankly.com/contact");
         break;
       case Links.PRIVACY_POLICY:
-        Linking.openURL("https://www.leankly.com/privacy");
+        Linking.openURL("https://leankly.com/privacy");
         break;
       case Links.SOCIAL_MEDIA:
         Linking.openURL("https://x.com/leanklyapp");

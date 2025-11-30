@@ -10,6 +10,7 @@ import { useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  InteractionManager,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -34,6 +35,7 @@ function OnboardingContent() {
   const bottomSheetRef = useRef<any>({});
   const [referralCode, setReferralCode] = useState("");
   const [referralApplied, setReferralApplied] = useState<null | "ok" | "invalid" | "self" | "error">(null);
+  const isMountedRef = useRef(true);
 
   const {
     isEditing,
@@ -55,6 +57,14 @@ function OnboardingContent() {
     // Force editing mode on onboarding
     if (!isEditing) setIsEditing(true);
   }, [isEditing]);
+
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+      bottomSheetRef.current?.close();
+    };
+  }, []);
 
   const handleImagePress = async () => {
     try {
@@ -80,36 +90,61 @@ function OnboardingContent() {
 
   const onContinue = async () => {
     try {
-      if (!currentUser) return;
+      if (!currentUser || !isMountedRef.current) return;
+      
+      // Close bottom sheet if open to prevent rendering issues
+      bottomSheetRef.current?.close();
+      
       showLoader("Saving profile...");
+      
       // Optionally apply referral code if provided
       if (referralCode?.trim()) {
         try {
           const res = await applyReferralCode(currentUser.$id, referralCode.trim());
-          if (res.ok) {
+          if (res.ok && isMountedRef.current) {
             displayToast({ type: "success" as any, description: "Referral applied" });
             setReferralApplied("ok");
-          } else if (res.reason === "INVALID_CODE") {
+          } else if (res.reason === "INVALID_CODE" && isMountedRef.current) {
             displayToast({ type: "warning" as any, description: "Invalid referral code" });
-          } else if (res.reason === "SELF_REFERRAL") {
+          } else if (res.reason === "SELF_REFERRAL" && isMountedRef.current) {
             displayToast({ type: "warning" as any, description: "You cannot refer yourself" });
           }
         } catch (e) {
           // Do not block onboarding on referral failure
-          displayToast({ type: "error" as any, description: "Could not apply referral code" });
+          if (isMountedRef.current) {
+            displayToast({ type: "error" as any, description: "Could not apply referral code" });
+          }
         }
       }
+      
+      if (!isMountedRef.current) return;
+      
       await handleSave();
       await refetchCurrentUser();
-      displayToast({ type: "success" as any, description: "Profile saved" });
-      router.replace("/(app)/(tabs)");
+      
+      if (!isMountedRef.current) return;
+      
+      // Hide loader before navigation to prevent UI conflicts
+      hideLoader();
+      
+      // Wait for all interactions and animations to complete before navigating
+      InteractionManager.runAfterInteractions(() => {
+        // Add a small delay to ensure UI has fully settled
+        setTimeout(() => {
+          if (isMountedRef.current) {
+            displayToast({ type: "success" as any, description: "Profile saved" });
+            router.replace("/(app)/(tabs)");
+          }
+        }, 100);
+      });
     } catch (e) {
       console.error(e);
-      displayToast({
-        type: "error" as any,
-        description: "Failed to save profile",
-      });
-    } finally {
+      if (isMountedRef.current) {
+        displayToast({
+          type: "error" as any,
+          description: "Failed to save profile",
+        });
+      }
       hideLoader();
     }
   };

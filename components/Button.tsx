@@ -17,7 +17,7 @@ const CustomButton = ({
   bgClassName?: string;
 }) => {
   const handleOnPress = () => {
-    if (isLoading) return;
+    if (isLoading || isDisabled) return;
 
     onPress();
   };

@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 import Lottie from "lottie-react-native";
 import { cssInterop } from "nativewind";
 import React, { forwardRef, useImperativeHandle, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -44,40 +44,71 @@ const Loader = forwardRef(({}, ref) => {
 
   return (
     <>
-      {visibility && (
-        <Animated.View
-          layout={LinearTransition}
-          entering={FadeIn.duration(500)}
-          exiting={FadeOut.duration(500)}
-          className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "bg-black/50"} z-50`}
-        >
-          {pulse ? (
-            <View className="items-center justify-center">
-              <Image
-                source={images.whiteIcon}
-                className="absolute size-10  z-10"
-                contentFit="contain"
-              />
-              <Lottie
-                source={require("@/assets/animations/searching.json")}
-                loop={true}
-                autoPlay={true}
-                style={{
-                  width: 120,
-                  height: 120,
-                }}
-              />
-            </View>
-          ) : (
-            <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
-              <ActivityIndicator color={Colors.primary} size="small" />
-              <Text className="font-plus-jakarta-semibold">
-                {label || "Please wait..."}
-              </Text>
-            </View>
-          )}
-        </Animated.View>
-      )}
+      {visibility &&
+        (Platform.OS === "android" ? (
+          <View
+            className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "bg-black/50"} z-50`}
+          >
+            {pulse ? (
+              <View className="items-center justify-center">
+                <Image
+                  source={images.whiteIcon}
+                  className="absolute size-10  z-10"
+                  contentFit="contain"
+                />
+                <Lottie
+                  source={require("@/assets/animations/searching.json")}
+                  loop={true}
+                  autoPlay={true}
+                  style={{
+                    width: 120,
+                    height: 120,
+                  }}
+                />
+              </View>
+            ) : (
+              <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
+                <ActivityIndicator color={Colors.primary} size="small" />
+                <Text className="font-plus-jakarta-semibold">
+                  {label || "Please wait..."}
+                </Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <Animated.View
+            layout={LinearTransition}
+            entering={FadeIn.duration(500)}
+            exiting={FadeOut.duration(500)}
+            className={`w-full h-full absolute items-center justify-center ${pulse ? "bg-white" : "bg-black/50"} z-50`}
+          >
+            {pulse ? (
+              <View className="items-center justify-center">
+                <Image
+                  source={images.whiteIcon}
+                  className="absolute size-10  z-10"
+                  contentFit="contain"
+                />
+                <Lottie
+                  source={require("@/assets/animations/searching.json")}
+                  loop={true}
+                  autoPlay={true}
+                  style={{
+                    width: 120,
+                    height: 120,
+                  }}
+                />
+              </View>
+            ) : (
+              <View className=" bg-white rounded-xl p-5 flex-row items-center justify-center gap-5">
+                <ActivityIndicator color={Colors.primary} size="small" />
+                <Text className="font-plus-jakarta-semibold">
+                  {label || "Please wait..."}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        ))}
     </>
   );
 });

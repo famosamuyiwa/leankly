@@ -1,3 +1,4 @@
+import { applyReferralCode } from "@/appwrite/actions/user.actions";
 import { ProfileBottomSheet } from "@/components/BottomSheet";
 import CustomButton from "@/components/Button";
 import useImagePicker from "@/hooks/useImagePicker";
@@ -19,7 +20,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { applyReferralCode } from "@/appwrite/actions/user.actions";
 
 function OnboardingContent() {
   cssInterop(Image, { className: { target: "style" } });
@@ -34,7 +34,9 @@ function OnboardingContent() {
   const { pickMultimedia } = useImagePicker();
   const bottomSheetRef = useRef<any>({});
   const [referralCode, setReferralCode] = useState("");
-  const [referralApplied, setReferralApplied] = useState<null | "ok" | "invalid" | "self" | "error">(null);
+  const [referralApplied, setReferralApplied] = useState<
+    null | "ok" | "invalid" | "self" | "error"
+  >(null);
   const isMountedRef = useRef(true);
 
   const {
@@ -52,6 +54,9 @@ function OnboardingContent() {
     setAvatarMediaResult,
     handleSave,
   } = useProfileContext();
+
+  const isContinueDisabled =
+    !name?.trim() || !age || age < 18 || !location?.trim();
 
   useEffect(() => {
     // Force editing mode on onboarding
@@ -89,50 +94,69 @@ function OnboardingContent() {
   );
 
   const onContinue = async () => {
+    if (isContinueDisabled) return;
     try {
       if (!currentUser || !isMountedRef.current) return;
-      
+
       // Close bottom sheet if open to prevent rendering issues
       bottomSheetRef.current?.close();
-      
+
       showLoader("Saving profile...");
-      
+
       // Optionally apply referral code if provided
       if (referralCode?.trim()) {
         try {
-          const res = await applyReferralCode(currentUser.$id, referralCode.trim());
+          const res = await applyReferralCode(
+            currentUser.$id,
+            referralCode.trim()
+          );
           if (res.ok && isMountedRef.current) {
-            displayToast({ type: "success" as any, description: "Referral applied" });
+            displayToast({
+              type: "success" as any,
+              description: "Referral applied",
+            });
             setReferralApplied("ok");
           } else if (res.reason === "INVALID_CODE" && isMountedRef.current) {
-            displayToast({ type: "warning" as any, description: "Invalid referral code" });
+            displayToast({
+              type: "warning" as any,
+              description: "Invalid referral code",
+            });
           } else if (res.reason === "SELF_REFERRAL" && isMountedRef.current) {
-            displayToast({ type: "warning" as any, description: "You cannot refer yourself" });
+            displayToast({
+              type: "warning" as any,
+              description: "You cannot refer yourself",
+            });
           }
         } catch (e) {
           // Do not block onboarding on referral failure
           if (isMountedRef.current) {
-            displayToast({ type: "error" as any, description: "Could not apply referral code" });
+            displayToast({
+              type: "error" as any,
+              description: "Could not apply referral code",
+            });
           }
         }
       }
-      
+
       if (!isMountedRef.current) return;
-      
+
       await handleSave();
       await refetchCurrentUser();
-      
+
       if (!isMountedRef.current) return;
-      
+
       // Hide loader before navigation to prevent UI conflicts
       hideLoader();
-      
+
       // Wait for all interactions and animations to complete before navigating
       InteractionManager.runAfterInteractions(() => {
         // Add a small delay to ensure UI has fully settled
         setTimeout(() => {
           if (isMountedRef.current) {
-            displayToast({ type: "success" as any, description: "Profile saved" });
+            displayToast({
+              type: "success" as any,
+              description: "Profile saved",
+            });
             router.replace("/(app)/(tabs)");
           }
         }, 100);
@@ -198,7 +222,8 @@ function OnboardingContent() {
               onChangeText={(v) => setAge(Number(v))}
               keyboardType="numeric"
               returnKeyType="done"
-              placeholder="18"
+              placeholder="e.g 18"
+              placeholderTextColor="lightgray"
               className="p-0 flex-1 text-right text-gray-900 font-plus-jakarta-regular"
             />
           </View>
@@ -231,23 +256,33 @@ function OnboardingContent() {
 
         {/* Optional Referral Code */}
         <View className="bg-white p-5 rounded-2xl gap-4 mt-5">
-          <Text className="font-plus-jakarta-semibold color-gray-400">Referral code (optional)</Text>
+          <Text className="font-plus-jakarta-semibold color-gray-400">
+            Referral code (optional)
+          </Text>
           <View className="w-full flex-row items-center">
             <TextInput
               value={referralCode}
               onChangeText={setReferralCode}
               autoCapitalize="characters"
               placeholder="e.g. USER-1234"
+              placeholderTextColor="lightgray"
+              returnKeyType="done"
               className="p-0 flex-1 text-right text-gray-900 font-plus-jakarta-regular"
             />
           </View>
           {referralApplied === "ok" && (
-            <Text className="text-green-600 font-plus-jakarta-regular">Referral applied</Text>
+            <Text className="text-green-600 font-plus-jakarta-regular">
+              Referral applied
+            </Text>
           )}
         </View>
 
         <View className="mt-8">
-          <CustomButton label="Continue" onPress={onContinue} />
+          <CustomButton
+            label="Continue"
+            onPress={onContinue}
+            isDisabled={isContinueDisabled}
+          />
         </View>
 
         <Portal>

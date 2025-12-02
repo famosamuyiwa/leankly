@@ -1,7 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
-import { useDebouncedCallback } from "use-debounce";
 
 import { AntDesign, Feather } from "@expo/vector-icons";
 
@@ -10,24 +8,27 @@ const SearchBar = ({
   className,
   onFocus,
   onBlur,
+  value,
+  onChangeText,
 }: {
   placeholder?: string;
   className?: string;
   onFocus?: () => void;
   onBlur?: () => void;
+  value?: string;
+  onChangeText?: (text: string) => void;
 }) => {
-  const params = useLocalSearchParams<{ query?: string }>();
-  const [search, setSearch] = useState(params.query);
+  const [search, setSearch] = useState(value || "");
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const debouncedSearch = useDebouncedCallback((text: string) => {
-    router.setParams({ query: text });
-  }, 500);
+  useEffect(() => {
+    if (value !== undefined) setSearch(value);
+  }, [value]);
 
   const handleSearch = (text: string) => {
     setSearch(text);
-    debouncedSearch(text);
+    onChangeText?.(text);
   };
 
   const handleOnFocus = () => {
@@ -37,9 +38,6 @@ const SearchBar = ({
 
   const handleOnBlur = () => {
     setIsFocused(false);
-    setSearch("");
-    router.setParams({ query: "" });
-    inputRef.current?.blur();
     onBlur?.();
   };
 

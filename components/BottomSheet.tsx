@@ -97,19 +97,18 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
   );
 });
 
-const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
+const ProfileBottomSheet = forwardRef(({}, ref) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const GOOGLE_MAPS_PLACES_API_KEY =
     Constants.expoConfig?.extra?.googleMapsPlacesApiKey!;
   const { setLocation } = useProfileContext();
 
   // local state
+  const [query, setQuery] = useState("");
   const [placesResults, setPlacesResults] = useState<any[]>([]);
 
   useEffect(() => {
-    if (query) {
-      fetchPlaces();
-    }
+    fetchPlaces();
   }, [query]);
 
   // expose bottom sheet methods to parent
@@ -232,7 +231,12 @@ const ProfileBottomSheet = forwardRef(({ query }: { query?: string }, ref) => {
     >
       <BottomSheetView className="px-4 pb-5 h-full">
         {/*  Search input */}
-        <SearchBar placeholder="Search for a location" className="bg-white" />
+        <SearchBar
+          placeholder="Search for a location"
+          className="bg-white"
+          value={query}
+          onChangeText={setQuery}
+        />
 
         {/* current location */}
         <TouchableOpacity

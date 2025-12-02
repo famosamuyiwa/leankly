@@ -190,8 +190,11 @@ export const ChatCard = ({
   onItemUpdate: (item: Leank, meta: UserChatMeta) => void;
 }) => {
   const isUserLastMessage = item.lastMessage?.senderId === userId;
-  const isUnread =
-    (item.lastMessage?.$createdAt || new Date()) > (meta?.readAt || new Date());
+  const lastMessageTs = item.lastMessage?.$createdAt
+    ? new Date(item.lastMessage.$createdAt).getTime()
+    : 0;
+  const readAtTs = meta?.readAt ? new Date(meta.readAt).getTime() : 0;
+  const isUnread = !!lastMessageTs && !isUserLastMessage && lastMessageTs > readAtTs;
 
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;

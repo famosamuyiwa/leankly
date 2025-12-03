@@ -55,6 +55,10 @@ export interface Message extends Models.Row {
   senderName: string;
   senderPhoto: string;
   leankId: string;
+  replyToMessageId?: string | null;
+  replyToSenderId?: string | null;
+  replyToSenderName?: string | null;
+  replyToContent?: string | null;
 }
 
 export interface UserChatMeta extends Models.Row {

@@ -20,15 +20,16 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
+  Animated as RNAnimated,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { ID, Query } from "react-native-appwrite";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { Swipeable } from "react-native-gesture-handler";
+import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Chat() {
@@ -44,13 +45,16 @@ export default function Chat() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageContent, setMessageContent] = useState("");
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const headerHeight = Platform.OS === "ios" ? useHeaderHeight() : 0;
+  const headerHeight = useHeaderHeight();
   const listRef = useRef<any>(null);
+  const openSwipeRef = useRef<Swipeable | null>(null);
 
   useEffect(() => {
     handleFirstLoad();
   }, []);
+
 
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
@@ -113,7 +117,10 @@ export default function Chat() {
         ],
       });
 
-      setMessages((rows as unknown as Message[]).reverse());
+      const incoming = Array.isArray(rows)
+        ? (rows as unknown as Message[])
+        : [];
+      applyMessages([...incoming].reverse());
 
       if (
         total > 0 &&
@@ -126,26 +133,82 @@ export default function Chat() {
     }
   };
 
+  const applyMessages = (next: Message[]) => {
+    setMessages((prev) => {
+      if (!Array.isArray(prev) || prev.length === 0) return next;
+      if (!Array.isArray(next)) return prev;
+      const prevLast = prev[prev.length - 1]?.$id;
+      const nextLast = next[next.length - 1]?.$id;
+      const sameLength = prev.length === next.length;
+      const sameLast = prevLast && nextLast && prevLast === nextLast;
+      if (sameLength && sameLast) return prev;
+      return next;
+    });
+  };
+
   const sendMessage = async () => {
     if (messageContent.trim() === "" || !currentUser) return;
 
     try {
-      const message = {
+      const baseMessage = {
         content: messageContent,
         senderId: currentUser.$id,
         senderName: currentUser.name,
         senderPhoto: currentUser.avatar,
         leankId: chatId,
-      };
+      } as any;
 
-      const msg = await db.createRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.messages,
-        rowId: ID.unique(),
-        data: message,
+      if (replyTo) {
+        baseMessage.replyToMessageId = replyTo.$id;
+        baseMessage.replyToSenderId = replyTo.senderId;
+        baseMessage.replyToSenderName = replyTo.senderName;
+        baseMessage.replyToContent = replyTo.content;
+      }
+
+      let msg;
+      try {
+        msg = await db.createRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.messages,
+          rowId: ID.unique(),
+          data: baseMessage,
+        });
+      } catch (e) {
+        // If backend rejects replyTo, retry without it
+        if (replyTo) {
+          msg = await db.createRow({
+            databaseId: appwriteConfig.db,
+            tableId: appwriteConfig.tables.messages,
+            rowId: ID.unique(),
+            data: {
+              ...baseMessage,
+              replyToMessageId: undefined,
+              replyToSenderId: undefined,
+              replyToSenderName: undefined,
+              replyToContent: undefined,
+            },
+          });
+        } else {
+          throw e;
+        }
+      }
+
+      const messageToUse = {
+        ...(msg as any),
+        replyToMessageId: baseMessage.replyToMessageId,
+        replyToSenderId: baseMessage.replyToSenderId,
+        replyToSenderName: baseMessage.replyToSenderName,
+        replyToContent: baseMessage.replyToContent,
+      } as Message;
+
+      setMessages((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        return [...safePrev, messageToUse];
       });
 
       setMessageContent("");
+      setReplyTo(null);
+      openSwipeRef.current?.close();
 
       //update leank's last message
       db.updateRow({
@@ -153,7 +216,7 @@ export default function Chat() {
         tableId: appwriteConfig.tables.leanks,
         rowId: chatId as string,
         data: {
-          lastMessage: msg,
+          lastMessage: messageToUse,
           $updatedAt: new Date().toISOString(),
         },
       });
@@ -161,7 +224,7 @@ export default function Chat() {
       // alert participants
       sendPushNotification({
         type: PushNotificationTypes.CHAT,
-        data: message as Message,
+        data: (msg as unknown as Message) || baseMessage,
       });
     } catch (e) {
       console.log(e);
@@ -219,46 +282,14 @@ export default function Chat() {
     [currentLeank]
   );
 
-  const renderItem = ({ item }: { item: Message }) => {
-    const isSender = item.senderId === currentUser?.$id;
-    return (
-      <View
-        className={`flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
-      >
-        {!isSender && (
-          <Image
-            source={{ uri: item.senderPhoto }}
-            className="size-10 rounded-full"
-          />
-        )}
-        <View
-          className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${isSender ? "rounded-tr-none bg-primary-300" : "rounded-tl-none bg-gray-100"}`}
-        >
-          {!isSender && (
-            <Text
-              className={`font-plus-jakarta-bold ${isSender ? "color-white" : "color-black"}`}
-            >
-              {item.senderName}
-            </Text>
-          )}
-          <Text
-            className={`font-plus-jakarta-regular ${isSender ? "color-white" : "color-black"}`}
-          >
-            {item.content}
-          </Text>
-
-          <Text
-            className={`font-plus-jakarta-regular text-[10px] text-right ${isSender ? "color-gray-50" : "color-black"}`}
-          >
-            {new Date(item.$createdAt!).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  const renderItem = ({ item }: { item: Message }) => (
+    <MessageBubble
+      item={item}
+      currentUserId={currentUser?.$id}
+      onReplySelect={(msg) => setReplyTo(msg)}
+      openSwipeRef={openSwipeRef}
+    />
+  );
 
   if (!chatId) {
     return <Text>We could not find this chat room</Text>;
@@ -273,7 +304,7 @@ export default function Chat() {
   }
 
   return (
-    <Animated.View
+    <Reanimated.View
       layout={LinearTransition}
       entering={FadeIn.duration(400)}
       className="flex-1 px-5  bg-white"
@@ -309,8 +340,12 @@ export default function Chat() {
         {messages && (
           <LegendList
             ref={listRef}
-            data={messages}
-            initialScrollIndex={messages.length > 0 ? messages.length - 1 : 0}
+            data={Array.isArray(messages) ? messages : []}
+            initialScrollIndex={
+              Array.isArray(messages) && messages.length > 0
+                ? messages.length - 1
+                : undefined
+            }
             renderItem={renderItem}
             keyExtractor={(item) => item?.$id ?? "unknown"}
             recycleItems={true}
@@ -321,6 +356,42 @@ export default function Chat() {
             maintainVisibleContentPosition
             showsVerticalScrollIndicator={false}
           />
+        )}
+
+        {replyTo && (
+          <View
+            className="bg-gray-100 border border-gray-200 rounded-2xl p-3 my-2 flex-row gap-3 items-start"
+            style={{
+              borderLeftColor: getUserColor(replyTo.senderId),
+              borderLeftWidth: 3,
+            }}
+          >
+            <View className="flex-1">
+              <Text
+                className="font-plus-jakarta-semibold text-gray-600"
+                style={{ color: getUserColor(replyTo.senderId) }}
+              >
+                Replying to{" "}
+                {replyTo.senderId === currentUser?.$id
+                  ? "yourself"
+                  : replyTo.senderName}
+              </Text>
+              <Text
+                className="text-gray-500 font-plus-jakarta-regular mt-1"
+                numberOfLines={2}
+              >
+                {replyTo.content}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setReplyTo(null);
+                openSwipeRef.current?.close();
+              }}
+            >
+              <Ionicons name="close" size={18} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
         )}
 
         <View className="border-[1px] border-gray-200 bg-gray-100 rounded-full flex-row items-center gap-2 p-2 my-2 ">
@@ -346,6 +417,158 @@ export default function Chat() {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </Animated.View>
+    </Reanimated.View>
   );
 }
+
+const colorPalette = [
+  "#ef4444", // red-500
+  "#f97316", // orange-500
+  "#eab308", // amber-500
+  "#22c55e", // green-500
+  "#06b6d4", // cyan-500
+  "#3b82f6", // blue-500
+  "#a855f7", // purple-500
+  "#ec4899", // pink-500
+];
+
+const getUserColor = (id?: string | null) => {
+  if (!id) return Colors.primary;
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % colorPalette.length;
+  return colorPalette[index];
+};
+
+type MessageBubbleProps = {
+  item: Message;
+  currentUserId?: string;
+  onReplySelect: (msg: Message) => void;
+  openSwipeRef: React.MutableRefObject<Swipeable | null>;
+};
+
+const MessageBubble = React.memo(
+  ({
+    item,
+    currentUserId,
+    onReplySelect,
+    openSwipeRef,
+  }: MessageBubbleProps) => {
+    const isSender = item.senderId === currentUserId;
+    const replyTarget = item.replyToMessageId
+      ? {
+          messageId: item.replyToMessageId,
+          senderId: item.replyToSenderId,
+          senderName: item.replyToSenderName,
+          content: item.replyToContent,
+        }
+      : null;
+    const senderColor = getUserColor(item.senderId);
+    const replyColor = getUserColor(replyTarget?.senderId);
+    const swipeRef = useRef<Swipeable | null>(null);
+
+    const handleReplySelect = () => {
+      if (openSwipeRef.current && openSwipeRef.current !== swipeRef.current) {
+        openSwipeRef.current.close();
+      }
+      openSwipeRef.current = swipeRef.current;
+      onReplySelect(item);
+      swipeRef.current?.close();
+    };
+
+    return (
+      <Swipeable
+        ref={swipeRef}
+        overshootLeft={false}
+        leftThreshold={20}
+        renderLeftActions={(progress, dragX) => {
+          const scale = dragX.interpolate({
+            inputRange: [0, 40, 120],
+            outputRange: [0.5, 0.9, 1.1],
+            extrapolate: "clamp",
+          });
+          return (
+            <RNAnimated.View
+              style={{
+                justifyContent: "center",
+                paddingHorizontal: 16,
+                transform: [{ scale }],
+              }}
+            >
+              <Ionicons
+                name="return-up-back-outline"
+                size={20}
+                color={Colors.primary}
+              />
+            </RNAnimated.View>
+          );
+        }}
+        onSwipeableOpen={() => {
+          handleReplySelect();
+          requestAnimationFrame(() => swipeRef.current?.close());
+        }}
+      >
+        <View
+          className={`flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
+        >
+          {!isSender && (
+            <Image
+              source={{ uri: item.senderPhoto }}
+              className="size-10 rounded-full"
+            />
+          )}
+          <View
+            className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${isSender ? "rounded-tr-none bg-primary-300" : "rounded-tl-none bg-gray-100"}`}
+          >
+            {!isSender && (
+              <Text
+                className={`font-plus-jakarta-bold ${isSender ? "color-white" : "color-black"}`}
+                style={{ color: senderColor }}
+              >
+                {item.senderName}
+              </Text>
+            )}
+
+            {replyTarget && (
+              <View
+                className={`p-2 rounded-lg  ${isSender ? " bg-accent-100" : " bg-accent-100"}`}
+                style={{ borderLeftColor: replyColor, borderLeftWidth: 3 }}
+              >
+                <Text
+                  className="text-xs font-plus-jakarta-semibold text-gray-500"
+                  style={{ color: replyColor }}
+                >
+                  Replying to {replyTarget.senderName || "message"}
+                </Text>
+                <Text
+                  className={`text-xs font-plus-jakarta-regular ${isSender ? "text-slate-100" : "text-gray-600"} mt-1`}
+                  numberOfLines={2}
+                >
+                  {replyTarget.content}
+                </Text>
+              </View>
+            )}
+
+            <Text
+              className={`font-plus-jakarta-regular ${isSender ? "color-white" : "color-black"}`}
+            >
+              {item.content}
+            </Text>
+
+            <Text
+              className={`font-plus-jakarta-regular text-[10px] text-right ${isSender ? "color-gray-50" : "color-black"}`}
+            >
+              {new Date(item.$createdAt!).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        </View>
+      </Swipeable>
+    );
+  }
+);

@@ -55,7 +55,6 @@ export default function Chat() {
     handleFirstLoad();
   }, []);
 
-
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
     const unsubscribe = client.subscribe(channel, () => {
@@ -133,16 +132,17 @@ export default function Chat() {
     }
   };
 
-  const applyMessages = (next: Message[]) => {
+  const applyMessages = (rawNext: Message[]) => {
+    const decorated = injectDateSeparators(rawNext);
     setMessages((prev) => {
-      if (!Array.isArray(prev) || prev.length === 0) return next;
-      if (!Array.isArray(next)) return prev;
+      if (!Array.isArray(prev) || prev.length === 0) return decorated;
+      if (!Array.isArray(decorated)) return prev;
       const prevLast = prev[prev.length - 1]?.$id;
-      const nextLast = next[next.length - 1]?.$id;
-      const sameLength = prev.length === next.length;
+      const nextLast = decorated[decorated.length - 1]?.$id;
+      const sameLength = prev.length === decorated.length;
       const sameLast = prevLast && nextLast && prevLast === nextLast;
       if (sameLength && sameLast) return prev;
-      return next;
+      return decorated;
     });
   };
 
@@ -193,8 +193,10 @@ export default function Chat() {
         }
       }
 
+      const createdAt = (msg as any)?.$createdAt || new Date().toISOString();
       const messageToUse = {
         ...(msg as any),
+        $createdAt: createdAt,
         replyToMessageId: baseMessage.replyToMessageId,
         replyToSenderId: baseMessage.replyToSenderId,
         replyToSenderName: baseMessage.replyToSenderName,
@@ -202,8 +204,10 @@ export default function Chat() {
       } as Message;
 
       setMessages((prev) => {
-        const safePrev = Array.isArray(prev) ? prev : [];
-        return [...safePrev, messageToUse];
+        const safePrev = Array.isArray(prev)
+          ? prev.filter((m) => m.type !== "system-date")
+          : [];
+        return injectDateSeparators([...safePrev, messageToUse]);
       });
 
       setMessageContent("");
@@ -310,7 +314,7 @@ export default function Chat() {
       className="flex-1 px-5  bg-white"
       style={{ paddingTop: insets.top }}
     >
-      <View className="gap-5 border-b-[0.4px] border-gray-200 flex-row py-2 items-center">
+      <View className="gap-5 border-b-[0.4px] mb-5 border-gray-200 flex-row py-2 items-center">
         <TouchableOpacity activeOpacity={0.6} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={30} />
         </TouchableOpacity>
@@ -457,6 +461,10 @@ const MessageBubble = React.memo(
     onReplySelect,
     openSwipeRef,
   }: MessageBubbleProps) => {
+    const isSystem =
+      item.senderId === "system" ||
+      item.type === "system" ||
+      item.type === "system-date";
     const isSender = item.senderId === currentUserId;
     const replyTarget = item.replyToMessageId
       ? {
@@ -479,9 +487,20 @@ const MessageBubble = React.memo(
       swipeRef.current?.close();
     };
 
+    if (isSystem) {
+      return (
+        <View className="w-full items-center mb-5 px-5">
+          <Text className="text-gray-500 text-xs font-plus-jakarta-regular text-center">
+            {item.content}
+          </Text>
+        </View>
+      );
+    }
+
     return (
       <Swipeable
         ref={swipeRef}
+        enabled
         overshootLeft={false}
         leftThreshold={20}
         renderLeftActions={(progress, dragX) => {
@@ -521,7 +540,11 @@ const MessageBubble = React.memo(
             />
           )}
           <View
-            className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${isSender ? "rounded-tr-none bg-primary-300" : "rounded-tl-none bg-gray-100"}`}
+            className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${
+              isSender
+                ? "rounded-tr-none bg-primary-300"
+                : "rounded-tl-none bg-gray-100"
+            }`}
           >
             {!isSender && (
               <Text

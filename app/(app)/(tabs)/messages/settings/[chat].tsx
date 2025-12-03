@@ -131,6 +131,7 @@ export default function Settings() {
         tableId: appwriteConfig.tables.participants,
         rowId: participantId,
       });
+      await createSystemMessage(`${currentUser.name} left the chat`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -185,10 +186,30 @@ export default function Settings() {
         tableId: appwriteConfig.tables.participants,
         rowId: leanker.$id,
       });
+      await createSystemMessage(`${leanker.user.name} was removed from the chat`);
 
       setLeankers((prev) => prev.filter((l) => l.$id !== leanker.$id));
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const createSystemMessage = async (content: string) => {
+    try {
+      await db.createRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.messages,
+        rowId: require("react-native-appwrite").ID.unique(),
+        data: {
+          leankId: currentLeank?.$id,
+          content,
+          senderId: "system",
+          senderName: "System",
+          senderPhoto: "",
+        },
+      });
+    } catch (e) {
+      console.log("Failed to create system message", e);
     }
   };
 

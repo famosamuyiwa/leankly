@@ -55,6 +55,7 @@ export interface Message extends Models.Row {
   senderName: string;
   senderPhoto: string;
   leankId: string;
+  type?: "system" | "user";
   replyToMessageId?: string | null;
   replyToSenderId?: string | null;
   replyToSenderName?: string | null;

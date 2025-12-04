@@ -21,6 +21,10 @@ if (!process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID is not set");
 }
 
+if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+  throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set");
+}
+
 const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,

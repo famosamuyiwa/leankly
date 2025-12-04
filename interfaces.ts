@@ -62,6 +62,30 @@ export interface Message extends Models.Row {
   replyToContent?: string | null;
 }
 
+export interface BasicUser {
+  $id: string;
+  name?: string;
+  age?: number;
+  avatar?: string;
+  joinedAt?: string;
+}
+
+export interface Block {
+  $id: string;
+  blockerId: string;
+  blockedId: string;
+  createdAt?: string;
+}
+
+export interface Report {
+  $id: string;
+  reporterId: string;
+  reportedId: string;
+  reason: string;
+  notes?: string;
+  $createdAt?: string;
+}
+
 export interface UserChatMeta extends Models.Row {
   leankId: string;
   userId: string;

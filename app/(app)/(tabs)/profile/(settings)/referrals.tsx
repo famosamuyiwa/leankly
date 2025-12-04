@@ -4,6 +4,7 @@ import {
 } from "@/appwrite/actions/user.actions";
 import { AppGradient } from "@/components/AppGradient";
 import { Colors } from "@/constants/common";
+import { mascotPoses } from "@/constants/data";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { Entypo, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -94,20 +95,11 @@ const ReferralsScreen = () => {
           <MaterialIcons name="keyboard-backspace" size={16} color="white" />
         </Pressable>
       </View>
-      <View>
-        <Image
-          style={styles.topImage}
-          source={require("@/assets/images/refer1.png")}
-          contentFit="cover"
-          transition={1000}
-        />
-        <Image
-          style={styles.bottomImage}
-          source={require("@/assets/images/refer2.png")}
-          contentFit="cover"
-          transition={1000}
-        />
-      </View>
+      <Image
+        source={{ uri: mascotPoses.REFER }}
+        className="h-80 w-full"
+        contentFit="cover"
+      />
       <View className="justify-center items-center">
         <Text className="text-2xl py-2 font-plus-jakarta-bold text-white">
           Refer and Earn

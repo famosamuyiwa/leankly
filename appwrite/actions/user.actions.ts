@@ -2,6 +2,8 @@ import { generateRandomUsername } from "@/lib/utils";
 import { router } from "expo-router";
 import { Query } from "react-native-appwrite";
 import { appwriteConfig, db } from "../config";
+import { Block } from "@/interfaces";
+import { ID } from "react-native-appwrite";
 
 export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
   try {
@@ -40,6 +42,73 @@ export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
     router.replace("/");
   } catch (e) {
     console.warn("Error Saving user data to appwrite: ", e);
+  }
+};
+
+export const blockUser = async (blockerId: string, blockedId: string) => {
+  if (!blockerId || !blockedId || blockerId === blockedId) return;
+  try {
+    // Idempotency: check existing
+    const existing = await db.listRows({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.blocks,
+      queries: [
+        Query.equal("blockerId", blockerId),
+        Query.equal("blockedId", blockedId),
+      ],
+    });
+    if (existing.total && existing.total > 0) return existing.rows[0] as Block;
+
+    const res = await db.createRow({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.blocks,
+      rowId: ID.unique(),
+      data: { blockerId, blockedId },
+    });
+    return res as unknown as Block;
+  } catch (e) {
+    console.warn("blockUser failed", e);
+    throw e;
+  }
+};
+
+export const fetchBlocked = async (blockerId: string) => {
+  try {
+    const { rows } = await db.listRows({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.blocks,
+      queries: [Query.equal("blockerId", blockerId)],
+    });
+    return rows as unknown as Block[];
+  } catch (e) {
+    console.warn("fetchBlocked failed", e);
+    return [];
+  }
+};
+
+export const reportUser = async (
+  reporterId: string,
+  reportedId: string,
+  reason: string,
+  notes?: string
+) => {
+  if (!reporterId || !reportedId || !reason) return;
+  try {
+    await db.createRow({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.reports,
+      rowId: ID.unique(),
+      data: {
+        reporterId,
+        reportedId,
+        reason,
+        notes: notes || "",
+      },
+    });
+    return true;
+  } catch (e) {
+    console.warn("reportUser failed", e);
+    throw e;
   }
 };
 

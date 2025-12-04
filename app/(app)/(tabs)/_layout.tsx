@@ -31,6 +31,7 @@ export default function TabLayout() {
             name="create"
             options={{
               title: "Create",
+              headerTitle: "Create 😎",
               headerTitleAlign: "center",
               headerShadowVisible: false,
               headerTitleStyle: HeaderStyles.headerTitleStyle,

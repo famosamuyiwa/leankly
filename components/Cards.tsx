@@ -1,7 +1,7 @@
 import { appwriteConfig, client, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { RequestAction } from "@/constants/enums";
-import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
+import { BasicUser, Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { usePremium } from "@/lib/PremiumContext";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -68,7 +68,11 @@ export const LeankCard = ({ item, onPress }: LeankProps) => {
   );
 };
 
-export const LeankCardBig = ({ item, onPress }: LeankProps) => {
+export const LeankCardBig = ({
+  item,
+  onPress,
+  onAvatarPress,
+}: LeankProps & { onAvatarPress?: (user: BasicUser) => void }) => {
   // Interop the Image component to recognize the 'className' prop
   cssInterop(Image, {
     className: { target: "style" },
@@ -85,10 +89,23 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
       />
       <View className="gap-5 px-5">
         <View className="flex-row gap-5 ">
-          <Image
-            source={{ uri: item.owner?.avatar }}
-            className="size-20 rounded-full"
-          />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              onAvatarPress?.({
+                $id: item.owner?.$id || item.ownerId,
+                name: item.owner?.name,
+                age: item.owner?.age,
+                avatar: item.owner?.avatar,
+                joinedAt: (item.owner as any)?.$createdAt,
+              } as BasicUser)
+            }
+          >
+            <Image
+              source={{ uri: item.owner?.avatar }}
+              className="size-20 rounded-full"
+            />
+          </TouchableOpacity>
           <View className="gap-2 justify-center  max-w-[90%]">
             <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
             <Text className="font-plus-jakarta-regular color-gray-400">
@@ -100,23 +117,28 @@ export const LeankCardBig = ({ item, onPress }: LeankProps) => {
           {item.description}
         </Text>
         <View className="flex-row items-center gap-3">
-          <Ionicons name="calendar-clear" size={16} />
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <Ionicons name="calendar-clear" color={Colors.accent} />
+          </View>
           <Text className=" font-plus-jakarta-bold">
             {formatDate(item.date)}
           </Text>
         </View>
         <View className="flex-row items-center gap-3">
-          <MaterialCommunityIcons
-            name="clock-time-three"
-            size={16}
-            color="black"
-          />
-
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <MaterialCommunityIcons
+              name="clock-time-three"
+              size={16}
+              color={Colors.accent}
+            />
+          </View>
           <Text className=" font-plus-jakarta-bold">{item.time || "--"}</Text>
         </View>
 
         <View className="flex-row items-center gap-3">
-          <Entypo name="location" size={16} color="black" />
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <Entypo name="location" size={16} color={Colors.accent} />
+          </View>
           <Text className=" font-plus-jakarta-bold">{item.location}</Text>
         </View>
       </View>
@@ -194,7 +216,8 @@ export const ChatCard = ({
     ? new Date(item.lastMessage.$createdAt).getTime()
     : 0;
   const readAtTs = meta?.readAt ? new Date(meta.readAt).getTime() : 0;
-  const isUnread = !!lastMessageTs && !isUserLastMessage && lastMessageTs > readAtTs;
+  const isUnread =
+    !!lastMessageTs && !isUserLastMessage && lastMessageTs > readAtTs;
 
   useEffect(() => {
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;

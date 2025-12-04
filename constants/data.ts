@@ -1,5 +1,11 @@
 import { Leank, LeankRequest, User } from "@/interfaces";
-import { FilterOptions, LeankStatus, NavbarOptions, Screens } from "./enums";
+import {
+  FilterOptions,
+  LeankStatus,
+  MascotPoses,
+  NavbarOptions,
+  Screens,
+} from "./enums";
 
 export const user: User = {
   avatar:
@@ -155,4 +161,14 @@ export const emptyScreenImages = {
     "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20970036c05c83f7/view?project=691cc816003116a83a09",
   [NavbarOptions.CHATS]:
     "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/691e20a1000f1908d19a/view?project=691cc816003116a83a09",
+};
+
+export const mascotPoses = {
+  [MascotPoses.SMILE_THUMBS_UP]:
+    // "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/6930bd290022ed94561c/view?project=691cc816003116a83a09",
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/6930c2da0001e7a360de/view?project=691cc816003116a83a09",
+  [MascotPoses.REFER]:
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/6930cd3800002e5fa1f8/view?project=691cc816003116a83a09",
+  [MascotPoses.POWER_UP]:
+    "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/6930d22500095f44f771/view?project=691cc816003116a83a09",
 };

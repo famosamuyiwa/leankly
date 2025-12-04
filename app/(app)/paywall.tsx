@@ -1,7 +1,10 @@
 import GradientText from "@/components/GradientText";
+import { mascotPoses } from "@/constants/data";
 import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { cssInterop } from "nativewind";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,6 +24,10 @@ export default function PaywallScreen() {
   );
   const defaultPackage = packages[0];
   const isBusy = loading || processing;
+  // Interop the Image component to recognize the 'className' prop
+  cssInterop(Image, {
+    className: { target: "style" },
+  });
 
   useEffect(() => {
     if (!selectedPackageId && defaultPackage?.identifier) {
@@ -119,6 +126,11 @@ export default function PaywallScreen() {
       >
         Leankly+
       </GradientText>
+      <Image
+        source={{ uri: mascotPoses.POWER_UP }}
+        className="h-60 w-full absolute -right-20 top-36"
+        contentFit="cover"
+      />
 
       <View className="mt-4 mb-8 gap-4">
         <View className="flex-row items-center gap-3">

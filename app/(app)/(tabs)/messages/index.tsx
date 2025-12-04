@@ -32,7 +32,7 @@ export default function MessagesScreen() {
     nav?: string;
   }>();
 
-  const { unreadCount, setUnreadCount, currentUser } = useGlobalContext();
+  const { unreadCount, setUnreadCount, currentUser, blockedUserIds } = useGlobalContext();
   const { isPro, openPaywall } = usePremium();
   const [refreshing, setRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -177,7 +177,10 @@ export default function MessagesScreen() {
           Query.equal("status", LeankStatus.ACTIVE),
         ],
       });
-      setChatRooms(rows as unknown as Leank[]);
+      const cleaned = (rows as unknown as Leank[]).filter(
+        (r) => !blockedUserIds.includes(r.ownerId)
+      );
+      setChatRooms(cleaned);
     } catch (e) {
       console.log(e);
     }

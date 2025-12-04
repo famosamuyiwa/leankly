@@ -51,7 +51,13 @@ export enum NavbarOptions {
   REQUESTS = "Requests",
   CHATS = "Chats",
   HOSTED = "Hosted",
-  JOINED = "Joined",
+  JOINED = "Attended",
+}
+
+export enum MascotPoses {
+  SMILE_THUMBS_UP = "SMILE_THUMBS_UP",
+  REFER = "REFER",
+  POWER_UP = "POWER_UP",
 }
 
 export enum Time {

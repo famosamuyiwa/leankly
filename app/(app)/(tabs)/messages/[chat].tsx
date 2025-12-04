@@ -6,7 +6,7 @@ import {
 } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { PushNotificationTypes } from "@/constants/enums";
-import { Leank, Message } from "@/interfaces";
+import { BasicUser, Leank, Message } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -39,7 +39,7 @@ export default function Chat() {
   });
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
-  const { currentUser } = useGlobalContext();
+  const { currentUser, openUserPreview } = useGlobalContext();
 
   const { chat: chatId } = useLocalSearchParams();
 
@@ -292,6 +292,14 @@ export default function Chat() {
       currentUserId={currentUser?.$id}
       onReplySelect={(msg) => setReplyTo(msg)}
       openSwipeRef={openSwipeRef}
+      onUserPress={(user) =>
+        openUserPreview({
+          $id: user.$id,
+          name: user.name,
+          avatar: user.avatar,
+          age: user.age,
+        })
+      }
     />
   );
 
@@ -447,11 +455,60 @@ const getUserColor = (id?: string | null) => {
   return colorPalette[index];
 };
 
+const injectDateSeparators = (raw: Message[] = []) => {
+  if (!Array.isArray(raw)) return [];
+  const result: Message[] = [];
+  let lastKey = "";
+
+  raw.forEach((msg, idx) => {
+    const createdAt =
+      msg.$createdAt || msg.$updatedAt || new Date().toISOString();
+    const dateObj = new Date(createdAt);
+    const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
+
+    if (dateKey !== lastKey) {
+      result.push({
+        $id: `date-${dateKey}-${idx}`,
+        content: formatDateLabel(dateObj),
+        senderId: "system",
+        senderName: "System",
+        senderPhoto: "",
+        leankId: msg.leankId,
+        type: "system-date",
+      } as Message);
+      lastKey = dateKey;
+    }
+
+    result.push(msg);
+  });
+
+  return result;
+};
+
+const formatDateLabel = (date: Date) => {
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.floor(
+    (startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};
+
 type MessageBubbleProps = {
   item: Message;
   currentUserId?: string;
   onReplySelect: (msg: Message) => void;
   openSwipeRef: React.MutableRefObject<Swipeable | null>;
+  onUserPress?: (user: BasicUser) => void;
 };
 
 const MessageBubble = React.memo(
@@ -460,6 +517,7 @@ const MessageBubble = React.memo(
     currentUserId,
     onReplySelect,
     openSwipeRef,
+    onUserPress,
   }: MessageBubbleProps) => {
     const isSystem =
       item.senderId === "system" ||
@@ -534,10 +592,21 @@ const MessageBubble = React.memo(
           className={`flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
         >
           {!isSender && (
-            <Image
-              source={{ uri: item.senderPhoto }}
-              className="size-10 rounded-full"
-            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                onUserPress?.({
+                  $id: item.senderId,
+                  name: item.senderName,
+                  avatar: item.senderPhoto,
+                })
+              }
+            >
+              <Image
+                source={{ uri: item.senderPhoto }}
+                className="size-10 rounded-full"
+              />
+            </TouchableOpacity>
           )}
           <View
             className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${

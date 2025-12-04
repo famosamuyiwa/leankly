@@ -36,6 +36,8 @@ const appwriteConfig = {
     participants: "participants",
     reactions: "reactions",
     referrals: "referrals",
+    blocks: "blocks",
+    reports: "reports",
   },
 };
 

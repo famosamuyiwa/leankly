@@ -1,10 +1,12 @@
 import { updateArrayRow } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
+import { Colors } from "@/constants/common";
 import { LeankStatus, NavbarOptions } from "@/constants/enums";
-import { Participants } from "@/interfaces";
+import { BasicUser, Participants } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
-import { Ionicons } from "@expo/vector-icons";
+import { formatDate } from "@/lib/utils";
+import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -27,7 +29,7 @@ export default function Settings() {
   });
 
   const { currentLeank } = useMessagesContext();
-  const { currentUser } = useGlobalContext();
+  const { currentUser, openUserPreview } = useGlobalContext();
   const { showLoader, hideLoader } = useGlobalContext();
 
   const [leankers, setLeankers] = useState<Participants[]>([]);
@@ -131,7 +133,7 @@ export default function Settings() {
         tableId: appwriteConfig.tables.participants,
         rowId: participantId,
       });
-      await createSystemMessage(`${currentUser.name} left the chat`);
+      await createSystemMessage(`${currentUser.name} left the leank`);
     } catch (e) {
       console.error(e);
     } finally {
@@ -186,7 +188,9 @@ export default function Settings() {
         tableId: appwriteConfig.tables.participants,
         rowId: leanker.$id,
       });
-      await createSystemMessage(`${leanker.user.name} was removed from the chat`);
+      await createSystemMessage(
+        `${leanker.user.name} was removed from the chat`
+      );
 
       setLeankers((prev) => prev.filter((l) => l.$id !== leanker.$id));
     } catch (e) {
@@ -216,10 +220,22 @@ export default function Settings() {
   const leankerItem = (item: Participants, index: number) => (
     <View key={index} className="flex-row justify-between items-center">
       <View className="flex-row items-center gap-5">
-        <Image
-          source={{ uri: item.user.avatar }}
-          className="size-14 rounded-full"
-        />
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() =>
+            openUserPreview({
+              $id: item.user.$id,
+              name: item.user.name,
+              age: item.user.age as any,
+              avatar: item.user.avatar,
+            } as BasicUser)
+          }
+        >
+          <Image
+            source={{ uri: item.user.avatar }}
+            className="size-14 rounded-full"
+          />
+        </TouchableOpacity>
         <Text className="font-plus-jakarta-semibold">
           {item.user.$id === currentUser?.$id ? "You" : item.user.name}
         </Text>
@@ -261,17 +277,56 @@ export default function Settings() {
           >
             <Ionicons name="arrow-back" size={20} />
           </TouchableOpacity>
-          <Text className="font-plus-jakarta-bold text-3xl color-white">
-            {currentLeank?.title}
-          </Text>
+          <View className="gap-2">
+            <Text className="font-plus-jakarta-bold text-3xl color-white">
+              {currentLeank?.title}
+            </Text>
+            {currentLeank?.description && (
+              <Text className=" font-plus-jakarta-semibold color-gray-200">
+                {currentLeank.description}
+              </Text>
+            )}
+          </View>
         </View>
 
         {memoizedCover}
       </View>
 
+      <View className="flex-row flex-wrap gap-x-5 gap-y-2 px-5 pt-5">
+        <View className="flex-row items-center gap-3">
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <Ionicons name="calendar-clear" size={16} color={Colors.accent} />
+          </View>
+          <Text className="font-plus-jakarta-bold flex-shrink">
+            {currentLeank ? formatDate(currentLeank.date) : "--"}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-3">
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <MaterialCommunityIcons
+              name="clock-time-three"
+              size={16}
+              color={Colors.accent}
+            />
+          </View>
+          <Text className="font-plus-jakarta-bold flex-shrink">
+            {currentLeank?.time || "--"}
+          </Text>
+        </View>
+
+        <View className="flex-row items-center gap-3">
+          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
+            <Entypo name="location" size={16} color={Colors.accent} />
+          </View>
+          <Text className="font-plus-jakarta-bold flex-shrink">
+            {currentLeank?.location}
+          </Text>
+        </View>
+      </View>
+
       <View className="p-5 gap-10">
         <View className="gap-3">
-          <Text className="font-plus-jakarta-semibold">
+          <Text className="font-plus-jakarta-semibold color-gray-400">
             {Number(leankers.length) + 1} leankers
           </Text>
 

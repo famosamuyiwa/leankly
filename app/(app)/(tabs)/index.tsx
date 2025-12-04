@@ -34,7 +34,14 @@ export default function HomeScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);
 
-  const { currentUser, showLoader, hideLoader, setCurrentUser } = useGlobalContext();
+  const {
+    currentUser,
+    showLoader,
+    hideLoader,
+    setCurrentUser,
+    blockedUserIds,
+    openUserPreview,
+  } = useGlobalContext();
   const { filters } = useFiltersContext();
   const { isPro, openPaywall } = usePremium();
 
@@ -44,7 +51,11 @@ export default function HomeScreen() {
     filters
   );
 
-  const currentLeank = leanks[currentIndex];
+  const filteredLeanks = leanks.filter(
+    (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || "")
+  );
+
+  const currentLeank = filteredLeanks[currentIndex];
 
   // ———————————————————————————
   // 1️⃣ Reset on new filters
@@ -54,17 +65,25 @@ export default function HomeScreen() {
     setPreviousIndexes([]);
   }, [filters]);
 
+  useEffect(() => {
+    if (currentIndex >= filteredLeanks.length) {
+      setCurrentIndex(
+        filteredLeanks.length > 0 ? filteredLeanks.length - 1 : 0
+      );
+    }
+  }, [filteredLeanks.length]);
+
   // ———————————————————————————
   // 2️⃣ Prefetch when near end
   // ———————————————————————————
   useEffect(() => {
     if (!loading && hasMore && leanks.length > 0) {
       const threshold = 1;
-      if (currentIndex >= leanks.length - threshold) {
+      if (currentIndex >= filteredLeanks.length - threshold) {
         loadMore();
       }
     }
-  }, [currentIndex, leanks.length, hasMore, loading, loadMore]);
+  }, [currentIndex, filteredLeanks.length, hasMore, loading, loadMore]);
 
   // ———————————————————————————
   // 3️⃣ Handle reactions
@@ -91,7 +110,10 @@ export default function HomeScreen() {
           // Optimistically reflect bonus deduction in global user
           setCurrentUser((prev: any) =>
             prev
-              ? { ...prev, bonusInterests: Math.max(0, (prev.bonusInterests || 0) - 1) }
+              ? {
+                  ...prev,
+                  bonusInterests: Math.max(0, (prev.bonusInterests || 0) - 1),
+                }
               : prev
           );
         }
@@ -193,7 +215,10 @@ export default function HomeScreen() {
                   Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300"
                 } absolute w-5/6 bottom-2`}
               />
-              <LeankCardBig item={currentLeank} />
+              <LeankCardBig
+                item={currentLeank}
+                onAvatarPress={(user) => openUserPreview(user)}
+              />
             </View>
 
             {/* Reaction buttons */}
@@ -255,7 +280,7 @@ export default function HomeScreen() {
                 />
               </View>
             ) : (
-              <EmptyLeanks />
+              <EmptyLeanks isMascotVisible />
             )}
           </Animated.View>
         )}

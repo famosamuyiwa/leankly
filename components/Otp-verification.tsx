@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import {
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -209,9 +210,11 @@ const OTPVerification = ({
         </View>
         <View style={{}}>
           <View>
-            <View className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl items-center justify-center mb-10 shadow-lg">
-              <Ionicons name="mail" size={40} color="white" />
-            </View>
+            {Platform.OS === "ios" && (
+              <View className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl items-center justify-center mb-10 shadow-lg">
+                <Ionicons name="mail" size={40} color="white" />
+              </View>
+            )}
             <Text className="font-plus-jakarta-semibold" style={styles.heading}>
               Verify your email
             </Text>

@@ -1,6 +1,6 @@
 import CustomButton from "@/components/Button";
 import GradientText from "@/components/GradientText";
-import { mascotPoses } from "@/constants/data";
+import { noResultImage } from "@/constants/data";
 import images from "@/constants/images";
 import { Image } from "expo-image";
 import Lottie from "lottie-react-native";
@@ -19,20 +19,20 @@ type Props = {
   onPrimaryAction?: () => void;
   primaryLabel?: string;
   isPulsing?: boolean;
-  isMascotVisible?: boolean;
+  isIconVisible?: boolean;
 };
 
 export default function EmptyLeanks({
   title = "No leanks right now",
   subtitle = "Try adjusting your filters or check back soon.",
-  isMascotVisible = false,
+  isIconVisible = false,
   onRefresh,
   onPrimaryAction,
   primaryLabel,
   isPulsing = false,
 }: Props) {
   return (
-    <View className="w-full items-center px-8">
+    <View className="w-full items-center px-8 ">
       {isPulsing && (
         <View className="items-center justify-center mb-6">
           <Image
@@ -49,10 +49,10 @@ export default function EmptyLeanks({
         </View>
       )}
 
-      {isMascotVisible && (
+      {isIconVisible && (
         <Image
-          source={{ uri: mascotPoses.SMILE_THUMBS_UP }}
-          className="h-60 w-full"
+          source={{ uri: noResultImage }}
+          className="h-32 w-full mb-5"
           contentFit="contain"
         />
       )}

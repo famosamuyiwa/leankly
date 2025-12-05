@@ -172,3 +172,6 @@ export const mascotPoses = {
   [MascotPoses.POWER_UP]:
     "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/6930d22500095f44f771/view?project=691cc816003116a83a09",
 };
+
+export const noResultImage =
+  "https://nyc.cloud.appwrite.io/v1/storage/buckets/691cd29c001a80b6d29f/files/69332ced000de60c935c/view?project=691cc816003116a83a09";

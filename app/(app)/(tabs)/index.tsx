@@ -280,7 +280,7 @@ export default function HomeScreen() {
                 />
               </View>
             ) : (
-              <EmptyLeanks isMascotVisible />
+              <EmptyLeanks isIconVisible />
             )}
           </Animated.View>
         )}

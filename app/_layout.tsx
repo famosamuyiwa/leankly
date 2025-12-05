@@ -6,6 +6,7 @@ import PremiumProvider from "@/lib/PremiumContext";
 import { currentScreenRef } from "@/lib/ScreenTracker";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import Constants from "expo-constants";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
@@ -65,11 +66,9 @@ export default function Layout() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
+  const key = Constants.expoConfig?.extra?.clerkPublishableKey;
   return (
-    <ClerkProvider
-      tokenCache={tokenCache}
-      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}
-    >
+    <ClerkProvider tokenCache={tokenCache} publishableKey={key}>
       <PushNotificationProvider>
         <GlobalProvider>
           <PremiumProvider>

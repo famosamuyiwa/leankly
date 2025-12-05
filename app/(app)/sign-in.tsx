@@ -1,8 +1,8 @@
+import { ResizeMode, Video } from "expo-av";
 import { Image } from "expo-image";
 import {
   Alert,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -44,22 +44,36 @@ const SignIn = () => {
   };
 
   return (
-    <Animated.View
-      layout={LinearTransition}
-      entering={FadeIn.duration(500)}
-      className="bg-white h-full"
-    >
-      <ScrollView contentContainerClassName="h-full">
-        <Image
-          source={images.onboarding}
-          style={styles.onboardImg}
-          contentFit="contain"
-        />
-        <View className="px-10">
+    <View style={styles.container}>
+      <Video
+        source={require("@/assets/videos/auth_playback.mp4")}
+        style={styles.backgroundVideo}
+        resizeMode={ResizeMode.COVER}
+        isMuted
+        shouldPlay
+        isLooping
+        useNativeControls={false}
+      />
+      <View pointerEvents="none" style={styles.overlay} />
+
+      <Animated.View
+        layout={LinearTransition}
+        entering={FadeIn.duration(500)}
+        className="h-full p-10 justify-between"
+        style={styles.content}
+      >
+        <View className="items-center p-10">
+          <Image
+            source={images.whiteIcon}
+            className=" size-10  "
+            contentFit="contain"
+          />
+        </View>
+        <View>
           <GradientText className="text-xl text-center font-plus-jakarta-semibold">
             Leankly
           </GradientText>
-          <Text className="text-3xl font-plus-jakarta-bold text-black-300 text-center mt-2">
+          <Text className="text-3xl font-plus-jakarta-bold text-white text-center mt-2">
             Side Questing For
           </Text>
           <View className="flex-row justify-center items-center">
@@ -80,7 +94,7 @@ const SignIn = () => {
 
           <TouchableOpacity
             onPress={() => handleLogin(LoginProvider.GOOGLE)}
-            className="bg-white shadow-md shadow-zinc-300 rounded-full w-full py-4 mt-5 items-center"
+            className="bg-white rounded-full w-full py-4 mt-5 items-center"
           >
             <View className="flex flex-row items-center gap-2 w-8/12">
               <Image
@@ -96,7 +110,7 @@ const SignIn = () => {
           {Platform.OS === "ios" && (
             <TouchableOpacity
               onPress={() => handleLogin(LoginProvider.APPLE)}
-              className="bg-white shadow-md shadow-zinc-300 rounded-full w-full py-4 mt-5 items-center"
+              className="bg-white rounded-full w-full py-4 mt-5 items-center"
             >
               <View className="flex flex-row items-center gap-2 w-8/12">
                 <AntDesign name="apple" size={24} />
@@ -108,7 +122,7 @@ const SignIn = () => {
           )}
           <TouchableOpacity
             onPress={() => handleLogin(LoginProvider.MAIL)}
-            className="bg-white shadow-md shadow-zinc-300 rounded-full w-full py-4 mt-5 items-center"
+            className="bg-white rounded-full w-full py-4 mt-5 items-center"
           >
             <View className="flex flex-row items-center gap-2  w-8/12">
               <Ionicons name="mail" size={22} />
@@ -118,15 +132,29 @@ const SignIn = () => {
             </View>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </Animated.View>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  onboardImg: {
-    width: "100%",
-    height: "55%",
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  backgroundVideo: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingVertical: 32,
   },
   googleImg: {
     width: 20,

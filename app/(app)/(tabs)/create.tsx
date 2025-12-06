@@ -135,6 +135,8 @@ export default function Create() {
       location: isToggleEnabled
         ? LocationFilterEnum.ONLINE
         : currentUser?.location,
+      locationLat: isToggleEnabled ? null : currentUser?.locationLat ?? null,
+      locationLng: isToggleEnabled ? null : currentUser?.locationLng ?? null,
       status: LeankStatus.ACTIVE,
       ownerId: currentUser?.$id,
       owner: currentUser?.$id,

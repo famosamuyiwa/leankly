@@ -70,8 +70,13 @@ export default function RootLayout() {
     const hasLocation =
       typeof currentUser?.location === "string" &&
       currentUser.location.trim().length > 0;
+    const hasCoords =
+      typeof currentUser?.locationLat === "number" &&
+      typeof currentUser?.locationLng === "number" &&
+      currentUser.locationLat !== null &&
+      currentUser.locationLng != null;
 
-    const needsOnboarding = !(hasName && hasAge && hasLocation);
+    const needsOnboarding = !(hasName && hasAge && hasLocation && hasCoords);
 
     if (needsOnboarding && pathname !== "/(app)/onboarding") {
       router.replace("/(app)/onboarding");

@@ -140,8 +140,8 @@ export default function PaywallScreen() {
       <View className="flex-1 px-6">
         <Image
           source={{ uri: mascotPoses.POWER_UP }}
-          className="h-60 w-full absolute -right-24 top-5"
-          contentFit="cover"
+          className="h-60 w-full absolute -right-32 top-5"
+          contentFit="contain"
         />
 
         <View className="mt-4 mb-8 gap-2">

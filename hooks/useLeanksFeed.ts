@@ -1,10 +1,98 @@
 import { appwriteConfig, db } from "@/appwrite/config";
-import { FilterOptions, LeankStatus } from "@/constants/enums";
+import {
+  FilterOptions,
+  LeankStatus,
+  LocationFilterEnum,
+} from "@/constants/enums";
 import { Leank } from "@/interfaces";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Query } from "react-native-appwrite";
 
 const PAGE_SIZE = 10;
+
+type LocationFilterValue = {
+  nearby?: {
+    radiusKm: number;
+    userLat?: number;
+    userLng?: number;
+  } | null;
+  includeOnline?: boolean;
+};
+
+const EARTH_RADIUS_KM = 6371;
+
+const haversineDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return EARTH_RADIUS_KM * c;
+};
+
+const applyLocationFilter = (
+  list: Leank[],
+  locationFilter?: LocationFilterValue
+) => {
+  const includeOnline = !!locationFilter?.includeOnline;
+  const nearby = locationFilter?.nearby;
+
+  const hasNearby =
+    !!nearby &&
+    typeof nearby.radiusKm === "number" &&
+    typeof nearby.userLat === "number" &&
+    typeof nearby.userLng === "number";
+
+  if (!includeOnline && !hasNearby) return list;
+
+  return list.filter((item) => {
+    const matchesOnline =
+      includeOnline && item.location === LocationFilterEnum.ONLINE;
+
+    let matchesNearby = false;
+    if (hasNearby) {
+      if (
+        typeof item.locationLat === "number" &&
+        typeof item.locationLng === "number"
+      ) {
+        const distance = haversineDistance(
+          nearby.userLat as number,
+          nearby.userLng as number,
+          item.locationLat,
+          item.locationLng
+        );
+        matchesNearby = distance <= (nearby.radiusKm as number);
+      }
+    }
+
+    return matchesOnline || matchesNearby;
+  });
+};
+
+const buildBoundingBox = (lat: number, lng: number, radiusKm: number) => {
+  const latDelta = radiusKm / 111;
+  const latRad = (lat * Math.PI) / 180;
+  const cosLat = Math.cos(latRad);
+  const safeCosLat = Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat;
+  const lngDelta = radiusKm / (111 * safeCosLat);
+  return {
+    minLat: lat - latDelta,
+    maxLat: lat + latDelta,
+    minLng: lng - lngDelta,
+    maxLng: lng + lngDelta,
+  };
+};
 
 export const useLeanksFeed = (userId?: string, filters?: any) => {
   const [items, setItems] = useState<Leank[]>([]);
@@ -52,6 +140,8 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           "owner.name",
           "owner.pushToken",
           "participantIds",
+          "locationLat",
+          "locationLng",
         ]),
         Query.orderDesc("$createdAt"),
         Query.equal("status", LeankStatus.ACTIVE),
@@ -81,13 +171,40 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           q.push(Query.between("date", start.toISOString(), end.toISOString()));
         }
 
-        const locationValue = filters[FilterOptions.LOCATION];
-        if (locationValue) {
-          const arr = Array.isArray(locationValue)
-            ? locationValue
-            : [locationValue];
-          q.push(Query.contains("location", arr));
+        if (filters[FilterOptions.THIS_WEEK]) {
+          const start = new Date();
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          end.setHours(23, 59, 59, 999);
+
+          q.push(Query.between("date", start.toISOString(), end.toISOString()));
         }
+
+        const locationValue =
+          filters[FilterOptions.LOCATION] as LocationFilterValue | undefined;
+
+        const includeOnline = !!locationValue?.includeOnline;
+        const nearby = locationValue?.nearby;
+        const hasNearby =
+          nearby &&
+          typeof nearby.radiusKm === "number" &&
+          typeof nearby.userLat === "number" &&
+          typeof nearby.userLng === "number";
+
+        if (includeOnline && !hasNearby) {
+          q.push(Query.equal("location", LocationFilterEnum.ONLINE));
+        } else if (!includeOnline && hasNearby) {
+          const { minLat, maxLat, minLng, maxLng } = buildBoundingBox(
+            nearby.userLat,
+            nearby.userLng,
+            nearby.radiusKm
+          );
+          q.push(Query.between("locationLat", minLat, maxLat));
+          q.push(Query.between("locationLng", minLng, maxLng));
+        }
+        // If both online + nearby are selected, skip server-side location filtering
+        // so we can merge both sets client-side.
 
         const ageRange = filters[FilterOptions.AGE];
         if (ageRange) {
@@ -123,8 +240,13 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
         queries,
       });
 
+      const filteredRows = applyLocationFilter(
+        rows as unknown as Leank[],
+        filters?.[FilterOptions.LOCATION] as LocationFilterValue | undefined
+      );
+
       if (myReq !== reqIdRef.current) return;
-      setItems(rows as unknown as Leank[]);
+      setItems(filteredRows);
       setCursor(rows.length ? rows[rows.length - 1].$id : null);
       setHasMore(rows.length === PAGE_SIZE);
     } catch (err) {
@@ -155,8 +277,13 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
         queries,
       });
 
+      const filteredRows = applyLocationFilter(
+        rows as unknown as Leank[],
+        filters?.[FilterOptions.LOCATION] as LocationFilterValue | undefined
+      );
+
       if (myReq !== reqIdRef.current) return;
-      setItems((prev) => mergeDedup(prev, rows as unknown as Leank[]));
+      setItems((prev) => mergeDedup(prev, filteredRows));
       setCursor(rows.length ? rows[rows.length - 1].$id : cursor);
       setHasMore(rows.length === PAGE_SIZE);
     } catch (err) {

@@ -26,12 +26,14 @@ interface EditProfileContextType {
   email: string;
   age: number;
   location: string;
+  locationCoords: { lat: number; lng: number } | null;
   setAvatar: (avatar: any) => void;
   setAvatarMediaResult: (media: MediaResult) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
   setAge: (age: number) => void;
   setLocation: (location: string) => void;
+  setLocationCoords: (coords: { lat: number; lng: number } | null) => void;
 
   // Actions
   handleSave: () => Promise<void>;
@@ -58,6 +60,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [name, setName] = useState(currentUser?.name ?? "");
   const [age, setAge] = useState<number>(currentUser?.age ?? 0);
   const [location, setLocation] = useState(currentUser?.location ?? "");
+  const [locationCoords, setLocationCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(
+    typeof currentUser?.locationLat === "number" &&
+      typeof currentUser?.locationLng === "number"
+      ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
+      : null
+  );
   const [email, setEmail] = useState(currentUser?.email ?? "");
   const { uploadFiles, progress, isUploading } = useAppwriteUpload();
 
@@ -73,10 +84,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       name !== currentUser.name ||
       email !== currentUser.email ||
       age !== currentUser.age ||
-      location !== currentUser.location;
+      location !== currentUser.location ||
+      (locationCoords?.lat ?? null) !== (currentUser.locationLat ?? null) ||
+      (locationCoords?.lng ?? null) !== (currentUser.locationLng ?? null);
 
     setHasChanges(changed);
-  }, [avatar, name, email, age, location, currentUser]);
+  }, [avatar, name, email, age, location, locationCoords, currentUser]);
 
   // When currentUser becomes available, sync local state
   useEffect(() => {
@@ -86,6 +99,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setEmail(currentUser.email);
     setAge(currentUser.age);
     setLocation(currentUser.location);
+    setLocationCoords(
+      typeof currentUser.locationLat === "number" &&
+        typeof currentUser.locationLng === "number"
+        ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
+        : null
+    );
   }, [currentUser]);
 
   const resetUserData = () => {
@@ -95,6 +114,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setEmail(currentUser.email);
     setAge(currentUser.age);
     setLocation(currentUser.location);
+    setLocationCoords(
+      typeof currentUser.locationLat === "number" &&
+        typeof currentUser.locationLng === "number"
+        ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
+        : null
+    );
   };
 
   const handleSave = async () => {
@@ -132,6 +157,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           email,
           age,
           location,
+          locationLat: locationCoords?.lat ?? null,
+          locationLng: locationCoords?.lng ?? null,
         },
       });
 
@@ -168,13 +195,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         name,
         email,
         age,
-        location,
-        setAvatar,
-        setAvatarMediaResult,
-        setName,
-        setEmail,
-        setAge,
-        setLocation,
+      location,
+      locationCoords,
+      setAvatar,
+      setAvatarMediaResult,
+      setName,
+      setEmail,
+      setAge,
+      setLocation,
+      setLocationCoords,
 
         // Actions
         handleSave,

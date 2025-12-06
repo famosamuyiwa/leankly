@@ -9,7 +9,13 @@ import React, {
 } from "react";
 
 export interface Filters {
-  [key: string]: string | number | boolean | undefined;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, any>;
 }
 
 interface FiltersContextType {

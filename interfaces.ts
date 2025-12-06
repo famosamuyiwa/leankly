@@ -13,6 +13,8 @@ export interface User extends Models.Row {
   email: string;
   age: number;
   location: string;
+  locationLat?: number | null;
+  locationLng?: number | null;
   pushToken?: string;
   sex?: string;
   referralCode?: string;
@@ -29,6 +31,8 @@ export interface Leank extends Models.Row {
   date: Date;
   time: string;
   location: string;
+  locationLat?: number | null;
+  locationLng?: number | null;
   owner?: User;
   ownerId: string;
   participantIds?: string[];

@@ -48,31 +48,42 @@ export const navbarOptions = [
 
 export const filterCategories = [
   {
+    title: FilterOptions.LOCATION,
+    screen: Screens.HOME,
+    opensBottomSheet: true,
+    requiresPro: false,
+  },
+  {
+    title: FilterOptions.AGE,
+    screen: Screens.HOME,
+    opensBottomSheet: true,
+    requiresPro: true,
+  },
+  {
     title: FilterOptions.TODAY,
     screen: Screens.HOME,
     opensBottomSheet: false,
+    requiresPro: true,
+  },
+  {
+    title: FilterOptions.THIS_WEEK,
+    screen: Screens.HOME,
+    opensBottomSheet: false,
+    requiresPro: true,
   },
   // {
   //   title: FilterOptions.CATEGORY,
   //   screen: Screens.HOME,
   //  opensBottomSheet: true
   // },
-  {
-    title: FilterOptions.AGE,
-    screen: Screens.HOME,
-    opensBottomSheet: true,
-  },
+
   // {
   //   title: FilterOptions.SEX,
   //   screen: Screens.HOME,
   //opensBottomSheet: true
 
   // },
-  {
-    title: FilterOptions.LOCATION,
-    screen: Screens.HOME,
-    opensBottomSheet: true,
-  },
+
   // {
   //   title: FilterOptions.DATE,
   //   screen: Screens.HOME,
@@ -83,11 +94,13 @@ export const filterCategories = [
 
 export const filterDescriptions = {
   [FilterOptions.TODAY]: "",
+  [FilterOptions.THIS_WEEK]: "",
   [FilterOptions.CATEGORY]: "",
   [FilterOptions.DATE]: "",
   [FilterOptions.AGE]: "Select host's age range you're open to leanking",
   [FilterOptions.SEX]: "Select host's sex you're open to leanking",
-  [FilterOptions.LOCATION]: "Select leank meeting type",
+  [FilterOptions.LOCATION]:
+    "Mix nearby radius with online meetups if you’d like",
 };
 
 export const dummyLeanks: Leank[] = [

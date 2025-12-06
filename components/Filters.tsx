@@ -16,12 +16,15 @@ const Filters = ({ screen }: { screen: Screens }) => {
     useFiltersContext();
   const { isPro, openPaywall } = usePremium();
 
+  const isLocked = (filterKey: FilterOptions) =>
+    !isPro && screen === Screens.HOME && filterKey !== FilterOptions.LOCATION;
+
   const handleChipPress = (
     filterKey: FilterOptions,
     isBottomSheetFilter: boolean
   ) => {
     if (isBottomSheetFilter) {
-      setPendingFilter(filterKey, null);
+      setPendingFilter(filterKey, filters[filterKey] ?? null);
       bottomSheetRef.current?.expand();
     } else {
       // 👇 Toggle instantly
@@ -30,14 +33,12 @@ const Filters = ({ screen }: { screen: Screens }) => {
     }
   };
 
-  // Gated press handler: only TODAY is available on Home for free users
+  // Gated press handler: only Location is available on Home for free users
   const onFilterPress = (
     filterKey: FilterOptions,
     isBottomSheetFilter: boolean
   ) => {
-    const isHome = screen === Screens.HOME;
-    const isLocked = !isPro && isHome && filterKey !== FilterOptions.TODAY;
-    if (isLocked) {
+    if (isLocked(filterKey)) {
       openPaywall("Advanced filters");
       return;
     }
@@ -48,7 +49,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
   useEffect(() => {
     if (screen !== Screens.HOME || isPro) return;
     Object.keys(filters).forEach((key) => {
-      if (key !== FilterOptions.TODAY && filters[key]) {
+      if (key !== FilterOptions.LOCATION && filters[key]) {
         clearFilter(key);
       }
     });
@@ -66,6 +67,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
           .map((item, index) => {
             const isSelected = !!filters[item.title];
             const isSheetFilter = item.opensBottomSheet; // define this in your filterCategories
+            const locked = isLocked(item.title);
 
             return (
               <TouchableOpacity
@@ -87,19 +89,26 @@ const Filters = ({ screen }: { screen: Screens }) => {
                   {item.title}
                 </Text>
                 {isSheetFilter &&
-                  (isPro ? (
-                    <Ionicons
-                      name="chevron-down"
-                      size={14}
-                      color={isSelected ? "white" : "black"}
-                    />
-                  ) : (
+                  (locked ? (
                     <MaterialCommunityIcons
                       name="crown"
                       size={16}
                       color={Colors.accent}
                     />
+                  ) : (
+                    <Ionicons
+                      name="chevron-down"
+                      size={14}
+                      color={isSelected ? "white" : "black"}
+                    />
                   ))}
+                {!isSheetFilter && locked && (
+                  <MaterialCommunityIcons
+                    name="crown"
+                    size={16}
+                    color={Colors.accent}
+                  />
+                )}
               </TouchableOpacity>
             );
           })}

@@ -33,6 +33,8 @@ export const saveUserToDB = async (currentUser: any, expoPushToken: any) => {
           avatar: imageUrl || "",
           age: null,
           location: "",
+          locationLat: null,
+          locationLng: null,
           sex: "",
           pushToken: expoPushToken || "",
         },

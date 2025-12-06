@@ -1,6 +1,7 @@
 import { filterDescriptions } from "@/constants/data";
 import { FilterOptions } from "@/constants/enums";
 import { useFiltersContext } from "@/lib/FiltersContext";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Ionicons } from "@expo/vector-icons";
 import BottomSheet, {
@@ -19,7 +20,7 @@ import React, {
 import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import CustomButton from "./Button";
-import { AgeFilter, LocationFilter } from "./FilterContent";
+import { AgeFilter, LocationFilter, LocationFilterValue } from "./FilterContent";
 import SearchBar from "./SearchBar";
 
 const FilterBottomSheet = forwardRef(({}, ref) => {
@@ -34,6 +35,11 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
 
   const { setPendingFilter, confirmPendingFilter, pendingFilter, filters } =
     useFiltersContext();
+  const { currentUser } = useGlobalContext();
+  const locationValue =
+    pendingFilter?.key === FilterOptions.LOCATION
+      ? (pendingFilter.value as LocationFilterValue | null)
+      : ((filters?.[FilterOptions.LOCATION] as LocationFilterValue) || null);
 
   return (
     <BottomSheet
@@ -72,14 +78,13 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
           )}
           {pendingFilter?.key === FilterOptions.LOCATION && (
             <LocationFilter
-              selected={
-                (filters?.[FilterOptions.LOCATION] as unknown as string[]) || []
-              }
-              onChange={(values) =>
-                setPendingFilter(
-                  FilterOptions.LOCATION,
-                  values.length > 0 ? values : null
-                )
+              value={locationValue}
+              userCoords={{
+                lat: currentUser?.locationLat,
+                lng: currentUser?.locationLng,
+              }}
+              onChange={(value) =>
+                setPendingFilter(FilterOptions.LOCATION, value ?? null)
               }
             />
           )}
@@ -101,7 +106,7 @@ const ProfileBottomSheet = forwardRef(({}, ref) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const GOOGLE_MAPS_PLACES_API_KEY =
     Constants.expoConfig?.extra?.googleMapsPlacesApiKey!;
-  const { setLocation } = useProfileContext();
+  const { setLocation, setLocationCoords } = useProfileContext();
 
   // local state
   const [query, setQuery] = useState("");
@@ -159,8 +164,8 @@ const ProfileBottomSheet = forwardRef(({}, ref) => {
       }
 
       let loc: any;
-      let latitude: any;
-      let longitude: any;
+      let latitude: number | undefined;
+      let longitude: number | undefined;
 
       if (location === "current") {
         //  Get current GPS coordinates
@@ -176,13 +181,20 @@ const ProfileBottomSheet = forwardRef(({}, ref) => {
 
       if (data.status === "OK") {
         //  Extract the city (locality) from the response
-        const addressComponents = data.results[0]?.address_components || [];
+        const firstResult = data.results[0];
+        const addressComponents = firstResult?.address_components || [];
         const cityComponent = addressComponents.find((c: any) =>
           c.types.includes("locality")
         );
         const city = cityComponent?.long_name ?? "Unknown city";
 
         setLocation(city);
+        const geometryLoc = firstResult?.geometry?.location;
+        const finalLat = latitude ?? geometryLoc?.lat;
+        const finalLng = longitude ?? geometryLoc?.lng;
+        if (typeof finalLat === "number" && typeof finalLng === "number") {
+          setLocationCoords({ lat: finalLat, lng: finalLng });
+        }
         bottomSheetRef.current?.close();
       } else {
         console.warn("Geocoding API error:", data.status);

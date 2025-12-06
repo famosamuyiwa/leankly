@@ -41,6 +41,7 @@ export const PremiumProvider = ({
     useState<PurchasesOffering | null>(null);
   const [loading, setLoading] = useState(true);
   const [userResolved, setUserResolved] = useState(false);
+  const lastAppUserIdRef = React.useRef<string | null>(null);
   const router = useRouter();
 
   const fetchOfferings = useCallback(async () => {
@@ -103,17 +104,15 @@ export const PremiumProvider = ({
       if (!configured) return;
 
       try {
-        if (currentUser?.$id) {
-          const { customerInfo: info } = await Purchases.logIn(currentUser.$id);
-          if (!cancelled) {
-            setCustomerInfo(info);
-          }
-        } else {
-          await Purchases.logOut();
-          if (!cancelled) {
-            const info = await Purchases.getCustomerInfo();
-            setCustomerInfo(info);
-          }
+        const appUserId = currentUser?.$id;
+        if (appUserId && lastAppUserIdRef.current !== appUserId) {
+          const { customerInfo: info } = await Purchases.logIn(appUserId);
+          lastAppUserIdRef.current = appUserId;
+          if (!cancelled) setCustomerInfo(info);
+        } else if (!appUserId) {
+          // Do not logOut to avoid creating new anonymous customers; just clear local state
+          lastAppUserIdRef.current = null;
+          if (!cancelled) setCustomerInfo(null);
         }
       } catch (error) {
         console.warn("[RevenueCat] Unable to sync user identity", error);

@@ -1,5 +1,6 @@
 import { Colors } from "@/constants/common";
-import { SexFilterEnum } from "@/constants/enums";
+import { leankCategories } from "@/constants/data";
+import { LeankCategory, SexFilterEnum } from "@/constants/enums";
 import { useEffect, useMemo, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import RangeSlider from "react-native-fast-range-slider";
@@ -67,6 +68,27 @@ const SexFilter = () => {
         />
       ))}
     </>
+  );
+};
+
+const CategoryFilter = ({
+  selected,
+  onToggle,
+}: {
+  selected: LeankCategory[];
+  onToggle: (category: LeankCategory) => void;
+}) => {
+  return (
+    <View className="gap-3">
+      {leankCategories.map((category) => (
+        <SelectItem
+          key={category}
+          label={category}
+          isSelected={selected.includes(category)}
+          onPress={() => onToggle(category)}
+        />
+      ))}
+    </View>
   );
 };
 
@@ -189,4 +211,4 @@ const LocationFilter = ({
   );
 };
 
-export { AgeFilter, LocationFilter, SexFilter };
+export { AgeFilter, CategoryFilter, LocationFilter, SexFilter };

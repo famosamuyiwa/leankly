@@ -1,5 +1,7 @@
+import { leankCategories } from "@/constants/data";
+import { LeankCategory } from "@/constants/enums";
 import { ID, Query } from "react-native-appwrite";
-import { appwriteConfig, db } from "../config";
+import { appwriteConfig, db, functions } from "../config";
 
 export const recordLeankAction = async (
   userId: string,
@@ -35,6 +37,83 @@ export const recordLeankAction = async (
   } catch (err) {
     console.error("Failed to record reaction:", err);
   }
+};
+
+const FALLBACK_CATEGORY = LeankCategory.OTHER;
+
+export const classifyLeankCategory = async (
+  title: string,
+  description: string
+): Promise<LeankCategory> => {
+  const functionId = appwriteConfig.classifyLeankFunctionId;
+  if (!functionId) {
+    console.warn(
+      "EXPO_PUBLIC_APPWRITE_CLASSIFY_FUNCTION_ID is not set; defaulting category to Other."
+    );
+    return FALLBACK_CATEGORY;
+  }
+
+  try {
+    const payload = JSON.stringify({
+      title: title?.slice(0, 280) ?? "",
+      description: description?.slice(0, 1200) ?? "",
+      categories: leankCategories,
+    });
+
+    const execution = await functions.createExecution({
+      functionId,
+      body: payload,
+    });
+
+    const rawResponse =
+      (execution as any)?.responseBody ??
+      (execution as any)?.response ??
+      (execution as any)?.stdout ??
+      "";
+
+    const parseCandidate = (value: any): string | undefined => {
+      if (typeof value === "string") return value;
+      if (Array.isArray(value)) {
+        const first = value.find((item) => typeof item === "string");
+        if (first) return first;
+      }
+      return undefined;
+    };
+
+    let parsed: any = rawResponse;
+    try {
+      if (typeof rawResponse === "string" && rawResponse.trim().length) {
+        parsed = JSON.parse(rawResponse);
+      }
+    } catch (err) {
+      // The function might return plain text; ignore JSON parse errors.
+    }
+
+    const candidate =
+      parseCandidate(parsed?.category) ||
+      parseCandidate(parsed?.data?.category) ||
+      parseCandidate(parsed?.result?.category) ||
+      parseCandidate(parsed?.result) ||
+      parseCandidate(parsed);
+
+    if (candidate) {
+      const normalize = (value: string) =>
+        value.trim().toLowerCase().replace(/\s+/g, " ");
+      const normalized = normalize(candidate);
+      const match =
+        leankCategories.find(
+          (category) => normalize(category) === normalized
+        ) ||
+        leankCategories.find((category) =>
+          normalize(category).includes(normalized)
+        );
+      if (match) return match;
+    }
+  } catch (err) {
+    console.warn("Failed to classify leank category via Appwrite function", err);
+  }
+
+  return FALLBACK_CATEGORY;
 };
 
 /**

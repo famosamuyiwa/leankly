@@ -25,6 +25,11 @@ if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
   throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set");
 }
 
+const classifyFunctionId =
+  process.env.EXPO_PUBLIC_APPWRITE_CLASSIFY_FUNCTION_ID ||
+  process.env.EXPO_PUBLIC_APPWRITE_CLASSIFY_LEANK_FUNCTION_ID ||
+  null;
+
 const appwriteConfig = {
   endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT,
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
@@ -32,6 +37,7 @@ const appwriteConfig = {
   db: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
   sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID,
   storage: process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID,
+  classifyLeankFunctionId: classifyFunctionId,
   tables: {
     leanks: "leanks",
     messages: "messages",
@@ -68,4 +74,4 @@ async function sendPushNotification(body: PushNotificationRequest) {
   }
 }
 
-export { appwriteConfig, client, db, sendPushNotification, storage };
+export { appwriteConfig, client, db, functions, sendPushNotification, storage };

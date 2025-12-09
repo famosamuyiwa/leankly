@@ -1,9 +1,11 @@
+import { classifyLeankCategory } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
 import CustomButton from "@/components/Button";
 import Calendar from "@/components/Calendar";
 import { ToggleItem } from "@/components/Toggle";
 import { defaultCovers } from "@/constants/data";
 import {
+  LeankCategory,
   LeankStatus,
   LocationFilterEnum,
   Time,
@@ -120,9 +122,16 @@ export default function Create() {
     showLoader("Posting leank...");
 
     let url = undefined;
+    let category = LeankCategory.OTHER;
 
     if (coverMediaResult) {
       url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
+    }
+
+    try {
+      category = await classifyLeankCategory(title, description);
+    } catch (err) {
+      console.warn("Falling back to default category", err);
     }
 
     const data = {
@@ -130,13 +139,14 @@ export default function Create() {
         url || defaultCovers[Math.floor(Math.random() * defaultCovers.length)],
       title,
       description,
+      category,
       date,
       time,
       location: isToggleEnabled
         ? LocationFilterEnum.ONLINE
         : currentUser?.location,
-      locationLat: isToggleEnabled ? null : currentUser?.locationLat ?? null,
-      locationLng: isToggleEnabled ? null : currentUser?.locationLng ?? null,
+      locationLat: isToggleEnabled ? null : (currentUser?.locationLat ?? null),
+      locationLng: isToggleEnabled ? null : (currentUser?.locationLng ?? null),
       status: LeankStatus.ACTIVE,
       ownerId: currentUser?.$id,
       owner: currentUser?.$id,

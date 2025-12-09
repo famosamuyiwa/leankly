@@ -106,14 +106,16 @@ export const LeankCardBig = ({
               className="size-20 rounded-full"
             />
           </TouchableOpacity>
-          <View className="gap-2 justify-center  max-w-[90%]">
-            <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
+          <View className="gap-2 justify-center w-4/6">
+            <Text className="font-plus-jakarta-bold text-lg line-clamp-2">
+              {item.title}
+            </Text>
             <Text className="font-plus-jakarta-regular color-gray-400">
               {item.owner?.name}, {item.owner?.age}
             </Text>
           </View>
         </View>
-        <Text className=" font-plus-jakarta-semibold color-gray-400">
+        <Text className=" font-plus-jakarta-semibold color-gray-400 line-clamp-3">
           {item.description}
         </Text>
         <View className="flex-row items-center gap-3">
@@ -295,8 +297,10 @@ export const ChatCard = ({
           <View className="bg-secondary-300 size-2 rounded-full absolute top-0 right-2" />
         )}
 
-        <View className="flex-row items-baseline justify-between">
-          <Text className="font-plus-jakarta-bold text-lg">{item.title}</Text>
+        <View className="flex-row items-baseline justify-between ">
+          <Text className="font-plus-jakarta-bold text-lg w-4/6 line-clamp-2">
+            {item.title}
+          </Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
             {timeElapsed(
               item.lastMessage ? item.lastMessage.$createdAt : item.$createdAt

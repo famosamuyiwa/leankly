@@ -333,8 +333,8 @@ export default function Chat() {
           className="flex-row gap-5 items-center flex-1"
         >
           {memoizedCover}
-          <View>
-            <Text className="font-plus-jakarta-bold text-lg">
+          <View className="w-4/6">
+            <Text className="font-plus-jakarta-bold text-lg line-clamp-2">
               {currentLeank?.title}
             </Text>
             <Text className="font-plus-jakarta-regular color-gray-400 text-sm">

@@ -1,5 +1,5 @@
 import { filterDescriptions } from "@/constants/data";
-import { FilterOptions } from "@/constants/enums";
+import { FilterOptions, LeankCategory } from "@/constants/enums";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useProfileContext } from "@/lib/ProfileContext";
@@ -20,7 +20,12 @@ import React, {
 import { Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import CustomButton from "./Button";
-import { AgeFilter, LocationFilter, LocationFilterValue } from "./FilterContent";
+import {
+  AgeFilter,
+  CategoryFilter,
+  LocationFilter,
+  LocationFilterValue,
+} from "./FilterContent";
 import SearchBar from "./SearchBar";
 
 const FilterBottomSheet = forwardRef(({}, ref) => {
@@ -40,6 +45,10 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
     pendingFilter?.key === FilterOptions.LOCATION
       ? (pendingFilter.value as LocationFilterValue | null)
       : ((filters?.[FilterOptions.LOCATION] as LocationFilterValue) || null);
+  const categoryValue =
+    pendingFilter?.key === FilterOptions.CATEGORY
+      ? ((pendingFilter.value as LeankCategory[]) || [])
+      : ((filters?.[FilterOptions.CATEGORY] as LeankCategory[]) || []);
 
   return (
     <BottomSheet
@@ -86,6 +95,20 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
               onChange={(value) =>
                 setPendingFilter(FilterOptions.LOCATION, value ?? null)
               }
+            />
+          )}
+          {pendingFilter?.key === FilterOptions.CATEGORY && (
+            <CategoryFilter
+              selected={categoryValue}
+              onToggle={(category) => {
+                const next = categoryValue.includes(category)
+                  ? categoryValue.filter((c) => c !== category)
+                  : [...categoryValue, category];
+                setPendingFilter(
+                  FilterOptions.CATEGORY,
+                  next.length ? next : null
+                );
+              }}
             />
           )}
         </View>

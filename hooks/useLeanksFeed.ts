@@ -131,6 +131,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           "cover",
           "title",
           "description",
+          "category",
           "date",
           "time",
           "location",
@@ -179,6 +180,13 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
           end.setHours(23, 59, 59, 999);
 
           q.push(Query.between("date", start.toISOString(), end.toISOString()));
+        }
+
+        const categories = filters[FilterOptions.CATEGORY] as
+          | string[]
+          | undefined;
+        if (categories?.length) {
+          q.push(Query.equal("category", categories));
         }
 
         const locationValue =

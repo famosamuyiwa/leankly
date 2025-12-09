@@ -47,10 +47,20 @@ export const FiltersProvider = ({ children }: { children: ReactNode }) => {
 
   const confirmPendingFilter = useCallback(() => {
     if (pendingFilter?.key)
-      setFilters((prev) => ({
-        ...prev,
-        [pendingFilter.key!]: pendingFilter.value,
-      }));
+      setFilters((prev) => {
+        const next = { ...prev };
+        if (
+          pendingFilter.value === null ||
+          typeof pendingFilter.value === "undefined" ||
+          (Array.isArray(pendingFilter.value) &&
+            pendingFilter.value.length === 0)
+        ) {
+          delete next[pendingFilter.key!];
+        } else {
+          next[pendingFilter.key!] = pendingFilter.value;
+        }
+        return next;
+      });
     setPendingFilterState(null);
   }, [pendingFilter]);
 

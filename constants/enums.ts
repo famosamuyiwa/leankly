@@ -20,6 +20,20 @@ export enum Screens {
   REFER_A_FRIEND = "REFER_A_FRIEND",
 }
 
+export enum LeankCategory {
+  FITNESS = "Fitness & Sports",
+  STUDY = "Study & Learning",
+  SOCIAL = "Social & Nightlife",
+  VOLUNTEERING = "Volunteering & Causes",
+  HEALTH = "Health & Wellness",
+  CREATIVE = "Creative & Arts",
+  FOOD = "Food & Drinks",
+  TRAVEL = "Travel & Outdoors",
+  CAREER = "Career & Networking",
+  GAMING = "Gaming & Esports",
+  OTHER = "Other",
+}
+
 export enum Links {
   CONTACT_SUPPORT = "CONTACT_SUPPORT",
   PRIVACY_POLICY = "PRIVACY_POLICY",

@@ -1,6 +1,7 @@
 import { Leank, LeankRequest, User } from "@/interfaces";
 import {
   FilterOptions,
+  LeankCategory,
   LeankStatus,
   MascotPoses,
   NavbarOptions,
@@ -27,6 +28,20 @@ export const user2: User = {
 export const defaultCover =
   "https://nyc.cloud.appwrite.io/v1/storage/buckets/68e93c64002537fc5626/files/68e93cda001c2a4367c4/view?project=68e45dc0001e074ea36a&mode=admin";
 
+export const leankCategories: LeankCategory[] = [
+  LeankCategory.FITNESS,
+  LeankCategory.STUDY,
+  LeankCategory.SOCIAL,
+  LeankCategory.VOLUNTEERING,
+  LeankCategory.HEALTH,
+  LeankCategory.CREATIVE,
+  LeankCategory.FOOD,
+  LeankCategory.TRAVEL,
+  LeankCategory.CAREER,
+  LeankCategory.GAMING,
+  LeankCategory.OTHER,
+];
+
 export const navbarOptions = [
   {
     title: NavbarOptions.HOSTED,
@@ -52,6 +67,12 @@ export const filterCategories = [
     screen: Screens.HOME,
     opensBottomSheet: true,
     requiresPro: false,
+  },
+  {
+    title: FilterOptions.CATEGORY,
+    screen: Screens.HOME,
+    opensBottomSheet: true,
+    requiresPro: true,
   },
   {
     title: FilterOptions.AGE,
@@ -95,7 +116,7 @@ export const filterCategories = [
 export const filterDescriptions = {
   [FilterOptions.TODAY]: "",
   [FilterOptions.THIS_WEEK]: "",
-  [FilterOptions.CATEGORY]: "",
+  [FilterOptions.CATEGORY]: "Pick the types of leanks you want to see first",
   [FilterOptions.DATE]: "",
   [FilterOptions.AGE]: "Select host's age range you're open to leanking",
   [FilterOptions.SEX]: "Select host's sex you're open to leanking",

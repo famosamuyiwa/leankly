@@ -1,5 +1,9 @@
 import { Models } from "react-native-appwrite";
-import { LeankStatus, PushNotificationTypes } from "./constants/enums";
+import {
+  LeankCategory,
+  LeankStatus,
+  PushNotificationTypes,
+} from "./constants/enums";
 
 export interface ToastProps {
   type?: "success" | "warning" | "error";
@@ -27,6 +31,7 @@ export interface Leank extends Models.Row {
   title: string;
   description: string;
   status?: LeankStatus;
+  category?: LeankCategory;
   peopleRequired: number;
   date: Date;
   time: string;

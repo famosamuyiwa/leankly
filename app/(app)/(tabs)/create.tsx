@@ -111,6 +111,34 @@ export default function Create() {
     setIsToggleEnabled(false);
   };
 
+  const updateCategoryAfterClassification = async (
+    leankId: string,
+    initialCategory: LeankCategory,
+    leankTitle: string,
+    leankDescription: string
+  ) => {
+    try {
+      const classifiedCategory = await classifyLeankCategory(
+        leankTitle,
+        leankDescription
+      );
+
+      if (classifiedCategory && classifiedCategory !== initialCategory) {
+        await db.updateRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.leanks,
+          rowId: leankId,
+          data: { category: classifiedCategory },
+        });
+      }
+    } catch (error) {
+      console.warn(
+        "Could not update leank category after classification",
+        error
+      );
+    }
+  };
+
   const onPostLeank = async () => {
     if (!title || !date) {
       return displayToast({
@@ -119,19 +147,16 @@ export default function Create() {
       });
     }
 
+    const classificationTitle = title;
+    const classificationDescription = description;
+    const fallbackCategory = LeankCategory.OTHER;
+
     showLoader("Posting leank...");
 
     let url = undefined;
-    let category = LeankCategory.OTHER;
 
     if (coverMediaResult) {
       url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
-    }
-
-    try {
-      category = await classifyLeankCategory(title, description);
-    } catch (err) {
-      console.warn("Falling back to default category", err);
     }
 
     const data = {
@@ -139,7 +164,7 @@ export default function Create() {
         url || defaultCovers[Math.floor(Math.random() * defaultCovers.length)],
       title,
       description,
-      category,
+      category: fallbackCategory,
       date,
       time,
       location: isToggleEnabled
@@ -166,6 +191,13 @@ export default function Create() {
       });
 
       reset();
+
+      void updateCategoryAfterClassification(
+        leank.$id,
+        fallbackCategory,
+        classificationTitle,
+        classificationDescription
+      );
     } catch (e) {
       console.warn(e);
     } finally {

@@ -11,12 +11,12 @@ import Animated, {
   LinearTransition,
 } from "react-native-reanimated";
 
-const Loader = forwardRef(({}, ref) => {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 
+const Loader = forwardRef(({}, ref) => {
   const [visibility, setVisibility] = useState(false);
   const [label, setLabel] = useState("");
   const [pulse, setPulse] = useState(false);

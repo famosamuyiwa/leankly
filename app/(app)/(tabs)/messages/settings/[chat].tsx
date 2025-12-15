@@ -22,12 +22,12 @@ import {
 } from "react-native";
 import { Query } from "react-native-appwrite";
 
-export default function Settings() {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 
+export default function Settings() {
   const { currentLeank } = useMessagesContext();
   const { currentUser, openUserPreview } = useGlobalContext();
   const { showLoader, hideLoader } = useGlobalContext();

@@ -18,6 +18,11 @@ import {
   View,
 } from "react-native";
 
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
+
 export default function PaywallScreen() {
   const { upgradeToPro, packages, loading, restorePurchases } = usePremium();
   const router = useRouter();
@@ -28,10 +33,6 @@ export default function PaywallScreen() {
   );
   const defaultPackage = packages[0];
   const isBusy = loading || processing;
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
 
   useEffect(() => {
     if (!selectedPackageId && defaultPackage?.identifier) {

@@ -32,11 +32,11 @@ import { Swipeable } from "react-native-gesture-handler";
 import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 export default function Chat() {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview } = useGlobalContext();

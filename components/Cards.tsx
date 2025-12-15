@@ -17,12 +17,12 @@ interface LeankProps {
   onPress?: () => void;
 }
 
-export const LeankCard = ({ item, onPress }: LeankProps) => {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 
+export const LeankCard = ({ item, onPress }: LeankProps) => {
   return (
     <TouchableOpacity
       className="flex-1 w-full mt-4 rounded-3xl bg-black  shadow-black-100/70 "
@@ -73,11 +73,6 @@ export const LeankCardBig = ({
   onPress,
   onAvatarPress,
 }: LeankProps & { onAvatarPress?: (user: BasicUser) => void }) => {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
-
   return (
     <View
       className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  gap-5 flex-1`}

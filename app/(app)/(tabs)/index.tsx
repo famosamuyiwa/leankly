@@ -14,7 +14,6 @@ import { usePremium } from "@/lib/PremiumContext";
 import { FreeLimits, canUse, increment } from "@/lib/featureGates";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
 import Lottie from "lottie-react-native";
 import { cssInterop } from "nativewind";
 import { useEffect, useState } from "react";
@@ -23,13 +22,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);

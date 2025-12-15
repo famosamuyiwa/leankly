@@ -1,31 +1,33 @@
+import { appwriteConfig, db } from "@/appwrite/config";
 import { ProfileBottomSheet } from "@/components/BottomSheet";
 import useImagePicker from "@/hooks/useImagePicker";
-import { useProfileContext } from "@/lib/ProfileContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
-import { appwriteConfig, db } from "@/appwrite/config";
+import { useProfileContext } from "@/lib/ProfileContext";
+import { useUser } from "@clerk/clerk-expo";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useUser } from "@clerk/clerk-expo";
 import { cssInterop } from "nativewind";
 import { useMemo, useRef } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Query } from "react-native-appwrite";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
-import { Query } from "react-native-appwrite";
+
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
 
 function EditProfileContent() {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
   const { query } = useLocalSearchParams<{
     query?: string;
   }>();
 
   const { pickMultimedia } = useImagePicker();
-  const { currentUser, showLoader, hideLoader, displayToast } = useGlobalContext();
+  const { currentUser, showLoader, hideLoader, displayToast } =
+    useGlobalContext();
   const { user } = useUser();
 
   const bottomSheetRef = useRef<any>({});
@@ -162,7 +164,10 @@ function EditProfileContent() {
               router.replace("/sign-in");
             } catch (e) {
               console.error("Delete account failed", e);
-              Alert.alert("Error", "Failed to delete account. Please try again.");
+              Alert.alert(
+                "Error",
+                "Failed to delete account. Please try again."
+              );
             } finally {
               hideLoader();
             }

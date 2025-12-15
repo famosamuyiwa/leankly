@@ -20,13 +20,13 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import { Picker } from "@react-native-picker/picker";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import { useMemo, useState } from "react";
 import {
   Button,
   Modal,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -41,12 +41,14 @@ enum ModalType {
   TIME = "time",
 }
 
-export default function Create() {
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
+const TIME_OPTIONS = Object.values(Time);
 
+// Interop the Image component to recognize the 'className' prop (register once)
+cssInterop(Image, {
+  className: { target: "style" },
+});
+
+export default function Create() {
   const insets = useSafeAreaInsets();
 
   const [cover, setCover] = useState("");
@@ -59,6 +61,7 @@ export default function Create() {
   const { showLoader, hideLoader } = useGlobalContext();
   const [date, setDate] = useState<Date | undefined>();
   const [time, setTime] = useState("");
+  const [pendingTime, setPendingTime] = useState<string>(TIME_OPTIONS[0]);
   const [modalVisible, setModalVisible] = useState(false);
   const [isToggleEnabled, setIsToggleEnabled] = useState(false);
   const [modalContent, setModalContent] = useState<ModalType | null>(null);
@@ -88,6 +91,8 @@ export default function Create() {
   const handleCoverPress = async () => {
     try {
       const result: any = await pickMultimedia(false, true);
+      if (!result || !Array.isArray(result) || result.length === 0) return;
+
       setCover(result[0].uri);
       setCoverMediaResult(result[0]);
     } catch (e) {
@@ -155,8 +160,17 @@ export default function Create() {
 
     let url = undefined;
 
-    if (coverMediaResult) {
-      url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
+    try {
+      if (coverMediaResult) {
+        url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
+      }
+    } catch (error) {
+      displayToast({
+        type: ToastType.ERROR,
+        description: "Could not upload cover. Please try again.",
+      });
+      hideLoader();
+      return;
     }
 
     const data = {
@@ -200,12 +214,19 @@ export default function Create() {
       );
     } catch (e) {
       console.warn(e);
+      displayToast({
+        type: ToastType.ERROR,
+        description: "Could not post leank. Please try again.",
+      });
     } finally {
       hideLoader();
     }
   };
 
   const openModal = (type: ModalType) => {
+    if (type === ModalType.TIME) {
+      setPendingTime(time || TIME_OPTIONS[0]);
+    }
     setModalContent(type);
     setModalVisible(true);
   };
@@ -216,11 +237,18 @@ export default function Create() {
 
   const handleModalDoneClick = (modalContent: ModalType) => {
     switch (modalContent) {
-      case ModalType.TIME:
-        if (!time) {
-          setTime(Object.values(Time)[0]);
-        }
+      case ModalType.TIME: {
+        const next = pendingTime || TIME_OPTIONS[0];
+        setTime(next);
+        break;
+      }
     }
+    resetModal();
+  };
+
+  const handleCloseTimeModal = () => {
+    setTime("");
+    setPendingTime(TIME_OPTIONS[0]);
     resetModal();
   };
 
@@ -321,7 +349,14 @@ export default function Create() {
         <CustomButton label="Post Leank" onPress={onPostLeank} />
       </View>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        presentationStyle="overFullScreen"
+        onRequestClose={resetModal}
+      >
         {modalContent === ModalType.CALENDAR && (
           <View
             style={{
@@ -335,25 +370,72 @@ export default function Create() {
 
         {modalContent === ModalType.TIME && (
           <View className="flex-1 justify-end bg-black/10">
-            <View className="bg-white pb-5">
-              <Picker
-                selectedValue={time}
-                onValueChange={setTime}
-                itemStyle={{
-                  color: "black", // Set text color
-                  fontSize: 18, // Set font size
-                }}
+            <View
+              className="bg-white"
+              style={{
+                paddingBottom: Math.max(insets.bottom, 16),
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+              }}
+            >
+              <View className="px-5 pt-5 pb-3 border-b border-gray-200 flex-row items-center justify-between">
+                <Text className="text-lg font-semibold">Select a time</Text>
+                <TouchableOpacity
+                  onPress={handleCloseTimeModal}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close" size={22} color="black" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                style={{ maxHeight: 320 }}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+                showsVerticalScrollIndicator={false}
               >
-                {Object.values(Time).map((type: any) => (
-                  <Picker.Item key={type} label={type} value={type} />
-                ))}
-              </Picker>
-              <Button
-                title="Done"
-                onPress={() => {
-                  handleModalDoneClick(modalContent);
-                }}
-              />
+                {TIME_OPTIONS.map((option) => {
+                  const selected = (pendingTime || TIME_OPTIONS[0]) === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      onPress={() => {
+                        setPendingTime(option);
+                        setTime(option);
+                      }}
+                      className={`flex-row items-center py-3 px-2 mt-2 rounded-xl ${
+                        selected ? "bg-gray-100" : ""
+                      }`}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        className={`w-5 h-5 rounded-full border items-center justify-center ${
+                          selected ? "border-black" : "border-gray-400"
+                        }`}
+                      >
+                        {selected && (
+                          <View className="w-2.5 h-2.5 rounded-full bg-black" />
+                        )}
+                      </View>
+                      <Text
+                        className={`ml-3 text-base ${
+                          selected
+                            ? "font-semibold text-black"
+                            : "text-gray-800"
+                        }`}
+                      >
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View className="px-5 pt-3 pb-5">
+                <Button
+                  title="Done"
+                  onPress={() => {
+                    handleModalDoneClick(modalContent);
+                  }}
+                />
+              </View>
             </View>
           </View>
         )}

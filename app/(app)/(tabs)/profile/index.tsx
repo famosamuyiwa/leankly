@@ -19,13 +19,13 @@ import { Query } from "react-native-appwrite";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
+
 export default function Profile() {
   const insets = useSafeAreaInsets();
-
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
 
   const params = useLocalSearchParams<{
     nav?: string;

@@ -20,9 +20,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+cssInterop(Image, { className: { target: "style" } });
 
 function OnboardingContent() {
-  cssInterop(Image, { className: { target: "style" } });
   const router = useRouter();
   const {
     currentUser,

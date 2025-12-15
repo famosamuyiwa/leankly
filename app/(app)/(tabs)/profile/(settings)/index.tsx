@@ -17,15 +17,15 @@ import React, { useMemo } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
+// Interop the Image component to recognize the 'className' prop
+cssInterop(Image, {
+  className: { target: "style" },
+});
+
 export default function Settings() {
   const { signOut } = useAuth();
   const { alertComingSoon, setCurrentUser } = useGlobalContext();
   const { avatar, name } = useProfileContext();
-
-  // Interop the Image component to recognize the 'className' prop
-  cssInterop(Image, {
-    className: { target: "style" },
-  });
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [

@@ -22,7 +22,6 @@ export default {
         backgroundColor: "#E6F4FE",
         foregroundImage: "./assets/images/android-icon-foreground.png",
       },
-      edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.barrakudadev.leankly",
       googleServicesFile: "./google-services.json",
@@ -33,6 +32,10 @@ export default {
     },
     plugins: [
       "expo-router",
+      "expo-font",
+      "expo-image",
+      "expo-video",
+      "expo-web-browser",
       [
         "expo-splash-screen",
         {

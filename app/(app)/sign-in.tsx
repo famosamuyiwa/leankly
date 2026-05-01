@@ -1,5 +1,5 @@
-import { ResizeMode, Video } from "expo-av";
 import { Image } from "expo-image";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
   Alert,
   Platform,
@@ -25,6 +25,14 @@ import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 const SignIn = () => {
   useWarmUpBrowser();
+  const videoPlayer = useVideoPlayer(
+    { assetId: require("@/assets/videos/auth_playback.mov") },
+    (player) => {
+      player.loop = true;
+      player.muted = true;
+      player.play();
+    },
+  );
 
   const { signInWithGoogle } = useGoogleSSO();
 
@@ -45,14 +53,11 @@ const SignIn = () => {
 
   return (
     <View style={styles.container}>
-      <Video
-        source={require("@/assets/videos/auth_playback.mp4")}
+      <VideoView
+        player={videoPlayer}
         style={styles.backgroundVideo}
-        resizeMode={ResizeMode.COVER}
-        isMuted
-        shouldPlay
-        isLooping
-        useNativeControls={false}
+        contentFit="cover"
+        nativeControls={false}
       />
       <View pointerEvents="none" style={styles.overlay} />
 

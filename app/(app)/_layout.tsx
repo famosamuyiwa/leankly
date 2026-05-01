@@ -19,7 +19,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !userId) return;
-
     let attempts = 0;
     const maxAttempts = 5;
 
@@ -47,7 +46,7 @@ export default function RootLayout() {
         setTimeout(checkUser, 500);
       } else {
         console.error(
-          "❌ Failed to find user in Appwrite after multiple attempts"
+          "❌ Failed to find user in Appwrite after multiple attempts",
         );
       }
     };

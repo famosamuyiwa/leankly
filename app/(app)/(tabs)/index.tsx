@@ -1,4 +1,7 @@
-import { recordLeankAction } from "@/appwrite/actions/leank.actions";
+import {
+  deleteLeankAction,
+  recordLeankAction,
+} from "@/appwrite/actions/leank.actions";
 import { consumeBonusInterest } from "@/appwrite/actions/user.actions";
 import { sendPushNotification } from "@/appwrite/config";
 import { LeankCardBig } from "@/components/Cards";
@@ -13,14 +16,27 @@ import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { FreeLimits, canUse, increment } from "@/lib/featureGates";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import Lottie from "lottie-react-native";
 import { cssInterop } from "nativewind";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+type ReactionHistoryItem = {
+  index: number;
+  leankId: string;
+  isLiked: boolean;
+};
+
+type DeckState = {
+  filterKey: string;
+  currentIndex: number;
+  reactionHistory: ReactionHistoryItem[];
+};
 
 // Interop the Image component to recognize the 'className' prop
 cssInterop(Image, {
@@ -29,8 +45,12 @@ cssInterop(Image, {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [previousIndexes, setPreviousIndexes] = useState<number[]>([]);
+  const [deckState, setDeckState] = useState<DeckState>({
+    filterKey: "",
+    currentIndex: 0,
+    reactionHistory: [],
+  });
+  const [isReacting, setIsReacting] = useState(false);
 
   const {
     currentUser,
@@ -42,9 +62,10 @@ export default function HomeScreen() {
   } = useGlobalContext();
   const { filters } = useFiltersContext();
   const { isPro, openPaywall } = usePremium();
+  const filterKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
 
   // ✅ use the new hook version
-  const { leanks, loading, hasMore, refresh, loadMore } = useLeanksFeed(
+  const { leanks, loading, hasMore, loadMore } = useLeanksFeed(
     currentUser?.$id,
     filters
   );
@@ -53,23 +74,13 @@ export default function HomeScreen() {
     (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || "")
   );
 
+  const isCurrentFilterDeck = deckState.filterKey === filterKey;
+  const maxIndex = Math.max(filteredLeanks.length - 1, 0);
+  const currentIndex = isCurrentFilterDeck
+    ? Math.min(deckState.currentIndex, maxIndex)
+    : 0;
+  const reactionHistory = isCurrentFilterDeck ? deckState.reactionHistory : [];
   const currentLeank = filteredLeanks[currentIndex];
-
-  // ———————————————————————————
-  // 1️⃣ Reset on new filters
-  // ———————————————————————————
-  useEffect(() => {
-    setCurrentIndex(0);
-    setPreviousIndexes([]);
-  }, [filters]);
-
-  useEffect(() => {
-    if (currentIndex >= filteredLeanks.length) {
-      setCurrentIndex(
-        filteredLeanks.length > 0 ? filteredLeanks.length - 1 : 0
-      );
-    }
-  }, [filteredLeanks.length]);
 
   // ———————————————————————————
   // 2️⃣ Prefetch when near end
@@ -81,17 +92,30 @@ export default function HomeScreen() {
         loadMore();
       }
     }
-  }, [currentIndex, filteredLeanks.length, hasMore, loading, loadMore]);
+  }, [
+    currentIndex,
+    filteredLeanks.length,
+    hasMore,
+    leanks.length,
+    loading,
+    loadMore,
+  ]);
 
   // ———————————————————————————
   // 3️⃣ Handle reactions
   // ———————————————————————————
   const handleReactionPress = async (isLiked: boolean) => {
+    if (isReacting) return;
+
     try {
       if (!currentUser?.$id) {
         Alert.alert("Please sign in to continue");
         return;
       }
+      if (!currentLeank?.$id) return;
+
+      setIsReacting(true);
+
       // Only gate and count when liking a leank; skips do not count
       if (isLiked && !isPro) {
         const dailyAllowed = await canUse(
@@ -116,33 +140,53 @@ export default function HomeScreen() {
           );
         }
       }
-      showLoader(undefined, true);
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      if (currentLeank && currentUser) {
-        setPreviousIndexes((prev) => [...prev, currentIndex]);
-        await recordLeankAction(currentUser.$id, currentLeank.$id, isLiked);
-      }
+      void Haptics.impactAsync(
+        isLiked
+          ? Haptics.ImpactFeedbackStyle.Medium
+          : Haptics.ImpactFeedbackStyle.Light
+      );
 
-      const pn = {
-        token: currentLeank.owner?.pushToken,
-        title: "New leank request",
-        content: `${currentUser?.name} wants to join ${currentLeank.title}`,
-      };
-
-      // alert leank owner
-      sendPushNotification({
-        type: PushNotificationTypes.ALERT,
-        data: pn as PNAlert,
+      const reactedLeank = currentLeank;
+      setDeckState((prev) => {
+        const history =
+          prev.filterKey === filterKey ? prev.reactionHistory : [];
+        return {
+          filterKey,
+          currentIndex: currentIndex + 1,
+          reactionHistory: [
+            ...history,
+            {
+              index: currentIndex,
+              leankId: reactedLeank.$id,
+              isLiked,
+            },
+          ],
+        };
       });
 
-      setCurrentIndex((prev) => prev + 1);
+      await recordLeankAction(currentUser.$id, reactedLeank.$id, isLiked);
+
+      if (isLiked) {
+        const pn = {
+          token: reactedLeank.owner?.pushToken,
+          title: "New leank request",
+          content: `${currentUser.name} wants to join ${reactedLeank.title}`,
+        };
+
+        // alert leank owner
+        sendPushNotification({
+          type: PushNotificationTypes.ALERT,
+          data: pn as PNAlert,
+        });
+      }
+
       // count only after a successful LIKE for free users
       if (isLiked && !isPro) await increment(currentUser.$id, "interest");
     } catch (err) {
       console.error("Reaction error:", err);
     } finally {
-      hideLoader();
+      setIsReacting(false);
     }
   };
 
@@ -150,8 +194,10 @@ export default function HomeScreen() {
   // 4️⃣ Undo last interest
   // ———————————————————————————
   const handleUndo = async () => {
-    if (previousIndexes.length === 0) return;
+    if (reactionHistory.length === 0) return;
     if (!currentUser?.$id) return;
+    const lastAction = reactionHistory[reactionHistory.length - 1];
+
     if (!isPro) {
       const allowed = await canUse(
         currentUser.$id,
@@ -163,27 +209,26 @@ export default function HomeScreen() {
         return;
       }
     }
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     showLoader(undefined, true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    setCurrentIndex((prev) => {
-      if (!previousIndexes.length) return prev;
-      const lastIndex = previousIndexes[previousIndexes.length - 1];
-      setPreviousIndexes((p) => p.slice(0, -1));
-      return lastIndex;
-    });
+    try {
+      const result = await deleteLeankAction(currentUser.$id, lastAction.leankId);
+      if (!result.ok) return;
 
-    hideLoader();
-    if (!isPro && currentUser?.$id) {
-      await increment(currentUser.$id, "undo");
+      setDeckState({
+        filterKey,
+        currentIndex: lastAction.index,
+        reactionHistory: reactionHistory.slice(0, -1),
+      });
+
+      if (!isPro) {
+        await increment(currentUser.$id, "undo");
+      }
+    } finally {
+      hideLoader();
     }
-  };
-
-  const onLikePress = () => {
-    Alert.alert("Interest", "Show interest in this leank?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Yes", onPress: () => handleReactionPress(true) },
-    ]);
   };
 
   // ———————————————————————————
@@ -229,13 +274,14 @@ export default function HomeScreen() {
                 <Ionicons
                   name="return-down-back"
                   size={20}
-                  color={previousIndexes.length > 0 ? "black" : "lightgrey"}
+                  color={reactionHistory.length > 0 ? "black" : "lightgrey"}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.6}
                 onPress={() => handleReactionPress(false)}
+                disabled={isReacting}
                 className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
               >
                 <Feather name="x" size={35} color="black" />
@@ -243,7 +289,8 @@ export default function HomeScreen() {
 
               <TouchableOpacity
                 activeOpacity={0.6}
-                onPress={onLikePress}
+                onPress={() => handleReactionPress(true)}
+                disabled={isReacting}
                 className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
               >
                 <MaterialCommunityIcons

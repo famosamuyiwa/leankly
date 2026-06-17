@@ -24,7 +24,6 @@ import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import { useMemo, useState } from "react";
 import {
-  Button,
   Modal,
   ScrollView,
   Text,
@@ -67,7 +66,7 @@ export default function Create() {
   const [modalContent, setModalContent] = useState<ModalType | null>(null);
   const { currentUser, displayToast } = useGlobalContext();
 
-  const { uploadFiles, progress, isUploading } = useAppwriteUpload();
+  const { uploadFiles } = useAppwriteUpload();
 
   const memoizedCover = useMemo(() => {
     return cover ? (
@@ -164,7 +163,7 @@ export default function Create() {
       if (coverMediaResult) {
         url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
       }
-    } catch (error) {
+    } catch {
       displayToast({
         type: ToastType.ERROR,
         description: "Could not upload cover. Please try again.",
@@ -247,8 +246,7 @@ export default function Create() {
   };
 
   const handleCloseTimeModal = () => {
-    setTime("");
-    setPendingTime(TIME_OPTIONS[0]);
+    setPendingTime(time || TIME_OPTIONS[0]);
     resetModal();
   };
 
@@ -316,13 +314,18 @@ export default function Create() {
               className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
             >
               <Ionicons name="calendar" size={20} />
-              <Text className="font-plus-jakarta-regular flex-1 ml-2">
-                {date &&
-                  new Date(date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+              <Text
+                className={`font-plus-jakarta-regular flex-1 ml-2 ${
+                  date ? "text-black-300" : "text-gray-400"
+                }`}
+              >
+                {date
+                  ? new Date(date).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                  : "Pick date"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -333,9 +336,13 @@ export default function Create() {
               onPress={() => openModal(ModalType.TIME)}
               className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
             >
-              {/* <Ionicons name="time" size={20} /> */}
-              <Text className="font-plus-jakarta-regular flex-1 ml-2">
-                {time}
+              <Ionicons name="time" size={20} />
+              <Text
+                className={`font-plus-jakarta-regular flex-1 ml-2 ${
+                  time ? "text-black-300" : "text-gray-400"
+                }`}
+              >
+                {time || "Optional time"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -399,7 +406,6 @@ export default function Create() {
                       key={option}
                       onPress={() => {
                         setPendingTime(option);
-                        setTime(option);
                       }}
                       className={`flex-row items-center py-3 px-2 mt-2 rounded-xl ${
                         selected ? "bg-gray-100" : ""
@@ -429,8 +435,8 @@ export default function Create() {
                 })}
               </ScrollView>
               <View className="px-5 pt-3 pb-5">
-                <Button
-                  title="Done"
+                <CustomButton
+                  label="Done"
                   onPress={() => {
                     handleModalDoneClick(modalContent);
                   }}

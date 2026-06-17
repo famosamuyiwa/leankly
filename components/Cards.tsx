@@ -1,6 +1,4 @@
-import { appwriteConfig, client, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
-import { RequestAction } from "@/constants/enums";
 import images from "@/constants/images";
 import { BasicUser, Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { usePremium } from "@/lib/PremiumContext";
@@ -9,7 +7,6 @@ import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
-import { useEffect } from "react";
 import {
   Platform,
   StyleSheet,
@@ -17,7 +14,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Query } from "react-native-appwrite";
 import CustomButton from "./Button";
 
 interface LeankProps {
@@ -270,13 +266,11 @@ export const ChatCard = ({
   meta,
   userId,
   onPress,
-  onItemUpdate,
 }: {
   item: Leank;
   meta: UserChatMeta | undefined;
   userId?: string;
   onPress: () => void;
-  onItemUpdate: (item: Leank, meta: UserChatMeta) => void;
 }) => {
   const isUserLastMessage = item.lastMessage?.senderId === userId;
   const lastMessageTs = item.lastMessage?.$createdAt
@@ -285,65 +279,6 @@ export const ChatCard = ({
   const readAtTs = meta?.readAt ? new Date(meta.readAt).getTime() : 0;
   const isUnread =
     !!lastMessageTs && !isUserLastMessage && lastMessageTs > readAtTs;
-
-  useEffect(() => {
-    const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${item.$id}`;
-    const unsubscribe = client.subscribe(channel, (res) => {
-      if (res.events.includes("databases.*.tables.*.rows.*.update")) {
-        getLastMessage();
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const getLastMessage = async () => {
-    if (!userId) return;
-    try {
-      const { rows, total } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries: [
-          Query.select([
-            "cover",
-            "title",
-            "lastMessage.senderName",
-            "lastMessage.content",
-            "lastMessage.senderId",
-            "lastMessage.$createdAt",
-            "ownerId",
-            "participantIds",
-            "status",
-          ]),
-          Query.equal("$id", item.$id),
-          Query.or([
-            Query.equal("ownerId", userId),
-            Query.contains("participantIds", userId),
-          ]),
-          Query.equal("status", RequestAction.PENDING),
-        ],
-      });
-
-      const { rows: metaRows, total: metaTotal } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.userChatMeta,
-        queries: [
-          Query.and([
-            Query.equal("userId", userId),
-            Query.equal("leankId", item.$id),
-          ]),
-        ],
-      });
-
-      //send update back to parent
-      onItemUpdate(
-        rows[0] as unknown as Leank,
-        metaRows[0] as unknown as UserChatMeta,
-      );
-    } catch (e) {
-      console.log(e);
-    }
-  };
 
   return (
     <TouchableOpacity
@@ -389,7 +324,7 @@ export const ChatCard = ({
 
 // A blurred/locked placeholder shaped like RequestCard
 export const LockedRequestPlaceholder = () => {
-  const { isPro, openPaywall } = usePremium();
+  const { openPaywall } = usePremium();
 
   return (
     <TouchableOpacity onPress={() => openPaywall("See all requests")}>

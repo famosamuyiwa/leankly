@@ -21,43 +21,29 @@ const CustomButton = ({
 
     onPress();
   };
-  return (
-    <>
-      {!isDisabled && (
-        <TouchableOpacity
-          onPress={handleOnPress}
-          activeOpacity={0.6}
-          className={`items-center justify-center bg-black "
-       rounded-full py-3 h-12 ${bgClassName}`}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={"white"} size="small" />
-          ) : (
-            <Text
-              className={`text-white text-center font-plus-jakarta-bold ${textClassName}`}
-            >
-              {label}
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
 
-      {isDisabled && (
-        <TouchableOpacity
-          onPress={handleOnPress}
-          activeOpacity={0.6}
-          className={`items-center justify-center bg-gray-300 rounded-full py-3 h-12 `}
+  const buttonClassName = isDisabled
+    ? "bg-gray-300"
+    : bgClassName || "bg-black";
+  const indicatorColor = isDisabled ? "white" : "white";
+
+  return (
+    <TouchableOpacity
+      onPress={handleOnPress}
+      activeOpacity={0.6}
+      disabled={isLoading || isDisabled}
+      className={`items-center justify-center rounded-full py-3 h-12 ${buttonClassName}`}
+    >
+      {isLoading ? (
+        <ActivityIndicator color={indicatorColor} size="small" />
+      ) : (
+        <Text
+          className={`text-white text-center font-plus-jakarta-bold ${textClassName || ""}`}
         >
-          {isLoading ? (
-            <ActivityIndicator color={"white"} size="small" />
-          ) : (
-            <Text className="text-white text-center font-plus-jakarta-bold">
-              {label}
-            </Text>
-          )}
-        </TouchableOpacity>
+          {label}
+        </Text>
       )}
-    </>
+    </TouchableOpacity>
   );
 };
 

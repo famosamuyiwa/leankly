@@ -32,17 +32,16 @@ const UserPreviewModal = ({
   disableBlock,
   onReport,
 }: Props) => {
-  if (!user) return null;
-  const blocked = isBlocked(user.$id);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string>("");
+  const [otherReason, setOtherReason] = useState("");
+  const blocked = user ? isBlocked(user.$id) : false;
   const joined =
-    user.joinedAt &&
+    user?.joinedAt &&
     new Date(user.joinedAt).toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState<string>("");
-  const [otherReason, setOtherReason] = useState("");
 
   const reasons = [
     "Spam",
@@ -51,6 +50,8 @@ const UserPreviewModal = ({
     "Fake account",
     "Other",
   ];
+
+  if (!user) return null;
 
   return (
     <Modal visible={visible} transparent animationType="fade">

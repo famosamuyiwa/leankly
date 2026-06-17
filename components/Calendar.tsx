@@ -23,14 +23,10 @@ const Header = memo(({ onBack }: { onBack: () => void }) => (
     <View />
   </View>
 ));
+Header.displayName = "CalendarHeader";
 
 export default function Calendar({ onBack }: CalendarProps) {
   const insets = useSafeAreaInsets();
-
-  if (!insets) {
-    return null; // Prevents glitching by waiting for insets
-  }
-
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const today = useMemo(() => toDateId(new Date()), []);
 
@@ -62,6 +58,10 @@ export default function Calendar({ onBack }: CalendarProps) {
     }),
     [today, selectedDate]
   );
+
+  if (!insets) {
+    return null; // Prevents glitching by waiting for insets
+  }
 
   return (
     <View style={[styles.container]}>

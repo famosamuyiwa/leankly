@@ -1,5 +1,10 @@
 import { updateArrayRow } from "@/appwrite/actions/leank.actions";
-import { appwriteConfig, client, db, sendPushNotification } from "@/appwrite/config";
+import {
+  appwriteConfig,
+  client,
+  db,
+  sendPushNotification,
+} from "@/appwrite/config";
 import {
   ChatCard,
   LockedRequestPlaceholder,
@@ -14,7 +19,13 @@ import {
   RequestAction,
   Screens,
 } from "@/constants/enums";
-import { Leank, LeankRequest, PNAlert, User, UserChatMeta } from "@/interfaces";
+import {
+  Leank,
+  LeankRequest,
+  PNAlert,
+  User,
+  UserChatMeta,
+} from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { FreeLimits } from "@/lib/featureGates";
@@ -32,10 +43,11 @@ export default function MessagesScreen() {
     nav?: string;
   }>();
 
-  const { unreadCount, setUnreadCount, currentUser, blockedUserIds } = useGlobalContext();
-  const { isPro, openPaywall } = usePremium();
+  const { unreadCount, setUnreadCount, currentUser, blockedUserIds } =
+    useGlobalContext();
+  const currentUserId = currentUser?.$id;
+  const { isPro } = usePremium();
   const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
   const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
   const [requests, setRequests] = useState<LeankRequest[]>([]);
@@ -119,7 +131,7 @@ export default function MessagesScreen() {
   };
 
   const fetchRequests = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUserId) return;
 
     const queries: any[] = [
       Query.select([
@@ -133,14 +145,14 @@ export default function MessagesScreen() {
         "leank.title",
         "leank.ownerId",
       ]),
-      Query.equal("leank.ownerId", currentUser.$id),
+      Query.equal("leank.ownerId", currentUserId),
       Query.equal("isLiked", true),
       Query.equal("status", RequestAction.PENDING),
       Query.orderDesc("$createdAt"),
     ];
 
     try {
-      const { rows, total } = await db.listRows({
+      const { rows } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.reactions,
         queries,
@@ -150,12 +162,12 @@ export default function MessagesScreen() {
     } catch (e) {
       console.log(e);
     }
-  }, [currentUser?.$id]);
+  }, [currentUserId]);
 
   const fetchChatRooms = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUserId) return;
     try {
-      const { rows, total } = await db.listRows({
+      const { rows } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         queries: [
@@ -171,8 +183,8 @@ export default function MessagesScreen() {
             "status",
           ]),
           Query.or([
-            Query.equal("ownerId", currentUser.$id),
-            Query.contains("participantIds", currentUser.$id),
+            Query.equal("ownerId", currentUserId),
+            Query.contains("participantIds", currentUserId),
           ]),
           Query.equal("status", LeankStatus.ACTIVE),
         ],
@@ -184,21 +196,21 @@ export default function MessagesScreen() {
     } catch (e) {
       console.log(e);
     }
-  }, [currentUser?.$id]);
+  }, [blockedUserIds, currentUserId]);
 
   const fetchChatMeta = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUserId) return;
     try {
-      const { rows, total } = await db.listRows({
+      const { rows } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.userChatMeta,
-        queries: [Query.equal("userId", currentUser.$id)],
+        queries: [Query.equal("userId", currentUserId)],
       });
       setChatMetas(rows as unknown as UserChatMeta[]);
     } catch (e) {
       console.log(e);
     }
-  }, [currentUser?.$id]);
+  }, [currentUserId]);
 
   const getChatDetails = useCallback(async () => {
     await Promise.all([fetchChatRooms(), fetchChatMeta()]);
@@ -212,8 +224,7 @@ export default function MessagesScreen() {
   );
 
   useEffect(() => {
-    if (!currentUser?.$id) return;
-    const currentUserId = currentUser.$id as string;
+    if (!currentUserId) return;
 
     const hasMutationEvent = (events: string[] = []) =>
       events.some((event) =>
@@ -269,7 +280,7 @@ export default function MessagesScreen() {
       unsubscribeChatMeta();
     };
   }, [
-    currentUser?.$id,
+    currentUserId,
     fetchRequests,
     getChatDetails,
     fetchChatMeta,
@@ -278,16 +289,16 @@ export default function MessagesScreen() {
   useEffect(() => {
     const unread = chatRooms.filter((room) => {
       const meta = chatMetas.find(
-        (m) => m.leankId === room.$id && m.userId === currentUser?.$id
+        (m) => m.leankId === room.$id && m.userId === currentUserId
       );
       return (
         room.lastMessage &&
         new Date(room.lastMessage.$createdAt) > new Date(meta?.readAt || 0) &&
-        room.lastMessage.senderId !== currentUser?.$id
+        room.lastMessage.senderId !== currentUserId
       );
     }).length;
     setUnreadCount(unread);
-  }, [chatRooms, chatMetas]);
+  }, [chatRooms, chatMetas, currentUserId, setUnreadCount]);
 
   const memoizedRequestCard = ({ item }: { item: LeankRequest }) => (
     <View className="mb-5">
@@ -307,34 +318,9 @@ export default function MessagesScreen() {
         item={item}
         meta={chatMetas.find(
           (meta) =>
-            meta.leankId === item.$id && meta.userId === currentUser?.$id
+            meta.leankId === item.$id && meta.userId === currentUserId
         )}
-        userId={currentUser?.$id}
-        onItemUpdate={(update, metaUpdate) => {
-          setChatRooms((prev) => {
-            if (!Array.isArray(prev) || prev.length === 0 || !update?.$id)
-              return prev ?? [];
-
-            const index = prev.findIndex((r) => r && r.$id === update.$id);
-            if (index === -1) return prev;
-
-            const newRooms = [...prev];
-            newRooms[index] = { ...(prev[index] || {}), ...update };
-            return newRooms;
-          });
-
-          setChatMetas((prev) => {
-            if (!Array.isArray(prev) || prev.length === 0 || !metaUpdate?.$id)
-              return prev ?? [];
-
-            const index = prev.findIndex((r) => r && r.$id === metaUpdate.$id);
-            if (index === -1) return prev;
-
-            const newMetas = [...prev];
-            newMetas[index] = { ...(prev[index] || {}), ...metaUpdate };
-            return newMetas;
-          });
-        }}
+        userId={currentUserId}
         onPress={() => {
           setChatMetas((prev) => {
             if (!Array.isArray(prev) || prev.length === 0) return prev ?? [];
@@ -343,7 +329,7 @@ export default function MessagesScreen() {
               (meta) =>
                 meta &&
                 meta.leankId === item?.$id &&
-                meta.userId === currentUser?.$id
+                meta.userId === currentUserId
             );
             if (index === -1) return prev;
 
@@ -388,7 +374,7 @@ export default function MessagesScreen() {
           No {isChats ? "Chats" : "Requests"}
         </Text>
         <Text className="text-center  text-gray-400 ">
-          You don't have any {isChats ? "chats" : "requests"} at the moment.
+          You don&apos;t have any {isChats ? "chats" : "requests"} at the moment.
           Check back later!
         </Text>
       </View>

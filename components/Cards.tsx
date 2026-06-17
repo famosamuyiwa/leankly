@@ -1,6 +1,7 @@
 import { appwriteConfig, client, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { RequestAction } from "@/constants/enums";
+import images from "@/constants/images";
 import { BasicUser, Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { usePremium } from "@/lib/PremiumContext";
 import { formatDate, timeElapsed } from "@/lib/utils";
@@ -79,29 +80,40 @@ export const LeankCardBig = ({
   item,
   onAvatarPress,
 }: LeankProps & { onAvatarPress?: (user: BasicUser) => void }) => {
+  const ownerId = item.owner?.$id || item.ownerId;
+  const coverSource = item.cover ? { uri: item.cover } : images.leankCover;
+  const avatarSource = item.owner?.avatar
+    ? { uri: item.owner.avatar }
+    : images.avatarPlaceholder;
+  const title = item.title?.trim() || "Untitled leank";
+  const location = item.location?.trim() || "Location TBD";
+  const dateLabel = item.date ? formatDate(item.date) : "Date TBD";
+  const timeLabel = item.time?.trim() || "Time TBD";
   const hostLabel = [item.owner?.name, item.owner?.age]
     .filter(Boolean)
     .join(", ");
 
   return (
     <View
-      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} gap-5 flex-1`}
+      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} overflow-hidden flex-1`}
     >
-      <View className="h-[60%]">
+      <View className="h-[58%]">
         <Image
-          source={{ uri: item.cover }}
-          className="absolute h-full w-full rounded-t-3xl"
+          source={coverSource}
+          className="absolute h-full w-full"
           contentFit="cover"
+          transition={250}
+          cachePolicy="memory-disk"
         />
         <LinearGradient
-          colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.42)", "rgba(0,0,0,0.9)"]}
+          colors={["rgba(0,0,0,0.03)", "rgba(0,0,0,0.38)", "rgba(0,0,0,0.86)"]}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         />
 
-        <View className="absolute left-5 right-5 top-5 flex-row items-center justify-end">
+        <View className="absolute left-4 right-4 top-4 flex-row items-center justify-end">
           {!!item.category && (
-            <View className="max-w-[58%] rounded-full bg-black/35 px-3 py-2">
+            <View className="max-w-[70%] rounded-full bg-black/40 px-3 py-2">
               <Text className="font-plus-jakarta-bold text-xs text-white line-clamp-1">
                 {item.category}
               </Text>
@@ -109,30 +121,33 @@ export const LeankCardBig = ({
           )}
         </View>
 
-        <View className="absolute bottom-5 left-5 right-5 gap-4">
+        <View className="absolute bottom-4 left-4 right-4 gap-4">
           <View className="flex-row items-end gap-3">
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() =>
+              disabled={!ownerId}
+              onPress={() => {
+                if (!ownerId) return;
                 onAvatarPress?.({
-                  $id: item.owner?.$id || item.ownerId,
+                  $id: ownerId,
                   name: item.owner?.name,
                   age: item.owner?.age,
                   avatar: item.owner?.avatar,
                   joinedAt: (item.owner as any)?.$createdAt,
-                } as BasicUser)
-              }
+                } as BasicUser);
+              }}
               className="rounded-full border-2 border-white"
             >
               <Image
-                source={{ uri: item.owner?.avatar }}
-                className="size-16 rounded-full"
+                source={avatarSource}
+                className="size-14 rounded-full"
+                contentFit="cover"
               />
             </TouchableOpacity>
 
             <View className="flex-1 pb-1">
-              <Text className="font-plus-jakarta-extrabold text-3xl text-white line-clamp-2">
-                {item.title}
+              <Text className="font-plus-jakarta-extrabold text-2xl leading-8 text-white line-clamp-2">
+                {title}
               </Text>
               <Text className="font-plus-jakarta-semibold text-sm text-white/80 line-clamp-1">
                 Hosted by {hostLabel || "a Leankly host"}
@@ -142,10 +157,10 @@ export const LeankCardBig = ({
         </View>
       </View>
 
-      <View className="flex-1 justify-between px-5 py-5">
-        <View className="gap-4">
+      <View className="flex-1 justify-between px-4 py-4">
+        <View className="gap-3">
           <View className="flex-row gap-3">
-            <View className="flex-1 rounded-2xl bg-primary-100 px-4 py-3">
+            <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-3">
               <View className="mb-2 flex-row items-center gap-2">
                 <Ionicons
                   name="calendar-clear"
@@ -157,14 +172,14 @@ export const LeankCardBig = ({
                 </Text>
               </View>
               <Text className="font-plus-jakarta-extrabold text-sm text-black-300 line-clamp-1">
-                {formatDate(item.date)}
+                {dateLabel}
               </Text>
               <Text className="font-plus-jakarta-semibold text-xs text-black-100 line-clamp-1">
-                {item.time || "Time TBD"}
+                {timeLabel}
               </Text>
             </View>
 
-            <View className="flex-1 rounded-2xl bg-secondary-100 px-4 py-3">
+            <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-3">
               <View className="mb-2 flex-row items-center gap-2">
                 <MaterialCommunityIcons
                   name="account-group"
@@ -184,12 +199,12 @@ export const LeankCardBig = ({
             </View>
           </View>
 
-          <View className="flex-row items-center gap-3">
-            <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
+          <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
+            <View className="items-center justify-center rounded-full bg-secondary-200 size-9">
               <Entypo name="location" size={16} color={Colors.accent} />
             </View>
             <Text className="flex-1 font-plus-jakarta-bold text-sm text-black-300 line-clamp-2">
-              {item.location}
+              {location}
             </Text>
           </View>
         </View>

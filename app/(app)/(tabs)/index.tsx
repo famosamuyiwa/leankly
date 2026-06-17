@@ -258,10 +258,16 @@ export default function HomeScreen() {
                   Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300"
                 } absolute w-5/6 bottom-2`}
               />
-              <LeankCardBig
-                item={currentLeank}
-                onAvatarPress={(user) => openUserPreview(user)}
-              />
+              <Animated.View
+                key={currentLeank.$id}
+                entering={FadeIn.duration(180)}
+                className="w-full flex-1"
+              >
+                <LeankCardBig
+                  item={currentLeank}
+                  onAvatarPress={(user) => openUserPreview(user)}
+                />
+              </Animated.View>
             </View>
 
             {/* Reaction buttons */}

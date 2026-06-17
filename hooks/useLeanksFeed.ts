@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Query } from "react-native-appwrite";
 
 const PAGE_SIZE = 10;
+const MAX_FILTER_PAGES = 4;
 
 type LocationFilterValue = {
   nearby?: {
@@ -232,6 +233,55 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     return [...prev, ...next.filter((x) => !seen.has(x.$id))];
   };
 
+  const fetchFilteredBatch = useCallback(
+    async ({
+      cursorAfter,
+      reactedIds,
+    }: {
+      cursorAfter?: string | null;
+      reactedIds: string[];
+    }) => {
+      const locationFilter = filters?.[FilterOptions.LOCATION] as
+        | LocationFilterValue
+        | undefined;
+      const collected: Leank[] = [];
+      let nextCursor = cursorAfter ?? null;
+      let lastRawCount = 0;
+      let pagesFetched = 0;
+
+      while (collected.length < PAGE_SIZE && pagesFetched < MAX_FILTER_PAGES) {
+        const queries = buildQueries({
+          limit: PAGE_SIZE,
+          cursorAfter: nextCursor,
+          reactedIds,
+        });
+
+        const { rows } = await db.listRows({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.leanks,
+          queries,
+        });
+
+        lastRawCount = rows.length;
+        if (rows.length === 0) break;
+
+        const rawRows = rows as unknown as Leank[];
+        collected.push(...applyLocationFilter(rawRows, locationFilter));
+        nextCursor = rows[rows.length - 1].$id;
+        pagesFetched += 1;
+
+        if (rows.length < PAGE_SIZE) break;
+      }
+
+      return {
+        rows: collected,
+        cursor: nextCursor,
+        hasMore: lastRawCount === PAGE_SIZE,
+      };
+    },
+    [buildQueries, filters]
+  );
+
   const refresh = useCallback(async () => {
     if (!userId) return;
     const myReq = ++reqIdRef.current;
@@ -240,23 +290,12 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
 
     try {
       const reactedIds = await fetchReactedIds();
-      const queries = buildQueries({ limit: PAGE_SIZE, reactedIds });
-
-      const { rows } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries,
-      });
-
-      const filteredRows = applyLocationFilter(
-        rows as unknown as Leank[],
-        filters?.[FilterOptions.LOCATION] as LocationFilterValue | undefined
-      );
+      const batch = await fetchFilteredBatch({ reactedIds });
 
       if (myReq !== reqIdRef.current) return;
-      setItems(filteredRows);
-      setCursor(rows.length ? rows[rows.length - 1].$id : null);
-      setHasMore(rows.length === PAGE_SIZE);
+      setItems(batch.rows);
+      setCursor(batch.cursor);
+      setHasMore(batch.hasMore);
     } catch (err) {
       console.error("❌ Error fetching Leanks:", err);
       if (myReq !== reqIdRef.current) return;
@@ -264,7 +303,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     } finally {
       if (myReq === reqIdRef.current) setLoading(false);
     }
-  }, [userId, fetchReactedIds, buildQueries]);
+  }, [userId, fetchReactedIds, fetchFilteredBatch]);
 
   const loadMore = useCallback(async () => {
     if (!userId || loading || !hasMore) return;
@@ -274,26 +313,15 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
 
     try {
       const reactedIds = await fetchReactedIds();
-      const queries = buildQueries({
-        limit: PAGE_SIZE,
+      const batch = await fetchFilteredBatch({
         cursorAfter: cursor,
         reactedIds,
       });
-      const { rows } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries,
-      });
-
-      const filteredRows = applyLocationFilter(
-        rows as unknown as Leank[],
-        filters?.[FilterOptions.LOCATION] as LocationFilterValue | undefined
-      );
 
       if (myReq !== reqIdRef.current) return;
-      setItems((prev) => mergeDedup(prev, filteredRows));
-      setCursor(rows.length ? rows[rows.length - 1].$id : cursor);
-      setHasMore(rows.length === PAGE_SIZE);
+      setItems((prev) => mergeDedup(prev, batch.rows));
+      setCursor(batch.cursor ?? cursor);
+      setHasMore(batch.hasMore);
     } catch (err) {
       console.error("❌ loadMore error:", err);
       if (myReq !== reqIdRef.current) return;
@@ -301,15 +329,17 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     } finally {
       if (myReq === reqIdRef.current) setLoading(false);
     }
-  }, [userId, loading, hasMore, cursor, fetchReactedIds, buildQueries]);
+  }, [userId, loading, hasMore, cursor, fetchReactedIds, fetchFilteredBatch]);
 
   useEffect(() => {
-    setItems([]);
-    setCursor(null);
-    setHasMore(true);
     reqIdRef.current++;
-    if (userId) refresh();
-  }, [userId, filterKey]);
+    if (!userId) return;
+    const timeout = setTimeout(() => {
+      void refresh();
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [userId, filterKey, refresh]);
 
   return {
     leanks: items,

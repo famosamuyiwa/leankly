@@ -3,6 +3,7 @@ import {
   LeankCategory,
   LeankStatus,
   PushNotificationTypes,
+  RequestAction,
 } from "./constants/enums";
 
 export interface ToastProps {
@@ -49,6 +50,7 @@ export interface Reactions extends Models.Row {
   leankId: string;
   isLiked: boolean;
   isDeclined: boolean;
+  status?: RequestAction;
 }
 
 export interface LeankRequest extends Models.Row {

@@ -1,5 +1,5 @@
 import { leankCategories } from "@/constants/data";
-import { LeankCategory } from "@/constants/enums";
+import { LeankCategory, RequestAction } from "@/constants/enums";
 import { ID, Query } from "react-native-appwrite";
 import { appwriteConfig, db, functions } from "../config";
 
@@ -23,7 +23,10 @@ export const recordLeankAction = async (
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.reactions,
         rowId: reaction.$id,
-        data: { isLiked },
+        data: {
+          isLiked,
+          ...(isLiked ? { status: RequestAction.PENDING } : {}),
+        },
       });
     } else {
       // 3️⃣ Create new reaction
@@ -31,11 +34,44 @@ export const recordLeankAction = async (
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.reactions,
         rowId: ID.unique(),
-        data: { userId, leankId, isLiked, user: userId, leank: leankId },
+        data: {
+          userId,
+          leankId,
+          isLiked,
+          status: RequestAction.PENDING,
+          user: userId,
+          leank: leankId,
+        },
       });
     }
   } catch (err) {
     console.error("Failed to record reaction:", err);
+  }
+};
+
+export const deleteLeankAction = async (userId: string, leankId: string) => {
+  try {
+    const { rows } = await db.listRows({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.reactions,
+      queries: [Query.equal("userId", userId), Query.equal("leankId", leankId)],
+    });
+
+    const reaction = rows[0];
+    if (!reaction?.$id) {
+      return { ok: true, deletedId: undefined };
+    }
+
+    await db.deleteRow({
+      databaseId: appwriteConfig.db,
+      tableId: appwriteConfig.tables.reactions,
+      rowId: reaction.$id,
+    });
+
+    return { ok: true, deletedId: reaction.$id as string };
+  } catch (err) {
+    console.error("Failed to delete reaction:", err);
+    return { ok: false, error: err };
   }
 };
 
@@ -85,7 +121,7 @@ export const classifyLeankCategory = async (
       if (typeof rawResponse === "string" && rawResponse.trim().length) {
         parsed = JSON.parse(rawResponse);
       }
-    } catch (err) {
+    } catch {
       // The function might return plain text; ignore JSON parse errors.
     }
 

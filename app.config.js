@@ -34,6 +34,7 @@ export default {
       "expo-router",
       "expo-font",
       "expo-image",
+      "expo-status-bar",
       "expo-video",
       "expo-web-browser",
       [
@@ -63,7 +64,7 @@ export default {
       reactCompiler: true,
     },
     extra: {
-      googleMapsPlacesApiKey: process.env.EXPO_GOOGLE_MAPS_PLACES_API_KEY,
+      mapboxAccessToken: process.env.EXPO_MAPBOX_ACCESS_TOKEN,
       clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
       eas: {
         projectId: "627c3530-bc48-4c22-8b50-1887a6af6422",

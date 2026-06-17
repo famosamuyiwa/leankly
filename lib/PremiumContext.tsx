@@ -15,7 +15,11 @@ import Purchases, {
   PurchasesOffering,
   PurchasesPackage,
 } from "react-native-purchases";
-import { ensureRevenueCatConfigured, hasActiveEntitlement } from "./revenuecat";
+import {
+  ensureRevenueCatConfigured,
+  hasActiveEntitlement,
+  isRevenueCatNativeAvailable,
+} from "./revenuecat";
 
 type PremiumContextType = {
   isPro: boolean;
@@ -106,9 +110,11 @@ export const PremiumProvider = ({
       try {
         const appUserId = currentUser?.$id;
         if (appUserId && lastAppUserIdRef.current !== appUserId) {
-          const { customerInfo: info } = await Purchases.logIn(appUserId);
+          if (isRevenueCatNativeAvailable()) {
+            const { customerInfo: info } = await Purchases.logIn(appUserId);
+            if (!cancelled) setCustomerInfo(info);
+          }
           lastAppUserIdRef.current = appUserId;
-          if (!cancelled) setCustomerInfo(info);
         } else if (!appUserId) {
           // Do not logOut to avoid creating new anonymous customers; just clear local state
           lastAppUserIdRef.current = null;

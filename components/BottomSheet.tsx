@@ -11,6 +11,7 @@ import BottomSheet, {
 import Constants from "expo-constants";
 import * as Location from "expo-location";
 import React, {
+  useCallback,
   forwardRef,
   useEffect,
   useImperativeHandle,
@@ -28,7 +29,37 @@ import {
 } from "./FilterContent";
 import SearchBar from "./SearchBar";
 
-const FilterBottomSheet = forwardRef(({}, ref) => {
+type MapboxFeature = {
+  id?: string;
+  geometry?: {
+    coordinates?: number[];
+  };
+  properties?: {
+    mapbox_id?: string;
+    name?: string;
+    full_address?: string;
+    place_formatted?: string;
+    feature_type?: string;
+    coordinates?: {
+      latitude?: number;
+      longitude?: number;
+    };
+    context?: {
+      neighborhood?: { name?: string };
+      place?: { name?: string };
+      locality?: { name?: string };
+      district?: { name?: string };
+      region?: { name?: string };
+    };
+  };
+};
+
+type MapboxGeocodingResponse = {
+  features?: MapboxFeature[];
+  message?: string;
+};
+
+const FilterBottomSheet = forwardRef(function FilterBottomSheet(_props, ref) {
   // ref
   const bottomSheetRef = useRef<BottomSheet>(null);
   // expose bottom sheet methods to parent
@@ -125,19 +156,14 @@ const FilterBottomSheet = forwardRef(({}, ref) => {
   );
 });
 
-const ProfileBottomSheet = forwardRef(({}, ref) => {
+const ProfileBottomSheet = forwardRef(function ProfileBottomSheet(_props, ref) {
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const GOOGLE_MAPS_PLACES_API_KEY =
-    Constants.expoConfig?.extra?.googleMapsPlacesApiKey!;
+  const MAPBOX_ACCESS_TOKEN = Constants.expoConfig?.extra?.mapboxAccessToken!;
   const { setLocation, setLocationCoords } = useProfileContext();
 
   // local state
   const [query, setQuery] = useState("");
-  const [placesResults, setPlacesResults] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchPlaces();
-  }, [query]);
+  const [placesResults, setPlacesResults] = useState<MapboxFeature[]>([]);
 
   // expose bottom sheet methods to parent
   useImperativeHandle(ref, () => ({
@@ -146,103 +172,137 @@ const ProfileBottomSheet = forwardRef(({}, ref) => {
     snapTo: (index: number) => bottomSheetRef.current?.snapToIndex(index),
   }));
 
-  // 🔍 call Google Places API
-  const fetchPlaces = async () => {
-    if (!query) return;
-    try {
-      if (query.length < 3) {
-        setPlacesResults([]);
-        return;
-      }
+  const getFeatureLabel = (feature: MapboxFeature) => {
+    const { name, full_address, place_formatted } = feature.properties || {};
+    return (
+      full_address ||
+      [name, place_formatted].filter(Boolean).join(", ") ||
+      name ||
+      place_formatted ||
+      "Unknown location"
+    );
+  };
 
+  const getFeatureNeighborhood = (feature: MapboxFeature) => {
+    const properties = feature.properties;
+    const context = properties?.context;
+
+    return (
+      context?.neighborhood?.name ||
+      context?.locality?.name ||
+      (properties?.feature_type === "neighborhood"
+        ? properties.name
+        : undefined) ||
+      context?.place?.name ||
+      (properties?.feature_type === "place" ? properties.name : undefined) ||
+      properties?.name ||
+      "Unknown neighborhood"
+    );
+  };
+
+  const getFeatureCoords = (feature: MapboxFeature) => {
+    const longitude =
+      feature.properties?.coordinates?.longitude ??
+      feature.geometry?.coordinates?.[0];
+    const latitude =
+      feature.properties?.coordinates?.latitude ??
+      feature.geometry?.coordinates?.[1];
+
+    if (typeof latitude !== "number" || typeof longitude !== "number") {
+      return null;
+    }
+
+    return { lat: latitude, lng: longitude };
+  };
+
+  // 🔍 call Mapbox Geocoding API
+  const fetchPlaces = useCallback(async () => {
+    if (query.length < 3) {
+      setPlacesResults([]);
+      return;
+    }
+
+    try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
+        `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
           query
-        )}&key=${encodeURIComponent(GOOGLE_MAPS_PLACES_API_KEY)}`
+        )}&access_token=${encodeURIComponent(
+          MAPBOX_ACCESS_TOKEN
+        )}&autocomplete=true&limit=5`
       );
 
-      const data = await response.json();
+      const data: MapboxGeocodingResponse = await response.json();
 
-      if (data.status === "OK") {
-        setPlacesResults(data.predictions);
+      if (response.ok) {
+        setPlacesResults(data.features || []);
       } else {
-        console.warn("Google Places API error:", data.status);
+        console.warn("Mapbox Geocoding API error:", data.message);
         setPlacesResults([]);
       }
     } catch (err) {
       console.error("Error fetching places:", err);
     }
-  };
+  }, [MAPBOX_ACCESS_TOKEN, query]);
+
+  useEffect(() => {
+    fetchPlaces();
+  }, [fetchPlaces]);
 
   const onLocationPress = async (
     location: "current" | "search",
-    place_id?: any
+    feature?: MapboxFeature
   ) => {
     try {
-      // Ask for location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        alert("Location permission denied. Please enable it in settings.");
-        return;
-      }
-
-      let loc: any;
-      let latitude: number | undefined;
-      let longitude: number | undefined;
-
       if (location === "current") {
-        //  Get current GPS coordinates
-        loc = await Location.getCurrentPositionAsync({});
-        latitude = loc.coords.latitude;
-        longitude = loc.coords.longitude;
-      } else {
-        if (!place_id) return;
-        setPlacesResults([]); // clear list after selection
-      }
-
-      const data = await getCity(latitude, longitude, place_id);
-
-      if (data.status === "OK") {
-        //  Extract the city (locality) from the response
-        const firstResult = data.results[0];
-        const addressComponents = firstResult?.address_components || [];
-        const cityComponent = addressComponents.find((c: any) =>
-          c.types.includes("locality")
-        );
-        const city = cityComponent?.long_name ?? "Unknown city";
-
-        setLocation(city);
-        const geometryLoc = firstResult?.geometry?.location;
-        const finalLat = latitude ?? geometryLoc?.lat;
-        const finalLng = longitude ?? geometryLoc?.lng;
-        if (typeof finalLat === "number" && typeof finalLng === "number") {
-          setLocationCoords({ lat: finalLat, lng: finalLng });
+        // Ask for location permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          alert("Location permission denied. Please enable it in settings.");
+          return;
         }
+
+        //  Get current GPS coordinates
+        const loc = await Location.getCurrentPositionAsync({});
+        const latitude = loc.coords.latitude;
+        const longitude = loc.coords.longitude;
+        const data = await getNeighborhood(latitude, longitude);
+        const firstResult = data.features?.[0];
+
+        if (!firstResult) {
+          console.warn("Mapbox Geocoding API error:", data.message);
+          return;
+        }
+
+        setLocation(getFeatureNeighborhood(firstResult));
+        setLocationCoords({ lat: latitude, lng: longitude });
         bottomSheetRef.current?.close();
       } else {
-        console.warn("Geocoding API error:", data.status);
+        if (!feature) return;
+
+        const coords = getFeatureCoords(feature);
+        setPlacesResults([]); // clear list after selection
+        setLocation(getFeatureNeighborhood(feature));
+        if (coords) setLocationCoords(coords);
+        bottomSheetRef.current?.close();
       }
     } catch (err) {
       console.error("Error getting current location:", err);
     }
   };
 
-  const getCity = async (
-    latitude?: number,
-    longitude?: number,
-    place_id?: number
-  ) => {
-    const searchType = place_id
-      ? `place_id=${encodeURIComponent(place_id)}`
-      : `latlng=${latitude},${longitude}`;
-    // Call Google Geocoding API to get city name
+  const getNeighborhood = async (latitude: number, longitude: number) => {
+    // Call Mapbox reverse geocoding API to get neighborhood name
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?${searchType}&key=${encodeURIComponent(
-        GOOGLE_MAPS_PLACES_API_KEY
-      )}`
+      `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${encodeURIComponent(
+        longitude
+      )}&latitude=${encodeURIComponent(
+        latitude
+      )}&access_token=${encodeURIComponent(
+        MAPBOX_ACCESS_TOKEN
+      )}&types=neighborhood,locality,place`
     );
 
-    return await response.json();
+    return (await response.json()) as MapboxGeocodingResponse;
   };
 
   return (
@@ -291,15 +351,15 @@ const ProfileBottomSheet = forwardRef(({}, ref) => {
             exiting={FadeOut.duration(500)}
             className="flex-grow bg-white rounded-lg"
           >
-            {placesResults.map((place) => (
+            {placesResults.map((place, index) => (
               <TouchableOpacity
-                key={place.place_id}
-                onPress={() => onLocationPress("search", place.place_id)}
+                key={place.properties?.mapbox_id || place.id || index}
+                onPress={() => onLocationPress("search", place)}
                 className="p-4 border-b border-gray-200 flex-row items-center gap-5"
               >
                 <Ionicons name="location" size={16} />
                 <Text className="text-gray-800 line-clamp-1 font-plus-jakarta-regular">
-                  {place.description}
+                  {getFeatureLabel(place)}
                 </Text>
               </TouchableOpacity>
             ))}

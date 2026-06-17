@@ -28,7 +28,7 @@ const SignIn = () => {
   const videoPlayer = useVideoPlayer(
     { assetId: require("@/assets/videos/auth_playback.mov") },
     (player) => {
-      player.loop = true;
+      player.loop = false;
       player.muted = true;
       player.play();
     },
@@ -101,7 +101,7 @@ const SignIn = () => {
             onPress={() => handleLogin(LoginProvider.GOOGLE)}
             className="bg-white rounded-full w-full py-4 mt-5 items-center"
           >
-            <View className="flex flex-row items-center gap-2 w-8/12">
+            <View className="flex flex-row items-center justify-center gap-2 w-8/12">
               <Image
                 source={icons.google}
                 style={styles.googleImg}
@@ -117,7 +117,7 @@ const SignIn = () => {
               onPress={() => handleLogin(LoginProvider.APPLE)}
               className="bg-white rounded-full w-full py-4 mt-5 items-center"
             >
-              <View className="flex flex-row items-center gap-2 w-8/12">
+              <View className="flex flex-row items-center justify-center gap-2 w-8/12">
                 <AntDesign name="apple" size={24} />
                 <Text className="text-lg font-plus-jakarta-medium text-black-300 ml-1">
                   Continue with Apple
@@ -129,7 +129,7 @@ const SignIn = () => {
             onPress={() => handleLogin(LoginProvider.MAIL)}
             className="bg-white rounded-full w-full py-4 mt-5 items-center"
           >
-            <View className="flex flex-row items-center gap-2  w-8/12">
+            <View className="flex flex-row items-center justify-center gap-2  w-8/12">
               <Ionicons name="mail" size={22} />
               <Text className="text-lg font-plus-jakarta-medium text-black-300 ml-2">
                 Continue with Mail
@@ -148,10 +148,10 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
   },
   backgroundVideo: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.35)",
   },
   content: {

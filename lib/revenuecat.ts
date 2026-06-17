@@ -1,3 +1,4 @@
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import Purchases, {
   CustomerInfo,
   LOG_LEVEL,
@@ -13,6 +14,10 @@ export const ACTIVE_ENTITLEMENT_ID =
   process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID ?? "";
 
 let configured = false;
+
+/** RevenueCat runs in browser mode inside Expo Go; native-only APIs like logIn are unreliable there. */
+export const isRevenueCatNativeAvailable = () =>
+  Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 
 export const ensureRevenueCatConfigured = () => {
   if (configured) return true;

@@ -16,7 +16,7 @@ export default function ExpoAuthSessionRedirect() {
 
     const save = async () => await saveUserToDB(user, expoPushToken);
     save();
-  }, [isLoaded, isSignedIn, user]);
+  }, [isLoaded, isSignedIn, user, expoPushToken]);
 
   return (
     <Animated.View

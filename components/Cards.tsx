@@ -6,9 +6,16 @@ import { usePremium } from "@/lib/PremiumContext";
 import { formatDate, timeElapsed } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
-import React, { useEffect } from "react";
-import { Platform, Text, TouchableOpacity, View } from "react-native";
+import { useEffect } from "react";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Query } from "react-native-appwrite";
 import CustomButton from "./Button";
 
@@ -70,73 +77,121 @@ export const LeankCard = ({ item, onPress }: LeankProps) => {
 
 export const LeankCardBig = ({
   item,
-  onPress,
   onAvatarPress,
 }: LeankProps & { onAvatarPress?: (user: BasicUser) => void }) => {
+  const hostLabel = [item.owner?.name, item.owner?.age]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <View
-      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  gap-5 flex-1`}
+      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} gap-5 flex-1`}
     >
-      <Image
-        source={{ uri: item.cover }}
-        className="h-[35%] rounded-t-3xl"
-        contentFit="cover"
-      />
-      <View className="gap-5 px-5">
-        <View className="flex-row gap-5 ">
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() =>
-              onAvatarPress?.({
-                $id: item.owner?.$id || item.ownerId,
-                name: item.owner?.name,
-                age: item.owner?.age,
-                avatar: item.owner?.avatar,
-                joinedAt: (item.owner as any)?.$createdAt,
-              } as BasicUser)
-            }
-          >
-            <Image
-              source={{ uri: item.owner?.avatar }}
-              className="size-20 rounded-full"
-            />
-          </TouchableOpacity>
-          <View className="gap-2 justify-center w-4/6">
-            <Text className="font-plus-jakarta-bold text-lg line-clamp-2">
-              {item.title}
-            </Text>
-            <Text className="font-plus-jakarta-regular color-gray-400">
-              {item.owner?.name}, {item.owner?.age}
-            </Text>
-          </View>
-        </View>
-        <Text className=" font-plus-jakarta-semibold color-gray-400 line-clamp-3">
-          {item.description}
-        </Text>
-        <View className="flex-row items-center gap-3">
-          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-            <Ionicons name="calendar-clear" color={Colors.accent} />
-          </View>
-          <Text className=" font-plus-jakarta-bold">
-            {formatDate(item.date)}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-3">
-          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-            <MaterialCommunityIcons
-              name="clock-time-three"
-              size={16}
-              color={Colors.accent}
-            />
-          </View>
-          <Text className=" font-plus-jakarta-bold">{item.time || "--"}</Text>
+      <View className="h-[60%]">
+        <Image
+          source={{ uri: item.cover }}
+          className="absolute h-full w-full rounded-t-3xl"
+          contentFit="cover"
+        />
+        <LinearGradient
+          colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.42)", "rgba(0,0,0,0.9)"]}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View className="absolute left-5 right-5 top-5 flex-row items-center justify-end">
+          {!!item.category && (
+            <View className="max-w-[58%] rounded-full bg-black/35 px-3 py-2">
+              <Text className="font-plus-jakarta-bold text-xs text-white line-clamp-1">
+                {item.category}
+              </Text>
+            </View>
+          )}
         </View>
 
-        <View className="flex-row items-center gap-3">
-          <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-            <Entypo name="location" size={16} color={Colors.accent} />
+        <View className="absolute bottom-5 left-5 right-5 gap-4">
+          <View className="flex-row items-end gap-3">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                onAvatarPress?.({
+                  $id: item.owner?.$id || item.ownerId,
+                  name: item.owner?.name,
+                  age: item.owner?.age,
+                  avatar: item.owner?.avatar,
+                  joinedAt: (item.owner as any)?.$createdAt,
+                } as BasicUser)
+              }
+              className="rounded-full border-2 border-white"
+            >
+              <Image
+                source={{ uri: item.owner?.avatar }}
+                className="size-16 rounded-full"
+              />
+            </TouchableOpacity>
+
+            <View className="flex-1 pb-1">
+              <Text className="font-plus-jakarta-extrabold text-3xl text-white line-clamp-2">
+                {item.title}
+              </Text>
+              <Text className="font-plus-jakarta-semibold text-sm text-white/80 line-clamp-1">
+                Hosted by {hostLabel || "a Leankly host"}
+              </Text>
+            </View>
           </View>
-          <Text className=" font-plus-jakarta-bold">{item.location}</Text>
+        </View>
+      </View>
+
+      <View className="flex-1 justify-between px-5 py-5">
+        <View className="gap-4">
+          <View className="flex-row gap-3">
+            <View className="flex-1 rounded-2xl bg-primary-100 px-4 py-3">
+              <View className="mb-2 flex-row items-center gap-2">
+                <Ionicons
+                  name="calendar-clear"
+                  size={15}
+                  color={Colors.primary}
+                />
+                <Text className="font-plus-jakarta-bold text-xs text-black-100">
+                  WHEN
+                </Text>
+              </View>
+              <Text className="font-plus-jakarta-extrabold text-sm text-black-300 line-clamp-1">
+                {formatDate(item.date)}
+              </Text>
+              <Text className="font-plus-jakarta-semibold text-xs text-black-100 line-clamp-1">
+                {item.time || "Time TBD"}
+              </Text>
+            </View>
+
+            <View className="flex-1 rounded-2xl bg-secondary-100 px-4 py-3">
+              <View className="mb-2 flex-row items-center gap-2">
+                <MaterialCommunityIcons
+                  name="account-group"
+                  size={16}
+                  color={Colors.accent}
+                />
+                <Text className="font-plus-jakarta-bold text-xs text-black-100">
+                  CREW
+                </Text>
+              </View>
+              <Text className="font-plus-jakarta-extrabold text-sm text-black-300">
+                {item.peopleRequired || 1} needed
+              </Text>
+              <Text className="font-plus-jakarta-semibold text-xs text-black-100">
+                Small group
+              </Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center gap-3">
+            <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
+              <Entypo name="location" size={16} color={Colors.accent} />
+            </View>
+            <Text className="flex-1 font-plus-jakarta-bold text-sm text-black-300 line-clamp-2">
+              {item.location}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -268,7 +323,7 @@ export const ChatCard = ({
       //send update back to parent
       onItemUpdate(
         rows[0] as unknown as Leank,
-        metaRows[0] as unknown as UserChatMeta
+        metaRows[0] as unknown as UserChatMeta,
       );
     } catch (e) {
       console.log(e);
@@ -298,7 +353,7 @@ export const ChatCard = ({
           </Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
             {timeElapsed(
-              item.lastMessage ? item.lastMessage.$createdAt : item.$createdAt
+              item.lastMessage ? item.lastMessage.$createdAt : item.$createdAt,
             )}
           </Text>
         </View>

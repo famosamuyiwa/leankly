@@ -70,10 +70,11 @@ export default function HomeScreen() {
   const filterKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
 
   // ✅ use the new hook version
-  const { leanks, loading, hasMore, loadMore } = useLeanksFeed(
+  const { leanks, loading, hasMore, loadedFilterKey, loadMore } = useLeanksFeed(
     currentUser?.$id,
     filters,
   );
+  const isFilterLoading = loadedFilterKey !== filterKey;
 
   const filteredLeanks = leanks.filter(
     (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || ""),
@@ -91,7 +92,7 @@ export default function HomeScreen() {
   // 2️⃣ Prefetch when near end
   // ———————————————————————————
   useEffect(() => {
-    if (!loading && hasMore && leanks.length > 0) {
+    if (!isFilterLoading && !loading && hasMore && leanks.length > 0) {
       const threshold = 1;
       if (currentIndex >= filteredLeanks.length - threshold) {
         loadMore();
@@ -101,6 +102,7 @@ export default function HomeScreen() {
     currentIndex,
     filteredLeanks.length,
     hasMore,
+    isFilterLoading,
     leanks.length,
     loading,
     loadMore,
@@ -265,7 +267,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Main content */}
-        {currentLeank ? (
+        {!isFilterLoading && currentLeank ? (
           <View className="flex-1 px-5 pt-5">
             <View className="h-5/6 items-center">
               <View
@@ -328,7 +330,7 @@ export default function HomeScreen() {
             entering={FadeIn.duration(250)}
             className="flex-1 items-center justify-center"
           >
-            {loading ? (
+            {isFilterLoading || loading ? (
               <View className="items-center justify-center">
                 <Image
                   source={images.whiteIcon}

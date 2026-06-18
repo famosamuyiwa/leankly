@@ -101,6 +101,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [loadedFilterKey, setLoadedFilterKey] = useState<string | null>(null);
 
   const reqIdRef = useRef(0);
   const filterKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
@@ -296,14 +297,16 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
       setItems(batch.rows);
       setCursor(batch.cursor);
       setHasMore(batch.hasMore);
+      setLoadedFilterKey(filterKey);
     } catch (err) {
       console.error("❌ Error fetching Leanks:", err);
       if (myReq !== reqIdRef.current) return;
       setError(err);
+      setLoadedFilterKey(filterKey);
     } finally {
       if (myReq === reqIdRef.current) setLoading(false);
     }
-  }, [userId, fetchReactedIds, fetchFilteredBatch]);
+  }, [userId, filterKey, fetchReactedIds, fetchFilteredBatch]);
 
   const loadMore = useCallback(async () => {
     if (!userId || loading || !hasMore) return;
@@ -346,6 +349,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     loading,
     hasMore,
     error,
+    loadedFilterKey,
     refresh,
     loadMore,
   };

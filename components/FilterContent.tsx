@@ -1,10 +1,11 @@
 import { Colors } from "@/constants/common";
 import { leankCategories } from "@/constants/data";
 import { LeankCategory, SexFilterEnum } from "@/constants/enums";
-import { useEffect, useMemo, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Text, View } from "react-native";
 import RangeSlider from "react-native-fast-range-slider";
 import { SelectItem } from "./SelectItem";
+import { SingleSlider } from "./SingleSlider";
 
 interface AgeFilterProps {
   range: {
@@ -16,13 +17,8 @@ interface AgeFilterProps {
 
 const AgeFilter = ({ range, onChange }: AgeFilterProps) => {
   const [localRange, setLocalRange] = useState<{ min: number; max: number }>(
-    range
+    range,
   );
-
-  // Keep local state synced if parent updates externally
-  useEffect(() => {
-    setLocalRange(range);
-  }, [range]);
 
   const handleChange = ([min, max]: number[]) => {
     const updated = { min, max };
@@ -107,8 +103,51 @@ export interface LocationFilterValue {
   includeOnline?: boolean;
 }
 
-const PROXIMITY_OPTIONS = [5, 10, 25, 50, 100];
-const DEFAULT_RADIUS = 25;
+const KM_PER_MILE = 1.609344;
+const MIN_RADIUS_MILES = 1;
+const MAX_RADIUS_MILES = 100;
+const DEFAULT_RADIUS_MILES = 25;
+
+const clampRadiusMiles = (miles: number) =>
+  Math.min(MAX_RADIUS_MILES, Math.max(MIN_RADIUS_MILES, Math.round(miles)));
+
+const kmToMiles = (km: number) => clampRadiusMiles(km / KM_PER_MILE);
+
+const milesToKm = (miles: number) =>
+  Number((clampRadiusMiles(miles) * KM_PER_MILE).toFixed(3));
+
+const RadiusSlider = ({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (miles: number) => void;
+}) => {
+  const clampedValue = clampRadiusMiles(value);
+
+  return (
+    <View className="gap-3">
+      <View className="flex-row justify-between">
+        <Text className="font-plus-jakarta-semibold text-gray-900">
+          Within {clampedValue} mi
+        </Text>
+      </View>
+
+      <SingleSlider
+        min={MIN_RADIUS_MILES}
+        max={MAX_RADIUS_MILES}
+        step={1}
+        value={clampedValue}
+        thumbSize={24}
+        trackHeight={4}
+        selectedTrackStyle={{ backgroundColor: Colors.primary }}
+        unselectedTrackStyle={{ backgroundColor: "#ccc" }}
+        thumbStyle={{ backgroundColor: "#fff" }}
+        onValueChange={onChange}
+      />
+    </View>
+  );
+};
 
 const LocationFilter = ({
   value,
@@ -118,7 +157,10 @@ const LocationFilter = ({
   const nearby = value?.nearby;
   const isNearby = !!nearby;
   const isOnline = !!value?.includeOnline;
-  const radius = nearby?.radiusKm || DEFAULT_RADIUS;
+  const radiusMiles =
+    nearby?.radiusKm != null
+      ? kmToMiles(nearby.radiusKm)
+      : DEFAULT_RADIUS_MILES;
 
   const coords = useMemo(
     () =>
@@ -127,7 +169,7 @@ const LocationFilter = ({
         : nearby?.userLat != null && nearby?.userLng != null
           ? { lat: nearby.userLat, lng: nearby.userLng }
           : null,
-    [userCoords, nearby]
+    [userCoords, nearby],
   );
 
   const setValue = (next: LocationFilterValue | null) => {
@@ -138,11 +180,11 @@ const LocationFilter = ({
     }
   };
 
-  const applyNearby = (radiusKm: number) => {
+  const applyNearby = (radiusMiles: number) => {
     setValue({
       includeOnline: isOnline,
       nearby: {
-        radiusKm,
+        radiusKm: milesToKm(radiusMiles),
         userLat: coords?.lat,
         userLng: coords?.lng,
       },
@@ -153,7 +195,7 @@ const LocationFilter = ({
     if (isNearby) {
       setValue({ includeOnline: isOnline, nearby: null });
     } else {
-      applyNearby(radius);
+      applyNearby(radiusMiles);
     }
   };
 
@@ -166,37 +208,12 @@ const LocationFilter = ({
 
   return (
     <View className="gap-4">
-      <SelectItem
-        label={`Nearby${isNearby ? ` (${radius} km)` : ""}`}
-        isSelected={isNearby}
-        onPress={toggleNearby}
-      />
+      <SelectItem label="Nearby" isSelected={isNearby} onPress={toggleNearby} />
       {isNearby && (
         <View className="gap-3">
-          <View className="flex-row flex-wrap gap-2">
-            {PROXIMITY_OPTIONS.map((km) => (
-              <TouchableOpacity
-                key={km}
-                activeOpacity={0.7}
-                onPress={() => applyNearby(km)}
-                className={`px-4 py-2 rounded-full border ${
-                  radius === km
-                    ? "bg-primary-100 border-primary-300"
-                    : "border-gray-200 bg-white"
-                }`}
-              >
-                <Text
-                  className={`font-plus-jakarta-semibold ${
-                    radius === km ? "text-primary-300" : "text-gray-700"
-                  }`}
-                >
-                  Within {km} km
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <RadiusSlider value={radiusMiles} onChange={applyNearby} />
           <Text className="text-xs text-gray-500">
-            Uses your saved neighborhood to calculate distance.
+            Uses your saved neighborhood to calculate distance in miles.
           </Text>
           {!coords && (
             <Text className="text-xs text-red-500">

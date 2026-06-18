@@ -23,7 +23,7 @@ import { cssInterop } from "nativewind";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ReactionHistoryItem = {
@@ -255,9 +255,7 @@ export default function HomeScreen() {
 
   return (
     <GestureHandlerRootView className="flex-1 bg-white">
-      <Animated.View
-        layout={LinearTransition}
-        entering={FadeIn.duration(500)}
+      <View
         className="flex-1 bg-white"
         style={{ paddingTop: insets.top }}
       >
@@ -325,11 +323,7 @@ export default function HomeScreen() {
             </View>
           </View>
         ) : (
-          <Animated.View
-            layout={LinearTransition}
-            entering={FadeIn.duration(250)}
-            className="flex-1 items-center justify-center"
-          >
+          <View className="flex-1 items-center justify-center">
             {isFilterLoading || loading ? (
               <View className="items-center justify-center">
                 <Image
@@ -350,9 +344,9 @@ export default function HomeScreen() {
             ) : (
               <EmptyLeanks isIconVisible />
             )}
-          </Animated.View>
+          </View>
         )}
-      </Animated.View>
+      </View>
     </GestureHandlerRootView>
   );
 }

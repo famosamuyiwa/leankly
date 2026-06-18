@@ -36,7 +36,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { ID, Query } from "react-native-appwrite";
 import { RefreshControl } from "react-native-gesture-handler";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 export default function MessagesScreen() {
   const params = useLocalSearchParams<{
@@ -399,11 +398,7 @@ export default function MessagesScreen() {
   }, [isPro, requests]);
 
   return (
-    <Animated.View
-      layout={LinearTransition}
-      entering={FadeIn.duration(500)}
-      className="flex-1 bg-white px-5"
-    >
+    <View className="flex-1 bg-white px-5">
       <View className="py-5">
         <NavBar
           screen={Screens.CHAT}
@@ -435,6 +430,6 @@ export default function MessagesScreen() {
           ListFooterComponent={requestsFooter as any}
         />
       )}
-    </Animated.View>
+    </View>
   );
 }

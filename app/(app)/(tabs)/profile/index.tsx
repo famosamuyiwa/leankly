@@ -16,7 +16,6 @@ import { cssInterop } from "nativewind";
 import React, { memo, useEffect, useMemo, useState } from "react";
 import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { Query } from "react-native-appwrite";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Interop the Image component to recognize the 'className' prop
@@ -224,11 +223,7 @@ export default function Profile() {
   }
 
   return (
-    <Animated.View
-      layout={LinearTransition}
-      entering={FadeIn.duration(500)}
-      className="flex flex-1 bg-white"
-    >
+    <View className="flex flex-1 bg-white">
       <LegendList<Leank>
         data={leanks}
         renderItem={renderItem}
@@ -240,6 +235,6 @@ export default function Profile() {
         ListEmptyComponent={listEmptyComponent}
         ListHeaderComponent={listHeaderComponent}
       />
-    </Animated.View>
+    </View>
   );
 }

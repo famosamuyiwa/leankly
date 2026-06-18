@@ -32,7 +32,6 @@ import {
   View,
 } from "react-native";
 import { ID } from "react-native-appwrite";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 enum ModalType {
@@ -255,11 +254,7 @@ export default function Create() {
   }
 
   return (
-    <Animated.ScrollView
-      layout={LinearTransition}
-      entering={FadeIn.duration(500)}
-      className="bg-white px-5 pt-5"
-    >
+    <ScrollView className="bg-white px-5 pt-5">
       <TouchableOpacity
         activeOpacity={0.6}
         onPress={handleCoverPress}
@@ -446,6 +441,6 @@ export default function Create() {
           </View>
         )}
       </Modal>
-    </Animated.ScrollView>
+    </ScrollView>
   );
 }

@@ -4,7 +4,6 @@ import { ProfileProvider } from "@/lib/ProfileContext";
 import { Entypo, FontAwesome, MaterialIcons } from "@expo/vector-icons";
 import { PortalProvider } from "@gorhom/portal";
 import { Tabs } from "expo-router";
-import React from "react";
 
 export default function TabLayout() {
   const { unreadCount } = useGlobalContext();
@@ -15,6 +14,33 @@ export default function TabLayout() {
         <Tabs
           screenOptions={{
             tabBarActiveTintColor: Colors.primary,
+            tabBarInactiveTintColor: "#8B95A7",
+            tabBarStyle: {
+              backgroundColor: Colors.secondary,
+              borderTopWidth: 0,
+              height: 96,
+              paddingTop: 8,
+              paddingBottom: 24,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: -8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 18,
+              elevation: 12,
+            },
+            tabBarItemStyle: {
+              height: 58,
+              borderRadius: 18,
+              marginHorizontal: 4,
+              paddingTop: 0,
+              paddingBottom: 0,
+            },
+            tabBarIconStyle: {
+              width: 40,
+              height: 40,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            tabBarShowLabel: false,
             animation: "none",
           }}
         >
@@ -23,8 +49,8 @@ export default function TabLayout() {
             options={{
               title: "Home",
               headerShown: false,
-              tabBarIcon: ({ color, size }) => (
-                <Entypo name="home" color={color} size={size} />
+              tabBarIcon: ({ color }) => (
+                <Entypo name="home" color={color} size={28} />
               ),
             }}
           />
@@ -36,8 +62,8 @@ export default function TabLayout() {
               headerTitleAlign: "center",
               headerShadowVisible: false,
               headerTitleStyle: HeaderStyles.headerTitleStyle,
-              tabBarIcon: ({ color, size }) => (
-                <MaterialIcons name="add-circle" color={color} size={size} />
+              tabBarIcon: ({ color }) => (
+                <MaterialIcons name="add-circle" color={color} size={32} />
               ),
             }}
           />
@@ -46,8 +72,8 @@ export default function TabLayout() {
             options={{
               title: "Messages",
               headerShown: false,
-              tabBarIcon: ({ color, size }) => (
-                <Entypo name="chat" color={color} size={size} />
+              tabBarIcon: ({ color }) => (
+                <Entypo name="chat" color={color} size={28} />
               ),
               tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
               tabBarBadgeStyle: BadgeStyle,
@@ -60,8 +86,8 @@ export default function TabLayout() {
               headerShown: false,
 
               headerTitleStyle: HeaderStyles.headerTitleStyle,
-              tabBarIcon: ({ color, size }) => (
-                <FontAwesome name="user" color={color} size={size} />
+              tabBarIcon: ({ color }) => (
+                <FontAwesome name="user" color={color} size={27} />
               ),
             }}
           />

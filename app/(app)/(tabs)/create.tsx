@@ -1,7 +1,9 @@
 import { classifyLeankCategory } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
 import CustomButton from "@/components/Button";
-import Calendar from "@/components/Calendar";
+import DatePickerBottomSheet, {
+  DatePickerBottomSheetHandle,
+} from "@/components/DatePickerBottomSheet";
 import TimePickerBottomSheet, {
   TimePickerBottomSheetHandle,
 } from "@/components/TimePickerBottomSheet";
@@ -28,7 +30,6 @@ import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import { useMemo, useRef, useState } from "react";
 import {
-  Modal,
   ScrollView,
   Text,
   TextInput,
@@ -36,13 +37,13 @@ import {
   View,
 } from "react-native";
 import { ID } from "react-native-appwrite";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-enum ModalType {
-  CALENDAR = "calendar",
-}
 
 const TIME_OPTIONS = Object.values(Time);
+
+const getToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
 
 // Interop the Image component to recognize the 'className' prop (register once)
 cssInterop(Image, {
@@ -50,8 +51,6 @@ cssInterop(Image, {
 });
 
 export default function Create() {
-  const insets = useSafeAreaInsets();
-
   const [cover, setCover] = useState("");
   const [coverMediaResult, setCoverMediaResult] = useState<
     MediaResult | undefined
@@ -61,12 +60,13 @@ export default function Create() {
   const { pickMultimedia } = useImagePicker();
   const { showLoader, hideLoader } = useGlobalContext();
   const [date, setDate] = useState<Date | undefined>();
+  const [pendingDate, setPendingDate] = useState<Date>(() => getToday());
   const [time, setTime] = useState("");
   const [pendingTime, setPendingTime] = useState<string>(TIME_OPTIONS[0]);
-  const [modalVisible, setModalVisible] = useState(false);
   const [isToggleEnabled, setIsToggleEnabled] = useState(false);
-  const [modalContent, setModalContent] = useState<ModalType | null>(null);
+  const dateBottomSheetRef = useRef<DatePickerBottomSheetHandle>(null);
   const timeBottomSheetRef = useRef<TimePickerBottomSheetHandle>(null);
+  const didCommitDateRef = useRef(false);
   const didCommitTimeRef = useRef(false);
   const { currentUser, displayToast } = useGlobalContext();
 
@@ -101,13 +101,6 @@ export default function Create() {
     } catch (e) {
       console.log(e);
     }
-  };
-
-  const handleOnCalendarModalDismiss = (date: Date | undefined) => {
-    if (date) {
-      setDate(date);
-    }
-    resetModal();
   };
 
   const reset = () => {
@@ -226,9 +219,12 @@ export default function Create() {
     }
   };
 
-  const openModal = (type: ModalType) => {
-    setModalContent(type);
-    setModalVisible(true);
+  const openDateSheet = () => {
+    didCommitDateRef.current = false;
+    setPendingDate(date || getToday());
+    requestAnimationFrame(() => {
+      dateBottomSheetRef.current?.snapToIndex(0);
+    });
   };
 
   const openTimeSheet = () => {
@@ -239,8 +235,18 @@ export default function Create() {
     });
   };
 
-  const resetModal = () => {
-    setModalVisible(false);
+  const handleDateSheetDone = () => {
+    didCommitDateRef.current = true;
+    setDate(pendingDate);
+    dateBottomSheetRef.current?.close();
+  };
+
+  const handleDateSheetClose = () => {
+    if (!didCommitDateRef.current) {
+      setPendingDate(date || getToday());
+    }
+
+    didCommitDateRef.current = false;
   };
 
   const handleTimeSheetDone = () => {
@@ -256,10 +262,6 @@ export default function Create() {
 
     didCommitTimeRef.current = false;
   };
-
-  if (!insets) {
-    return null; // Prevents glitching by waiting for insets
-  }
 
   return (
     <>
@@ -318,7 +320,7 @@ export default function Create() {
                 Date
               </Text>
               <TouchableOpacity
-                onPress={() => openModal(ModalType.CALENDAR)}
+                onPress={openDateSheet}
                 className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
               >
                 <Ionicons name="calendar" size={20} />
@@ -365,29 +367,16 @@ export default function Create() {
           />
           <CustomButton label="Post Leank" onPress={onPostLeank} />
         </View>
-
-        <Modal
-          visible={modalVisible}
-          transparent
-          animationType="slide"
-          statusBarTranslucent
-          presentationStyle="overFullScreen"
-          onRequestClose={resetModal}
-        >
-          {modalContent === ModalType.CALENDAR && (
-            <View
-              style={{
-                paddingTop: insets.top,
-              }}
-              className="flex-1 justify-end color-black"
-            >
-              <Calendar onBack={handleOnCalendarModalDismiss} />
-            </View>
-          )}
-        </Modal>
       </ScrollView>
 
       <Portal>
+        <DatePickerBottomSheet
+          ref={dateBottomSheetRef}
+          value={pendingDate}
+          onChange={setPendingDate}
+          onDone={handleDateSheetDone}
+          onClose={handleDateSheetClose}
+        />
         <TimePickerBottomSheet
           ref={timeBottomSheetRef}
           value={pendingTime || TIME_OPTIONS[0]}

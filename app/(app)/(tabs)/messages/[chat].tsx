@@ -300,22 +300,33 @@ export default function Chat() {
     [currentLeank]
   );
 
-  const renderItem = ({ item }: { item: Message }) => (
-    <MessageBubble
-      item={item}
-      currentUserId={currentUser?.$id}
-      onReplySelect={(msg) => setReplyTo(msg)}
-      openSwipeRef={openSwipeRef}
-      onUserPress={(user) =>
-        openUserPreview({
-          $id: user.$id,
-          name: user.name,
-          avatar: user.avatar,
-          age: user.age,
-        })
-      }
-    />
-  );
+  const renderItem = ({ item, index }: { item: Message; index: number }) => {
+    const previousMessage = messages[index - 1];
+    const nextMessage = messages[index + 1];
+    const startsSenderGroup = !isSameChatSender(previousMessage, item);
+    const endsSenderGroup = !isSameChatSender(nextMessage, item);
+    const compactWithNext = !endsSenderGroup;
+
+    return (
+      <MessageBubble
+        item={item}
+        currentUserId={currentUser?.$id}
+        showSenderName={startsSenderGroup}
+        showAvatar={endsSenderGroup}
+        compactWithNext={compactWithNext}
+        onReplySelect={(msg) => setReplyTo(msg)}
+        openSwipeRef={openSwipeRef}
+        onUserPress={(user) =>
+          openUserPreview({
+            $id: user.$id,
+            name: user.name,
+            avatar: user.avatar,
+            age: user.age,
+          })
+        }
+      />
+    );
+  };
 
   if (!chatId) {
     return <Text>We could not find this chat room</Text>;
@@ -517,9 +528,26 @@ const formatDateLabel = (date: Date) => {
   });
 };
 
+function isSystemMessage(message?: Message) {
+  return (
+    !message ||
+    message.senderId === "system" ||
+    message.type === "system" ||
+    message.type === "system-date"
+  );
+}
+
+function isSameChatSender(previousOrNext: Message | undefined, item: Message) {
+  if (isSystemMessage(previousOrNext) || isSystemMessage(item)) return false;
+  return previousOrNext.senderId === item.senderId;
+}
+
 type MessageBubbleProps = {
   item: Message;
   currentUserId?: string;
+  showSenderName: boolean;
+  showAvatar: boolean;
+  compactWithNext: boolean;
   onReplySelect: (msg: Message) => void;
   openSwipeRef: React.MutableRefObject<ReplySwipeHandle | null>;
   onUserPress?: (user: BasicUser) => void;
@@ -538,14 +566,14 @@ const MessageBubble = React.memo(
   ({
     item,
     currentUserId,
+    showSenderName,
+    showAvatar,
+    compactWithNext,
     onReplySelect,
     openSwipeRef,
     onUserPress,
   }: MessageBubbleProps) => {
-    const isSystem =
-      item.senderId === "system" ||
-      item.type === "system" ||
-      item.type === "system-date";
+    const isSystem = isSystemMessage(item);
     const isSender = item.senderId === currentUserId;
     const replyTarget = item.replyToMessageId
       ? {
@@ -658,9 +686,9 @@ const MessageBubble = React.memo(
         </Reanimated.View>
         <GestureDetector gesture={panGesture}>
           <View
-            className={`w-full flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
+            className={`w-full flex-row gap-2 ${compactWithNext ? "mb-1" : "mb-5"} ${isSender ? "justify-end" : "justify-start"}`}
           >
-            {!isSender && (
+            {!isSender && showAvatar && (
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() =>
@@ -677,15 +705,18 @@ const MessageBubble = React.memo(
                 />
               </TouchableOpacity>
             )}
+            {!isSender && !showAvatar && (
+              <View pointerEvents="none" className="size-10" />
+            )}
             <Reanimated.View
               style={bubbleAnimatedStyle}
               className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${
                 isSender
-                  ? "rounded-tr-none bg-primary-300"
-                  : "rounded-tl-none bg-gray-100"
+                  ? `${showAvatar ? "rounded-tr-none" : ""} bg-primary-300`
+                  : `${showAvatar ? "rounded-tl-none" : ""} bg-gray-100`
               }`}
             >
-              {!isSender && (
+              {!isSender && showSenderName && (
                 <Text
                   className={`font-plus-jakarta-bold ${isSender ? "color-white" : "color-black"}`}
                   style={{ color: senderColor }}

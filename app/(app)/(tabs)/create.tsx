@@ -258,7 +258,7 @@ export default function Create() {
       <TouchableOpacity
         activeOpacity={0.6}
         onPress={handleCoverPress}
-        className="h-52"
+        className="h-64"
       >
         {memoizedCover}
         {cover && (

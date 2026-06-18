@@ -13,6 +13,7 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -21,21 +22,34 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Pressable,
-  Animated as RNAnimated,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { ID, Query } from "react-native-appwrite";
-import { Swipeable } from "react-native-gesture-handler";
-import Reanimated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Reanimated, {
+  Extrapolation,
+  FadeIn,
+  interpolate,
+  LinearTransition,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Interop the Image component to recognize the 'className' prop
 cssInterop(Image, {
   className: { target: "style" },
 });
+
+type ReplySwipeHandle = {
+  close: () => void;
+};
+
 export default function Chat() {
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
@@ -49,7 +63,7 @@ export default function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const headerHeight = useHeaderHeight();
   const listRef = useRef<any>(null);
-  const openSwipeRef = useRef<Swipeable | null>(null);
+  const openSwipeRef = useRef<ReplySwipeHandle | null>(null);
 
   useEffect(() => {
     handleFirstLoad();
@@ -507,8 +521,17 @@ type MessageBubbleProps = {
   item: Message;
   currentUserId?: string;
   onReplySelect: (msg: Message) => void;
-  openSwipeRef: React.MutableRefObject<Swipeable | null>;
+  openSwipeRef: React.MutableRefObject<ReplySwipeHandle | null>;
   onUserPress?: (user: BasicUser) => void;
+};
+
+const REPLY_SWIPE_TRIGGER = 56;
+const REPLY_SWIPE_MAX = 76;
+const REPLY_SWIPE_EDGE_GUTTER = 36;
+const REPLY_SWIPE_SPRING = {
+  damping: 18,
+  stiffness: 260,
+  mass: 0.6,
 };
 
 const MessageBubble = React.memo(
@@ -534,16 +557,81 @@ const MessageBubble = React.memo(
       : null;
     const senderColor = getUserColor(item.senderId);
     const replyColor = getUserColor(replyTarget?.senderId);
-    const swipeRef = useRef<Swipeable | null>(null);
+    const translateX = useSharedValue(0);
 
-    const handleReplySelect = () => {
-      if (openSwipeRef.current && openSwipeRef.current !== swipeRef.current) {
-        openSwipeRef.current.close();
+    const closeSwipe = React.useCallback(() => {
+      // eslint-disable-next-line react-hooks/immutability
+      translateX.value = withSpring(0, REPLY_SWIPE_SPRING);
+    }, [translateX]);
+
+    const swipeHandle = React.useMemo<ReplySwipeHandle>(
+      () => ({
+        close: closeSwipe,
+      }),
+      [closeSwipe]
+    );
+
+    const handleReplySelect = React.useCallback(() => {
+      const openSwipe = openSwipeRef.current;
+      if (openSwipe && openSwipe !== swipeHandle) {
+        openSwipe.close();
       }
-      openSwipeRef.current = swipeRef.current;
+      openSwipeRef.current = swipeHandle;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onReplySelect(item);
-      swipeRef.current?.close();
-    };
+      closeSwipe();
+    }, [closeSwipe, item, onReplySelect, openSwipeRef, swipeHandle]);
+
+    /* eslint-disable react-hooks/immutability, react-hooks/refs */
+    const panGesture = React.useMemo(
+      () =>
+        Gesture.Pan()
+          .hitSlop({ left: -REPLY_SWIPE_EDGE_GUTTER })
+          .activeOffsetX([-10, 10])
+          .failOffsetY([-10, 10])
+          .onUpdate((event) => {
+            translateX.value = Math.min(
+              Math.max(event.translationX, 0),
+              REPLY_SWIPE_MAX
+            );
+          })
+          .onEnd(() => {
+            const shouldReply = translateX.value >= REPLY_SWIPE_TRIGGER;
+            translateX.value = withSpring(0, REPLY_SWIPE_SPRING);
+            if (shouldReply) {
+              runOnJS(handleReplySelect)();
+            }
+          })
+          .onFinalize(() => {
+            translateX.value = withSpring(0, REPLY_SWIPE_SPRING);
+          }),
+      [handleReplySelect, translateX]
+    );
+    /* eslint-enable react-hooks/immutability, react-hooks/refs */
+
+    const bubbleAnimatedStyle = useAnimatedStyle(() => ({
+      transform: [{ translateX: translateX.value }],
+    }));
+
+    const actionAnimatedStyle = useAnimatedStyle(() => {
+      const scale = interpolate(
+        translateX.value,
+        [0, REPLY_SWIPE_TRIGGER, REPLY_SWIPE_MAX],
+        [0.55, 0.95, 1.08],
+        Extrapolation.CLAMP
+      );
+      const opacity = interpolate(
+        translateX.value,
+        [0, 14, REPLY_SWIPE_TRIGGER],
+        [0, 0.65, 1],
+        Extrapolation.CLAMP
+      );
+
+      return {
+        opacity,
+        transform: [{ scale }],
+      };
+    });
 
     if (isSystem) {
       return (
@@ -556,111 +644,96 @@ const MessageBubble = React.memo(
     }
 
     return (
-      <Swipeable
-        ref={swipeRef}
-        enabled
-        overshootLeft={false}
-        leftThreshold={20}
-        renderLeftActions={(progress, dragX) => {
-          const scale = dragX.interpolate({
-            inputRange: [0, 40, 120],
-            outputRange: [0.5, 0.9, 1.1],
-            extrapolate: "clamp",
-          });
-          return (
-            <RNAnimated.View
-              style={{
-                justifyContent: "center",
-                paddingHorizontal: 16,
-                transform: [{ scale }],
-              }}
-            >
-              <Ionicons
-                name="return-up-back-outline"
-                size={20}
-                color={Colors.primary}
-              />
-            </RNAnimated.View>
-          );
-        }}
-        onSwipeableOpen={() => {
-          handleReplySelect();
-          requestAnimationFrame(() => swipeRef.current?.close());
-        }}
-      >
-        <View
-          className={`flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
+      <View className="relative">
+        <Reanimated.View
+          pointerEvents="none"
+          className="absolute left-0 top-0 h-full justify-center px-4"
+          style={actionAnimatedStyle}
         >
-          {!isSender && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                onUserPress?.({
-                  $id: item.senderId,
-                  name: item.senderName,
-                  avatar: item.senderPhoto,
-                })
-              }
-            >
-              <Image
-                source={{ uri: item.senderPhoto }}
-                className="size-10 rounded-full"
-              />
-            </TouchableOpacity>
-          )}
+          <Ionicons
+            name="return-up-back-outline"
+            size={20}
+            color={Colors.primary}
+          />
+        </Reanimated.View>
+        <GestureDetector gesture={panGesture}>
           <View
-            className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${
-              isSender
-                ? "rounded-tr-none bg-primary-300"
-                : "rounded-tl-none bg-gray-100"
-            }`}
+            className={`w-full flex-row gap-2 mb-5 ${isSender ? "justify-end" : "justify-start"}`}
           >
             {!isSender && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  onUserPress?.({
+                    $id: item.senderId,
+                    name: item.senderName,
+                    avatar: item.senderPhoto,
+                  })
+                }
+              >
+                <Image
+                  source={{ uri: item.senderPhoto }}
+                  className="size-10 rounded-full"
+                />
+              </TouchableOpacity>
+            )}
+            <Reanimated.View
+              style={bubbleAnimatedStyle}
+              className={` max-w-[80%] p-3 gap-2 rounded-2xl  ${
+                isSender
+                  ? "rounded-tr-none bg-primary-300"
+                  : "rounded-tl-none bg-gray-100"
+              }`}
+            >
+              {!isSender && (
+                <Text
+                  className={`font-plus-jakarta-bold ${isSender ? "color-white" : "color-black"}`}
+                  style={{ color: senderColor }}
+                >
+                  {item.senderName}
+                </Text>
+              )}
+
+              {replyTarget && (
+                <View
+                  className={`p-2 rounded-lg  ${isSender ? " bg-accent-100" : " bg-accent-100"}`}
+                  style={{ borderLeftColor: replyColor, borderLeftWidth: 3 }}
+                >
+                  <Text
+                    className="text-xs font-plus-jakarta-semibold text-gray-500"
+                    style={{ color: replyColor }}
+                  >
+                    Replying to {replyTarget.senderName || "message"}
+                  </Text>
+                  <Text
+                    className={`text-xs font-plus-jakarta-regular ${isSender ? "text-slate-100" : "text-gray-600"} mt-1`}
+                    numberOfLines={2}
+                  >
+                    {replyTarget.content}
+                  </Text>
+                </View>
+              )}
+
               <Text
-                className={`font-plus-jakarta-bold ${isSender ? "color-white" : "color-black"}`}
-                style={{ color: senderColor }}
+                className={`font-plus-jakarta-regular ${isSender ? "color-white" : "color-black"}`}
               >
-                {item.senderName}
+                {item.content}
               </Text>
-            )}
 
-            {replyTarget && (
-              <View
-                className={`p-2 rounded-lg  ${isSender ? " bg-accent-100" : " bg-accent-100"}`}
-                style={{ borderLeftColor: replyColor, borderLeftWidth: 3 }}
+              <Text
+                className={`font-plus-jakarta-regular text-[10px] text-right ${isSender ? "color-gray-50" : "color-black"}`}
               >
-                <Text
-                  className="text-xs font-plus-jakarta-semibold text-gray-500"
-                  style={{ color: replyColor }}
-                >
-                  Replying to {replyTarget.senderName || "message"}
-                </Text>
-                <Text
-                  className={`text-xs font-plus-jakarta-regular ${isSender ? "text-slate-100" : "text-gray-600"} mt-1`}
-                  numberOfLines={2}
-                >
-                  {replyTarget.content}
-                </Text>
-              </View>
-            )}
-
-            <Text
-              className={`font-plus-jakarta-regular ${isSender ? "color-white" : "color-black"}`}
-            >
-              {item.content}
-            </Text>
-
-            <Text
-              className={`font-plus-jakarta-regular text-[10px] text-right ${isSender ? "color-gray-50" : "color-black"}`}
-            >
-              {new Date(item.$createdAt!).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </Text>
+                {new Date(item.$createdAt!).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+            </Reanimated.View>
           </View>
-        </View>
-      </Swipeable>
+        </GestureDetector>
+      </View>
     );
   }
 );
+
+MessageBubble.displayName = "MessageBubble";

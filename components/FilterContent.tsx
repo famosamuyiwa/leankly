@@ -107,6 +107,7 @@ const KM_PER_MILE = 1.609344;
 const MIN_RADIUS_MILES = 1;
 const MAX_RADIUS_MILES = 100;
 const DEFAULT_RADIUS_MILES = 25;
+const DEFAULT_RADIUS_KM = 40.234;
 
 const clampRadiusMiles = (miles: number) =>
   Math.min(MAX_RADIUS_MILES, Math.max(MIN_RADIUS_MILES, Math.round(miles)));
@@ -115,6 +116,33 @@ const kmToMiles = (km: number) => clampRadiusMiles(km / KM_PER_MILE);
 
 const milesToKm = (miles: number) =>
   Number((clampRadiusMiles(miles) * KM_PER_MILE).toFixed(3));
+
+const hasValidCoords = (coords?: {
+  lat?: number | null;
+  lng?: number | null;
+}): coords is { lat: number; lng: number } =>
+  typeof coords?.lat === "number" && typeof coords?.lng === "number";
+
+export const createDefaultLocationFilter = (coords?: {
+  lat?: number | null;
+  lng?: number | null;
+}): LocationFilterValue => {
+  if (!hasValidCoords(coords)) {
+    return {
+      includeOnline: true,
+      nearby: null,
+    };
+  }
+
+  return {
+    includeOnline: true,
+    nearby: {
+      radiusKm: DEFAULT_RADIUS_KM,
+      userLat: coords.lat,
+      userLng: coords.lng,
+    },
+  };
+};
 
 const RadiusSlider = ({
   value,
@@ -181,12 +209,20 @@ const LocationFilter = ({
   };
 
   const applyNearby = (radiusMiles: number) => {
+    if (!coords) {
+      setValue({
+        includeOnline: isOnline,
+        nearby: null,
+      });
+      return;
+    }
+
     setValue({
       includeOnline: isOnline,
       nearby: {
         radiusKm: milesToKm(radiusMiles),
-        userLat: coords?.lat,
-        userLng: coords?.lng,
+        userLat: coords.lat,
+        userLng: coords.lng,
       },
     });
   };
@@ -209,17 +245,17 @@ const LocationFilter = ({
   return (
     <View className="gap-4">
       <SelectItem label="Nearby" isSelected={isNearby} onPress={toggleNearby} />
+      {!coords && (
+        <Text className="text-xs text-red-500">
+          Add a neighborhood in your profile to enable proximity filtering.
+        </Text>
+      )}
       {isNearby && (
         <View className="gap-3">
           <RadiusSlider value={radiusMiles} onChange={applyNearby} />
           <Text className="text-xs text-gray-500">
             Uses your saved neighborhood to calculate distance in miles.
           </Text>
-          {!coords && (
-            <Text className="text-xs text-red-500">
-              Add a neighborhood in your profile to enable proximity filtering.
-            </Text>
-          )}
         </View>
       )}
 

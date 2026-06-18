@@ -30,6 +30,36 @@ interface FiltersContextType {
 
 const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
 
+const isEmptyFilterValue = (value: any) =>
+  value === null ||
+  typeof value === "undefined" ||
+  value === false ||
+  (Array.isArray(value) && value.length === 0);
+
+const applyFilterValue = (
+  prev: Filters,
+  key: FilterOptions,
+  value: any,
+): Filters => {
+  const next = { ...prev };
+
+  if (key === FilterOptions.TODAY && !isEmptyFilterValue(value)) {
+    delete next[FilterOptions.THIS_WEEK];
+  }
+
+  if (key === FilterOptions.THIS_WEEK && !isEmptyFilterValue(value)) {
+    delete next[FilterOptions.TODAY];
+  }
+
+  if (isEmptyFilterValue(value)) {
+    delete next[key];
+  } else {
+    next[key] = value;
+  }
+
+  return next;
+};
+
 export const FiltersProvider = ({ children }: { children: ReactNode }) => {
   const [filters, setFilters] = useState<Filters>({});
   const [pendingFilter, setPendingFilterState] = useState<{
@@ -38,7 +68,7 @@ export const FiltersProvider = ({ children }: { children: ReactNode }) => {
   } | null>(null);
 
   const setFilter = useCallback((key: FilterOptions, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    setFilters((prev) => applyFilterValue(prev, key, value));
   }, []);
 
   const setPendingFilter = useCallback((key: FilterOptions, value: any) => {
@@ -47,20 +77,9 @@ export const FiltersProvider = ({ children }: { children: ReactNode }) => {
 
   const confirmPendingFilter = useCallback(() => {
     if (pendingFilter?.key)
-      setFilters((prev) => {
-        const next = { ...prev };
-        if (
-          pendingFilter.value === null ||
-          typeof pendingFilter.value === "undefined" ||
-          (Array.isArray(pendingFilter.value) &&
-            pendingFilter.value.length === 0)
-        ) {
-          delete next[pendingFilter.key!];
-        } else {
-          next[pendingFilter.key!] = pendingFilter.value;
-        }
-        return next;
-      });
+      setFilters((prev) =>
+        applyFilterValue(prev, pendingFilter.key!, pendingFilter.value),
+      );
     setPendingFilterState(null);
   }, [pendingFilter]);
 

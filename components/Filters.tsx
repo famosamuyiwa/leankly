@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/common";
 import { FilterOptions, Screens } from "@/constants/enums";
 import { useFiltersContext } from "@/lib/FiltersContext";
+import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -9,16 +10,19 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 import { filterCategories } from "../constants/data";
 import { FilterBottomSheet } from "./BottomSheet";
+import { createDefaultLocationFilter } from "./FilterContent";
 
 const Filters = ({ screen }: { screen: Screens }) => {
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const defaultLocationUserRef = useRef<string | null>(null);
   const { filters, setFilter, setPendingFilter, clearFilter } =
     useFiltersContext();
+  const { currentUser } = useGlobalContext();
   const { isPro, openPaywall } = usePremium();
 
   const screenFilters = useMemo(
     () => filterCategories.filter((category) => category.screen === screen),
-    [screen]
+    [screen],
   );
 
   const lockedKeys = useMemo(
@@ -26,7 +30,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
       screenFilters
         .filter((item) => item.requiresPro)
         .map((item) => item.title),
-    [screenFilters]
+    [screenFilters],
   );
 
   const isLocked = (filterKey: FilterOptions) =>
@@ -34,12 +38,19 @@ const Filters = ({ screen }: { screen: Screens }) => {
 
   const handleChipPress = (
     filterKey: FilterOptions,
-    isBottomSheetFilter: boolean
+    isBottomSheetFilter: boolean,
   ) => {
     if (isBottomSheetFilter) {
       const existingValue = filters[filterKey];
       const defaultValue =
-        filterKey === FilterOptions.CATEGORY ? [] : null;
+        filterKey === FilterOptions.CATEGORY
+          ? []
+          : filterKey === FilterOptions.LOCATION
+            ? createDefaultLocationFilter({
+                lat: currentUser?.locationLat,
+                lng: currentUser?.locationLng,
+              })
+            : null;
       setPendingFilter(filterKey, existingValue ?? defaultValue);
       bottomSheetRef.current?.expand();
     } else {
@@ -52,7 +63,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
   // Gated press handler: only Location is available on Home for free users
   const onFilterPress = (
     filterKey: FilterOptions,
-    isBottomSheetFilter: boolean
+    isBottomSheetFilter: boolean,
   ) => {
     if (isLocked(filterKey)) {
       openPaywall("Advanced filters");
@@ -69,6 +80,22 @@ const Filters = ({ screen }: { screen: Screens }) => {
     });
   }, [isPro, screen, lockedKeys, filters, clearFilter]);
 
+  useEffect(() => {
+    if (screen !== Screens.HOME || !currentUser?.$id) return;
+    if (defaultLocationUserRef.current === currentUser.$id) return;
+
+    defaultLocationUserRef.current = currentUser.$id;
+    if (!filters[FilterOptions.LOCATION]) {
+      setFilter(
+        FilterOptions.LOCATION,
+        createDefaultLocationFilter({
+          lat: currentUser.locationLat,
+          lng: currentUser.locationLng,
+        }),
+      );
+    }
+  }, [currentUser, filters, screen, setFilter]);
+
   return (
     <>
       <ScrollView
@@ -78,9 +105,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
       >
         {screenFilters.map((item) => {
           const value = filters[item.title];
-          const isSelected = Array.isArray(value)
-            ? value.length > 0
-            : !!value;
+          const isSelected = Array.isArray(value) ? value.length > 0 : !!value;
           const isSheetFilter = item.opensBottomSheet;
           const locked = isLocked(item.title);
 

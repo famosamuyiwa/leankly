@@ -24,6 +24,7 @@ import CustomButton from "./Button";
 import {
   AgeFilter,
   CategoryFilter,
+  createDefaultLocationFilter,
   LocationFilter,
   LocationFilterValue,
 } from "./FilterContent";
@@ -75,11 +76,25 @@ const FilterBottomSheet = forwardRef(function FilterBottomSheet(_props, ref) {
   const locationValue =
     pendingFilter?.key === FilterOptions.LOCATION
       ? (pendingFilter.value as LocationFilterValue | null)
-      : ((filters?.[FilterOptions.LOCATION] as LocationFilterValue) || null);
+      : (filters?.[FilterOptions.LOCATION] as LocationFilterValue) ||
+        createDefaultLocationFilter({
+          lat: currentUser?.locationLat,
+          lng: currentUser?.locationLng,
+        });
   const categoryValue =
     pendingFilter?.key === FilterOptions.CATEGORY
-      ? ((pendingFilter.value as LeankCategory[]) || [])
-      : ((filters?.[FilterOptions.CATEGORY] as LeankCategory[]) || []);
+      ? (pendingFilter.value as LeankCategory[]) || []
+      : (filters?.[FilterOptions.CATEGORY] as LeankCategory[]) || [];
+  const ageValue =
+    pendingFilter?.key === FilterOptions.AGE
+      ? (pendingFilter.value as { min: number; max: number }) || {
+          min: 16,
+          max: 28,
+        }
+      : (filters?.[FilterOptions.AGE] as { min: number; max: number }) || {
+          min: 16,
+          max: 28,
+        };
 
   return (
     <BottomSheet
@@ -110,9 +125,7 @@ const FilterBottomSheet = forwardRef(function FilterBottomSheet(_props, ref) {
         <View className="py-5 gap-5">
           {pendingFilter?.key === FilterOptions.AGE && (
             <AgeFilter
-              range={
-                (filters?.[FilterOptions.AGE] as any) || { min: 16, max: 28 }
-              }
+              range={ageValue}
               onChange={(range) => setPendingFilter(FilterOptions.AGE, range)}
             />
           )}
@@ -137,7 +150,7 @@ const FilterBottomSheet = forwardRef(function FilterBottomSheet(_props, ref) {
                   : [...categoryValue, category];
                 setPendingFilter(
                   FilterOptions.CATEGORY,
-                  next.length ? next : null
+                  next.length ? next : null,
                 );
               }}
             />
@@ -225,10 +238,10 @@ const ProfileBottomSheet = forwardRef(function ProfileBottomSheet(_props, ref) {
     try {
       const response = await fetch(
         `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(
-          query
+          query,
         )}&access_token=${encodeURIComponent(
-          MAPBOX_ACCESS_TOKEN
-        )}&autocomplete=true&limit=5`
+          MAPBOX_ACCESS_TOKEN,
+        )}&autocomplete=true&limit=5`,
       );
 
       const data: MapboxGeocodingResponse = await response.json();
@@ -250,7 +263,7 @@ const ProfileBottomSheet = forwardRef(function ProfileBottomSheet(_props, ref) {
 
   const onLocationPress = async (
     location: "current" | "search",
-    feature?: MapboxFeature
+    feature?: MapboxFeature,
   ) => {
     try {
       if (location === "current") {
@@ -294,12 +307,12 @@ const ProfileBottomSheet = forwardRef(function ProfileBottomSheet(_props, ref) {
     // Call Mapbox reverse geocoding API to get neighborhood name
     const response = await fetch(
       `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${encodeURIComponent(
-        longitude
+        longitude,
       )}&latitude=${encodeURIComponent(
-        latitude
+        latitude,
       )}&access_token=${encodeURIComponent(
-        MAPBOX_ACCESS_TOKEN
-      )}&types=neighborhood,locality,place`
+        MAPBOX_ACCESS_TOKEN,
+      )}&types=neighborhood,locality,place`,
     );
 
     return (await response.json()) as MapboxGeocodingResponse;

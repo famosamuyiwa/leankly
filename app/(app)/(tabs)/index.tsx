@@ -38,6 +38,11 @@ type DeckState = {
   reactionHistory: ReactionHistoryItem[];
 };
 
+const ACTION_LOADER_DELAY_MS = 1000;
+
+const waitForActionLoader = () =>
+  new Promise((resolve) => setTimeout(resolve, ACTION_LOADER_DELAY_MS));
+
 // Interop the Image component to recognize the 'className' prop
 cssInterop(Image, {
   className: { target: "style" },
@@ -67,11 +72,11 @@ export default function HomeScreen() {
   // ✅ use the new hook version
   const { leanks, loading, hasMore, loadMore } = useLeanksFeed(
     currentUser?.$id,
-    filters
+    filters,
   );
 
   const filteredLeanks = leanks.filter(
-    (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || "")
+    (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || ""),
   );
 
   const isCurrentFilterDeck = deckState.filterKey === filterKey;
@@ -106,6 +111,7 @@ export default function HomeScreen() {
   // ———————————————————————————
   const handleReactionPress = async (isLiked: boolean) => {
     if (isReacting) return;
+    let didShowLoader = false;
 
     try {
       if (!currentUser?.$id) {
@@ -121,7 +127,7 @@ export default function HomeScreen() {
         const dailyAllowed = await canUse(
           currentUser.$id,
           "interest",
-          FreeLimits.INTERESTS_PER_DAY
+          FreeLimits.INTERESTS_PER_DAY,
         );
         if (!dailyAllowed) {
           const bonus = await consumeBonusInterest(currentUser.$id);
@@ -136,7 +142,7 @@ export default function HomeScreen() {
                   ...prev,
                   bonusInterests: Math.max(0, (prev.bonusInterests || 0) - 1),
                 }
-              : prev
+              : prev,
           );
         }
       }
@@ -144,10 +150,17 @@ export default function HomeScreen() {
       void Haptics.impactAsync(
         isLiked
           ? Haptics.ImpactFeedbackStyle.Medium
-          : Haptics.ImpactFeedbackStyle.Light
+          : Haptics.ImpactFeedbackStyle.Light,
       );
+      showLoader(undefined, true);
+      didShowLoader = true;
 
       const reactedLeank = currentLeank;
+      await Promise.all([
+        recordLeankAction(currentUser.$id, reactedLeank.$id, isLiked),
+        waitForActionLoader(),
+      ]);
+
       setDeckState((prev) => {
         const history =
           prev.filterKey === filterKey ? prev.reactionHistory : [];
@@ -164,8 +177,6 @@ export default function HomeScreen() {
           ],
         };
       });
-
-      await recordLeankAction(currentUser.$id, reactedLeank.$id, isLiked);
 
       if (isLiked) {
         const pn = {
@@ -186,6 +197,7 @@ export default function HomeScreen() {
     } catch (err) {
       console.error("Reaction error:", err);
     } finally {
+      if (didShowLoader) hideLoader();
       setIsReacting(false);
     }
   };
@@ -202,7 +214,7 @@ export default function HomeScreen() {
       const allowed = await canUse(
         currentUser.$id,
         "undo",
-        FreeLimits.UNDOS_PER_DAY
+        FreeLimits.UNDOS_PER_DAY,
       );
       if (!allowed) {
         openPaywall("Unlimited rewinds");
@@ -214,7 +226,10 @@ export default function HomeScreen() {
     showLoader(undefined, true);
 
     try {
-      const result = await deleteLeankAction(currentUser.$id, lastAction.leankId);
+      const [result] = await Promise.all([
+        deleteLeankAction(currentUser.$id, lastAction.leankId),
+        waitForActionLoader(),
+      ]);
       if (!result.ok) return;
 
       setDeckState({

@@ -81,12 +81,14 @@ export default function HomeScreen() {
   );
 
   const isCurrentFilterDeck = deckState.filterKey === filterKey;
-  const maxIndex = Math.max(filteredLeanks.length - 1, 0);
   const currentIndex = isCurrentFilterDeck
-    ? Math.min(deckState.currentIndex, maxIndex)
+    ? Math.max(deckState.currentIndex, 0)
     : 0;
   const reactionHistory = isCurrentFilterDeck ? deckState.reactionHistory : [];
   const currentLeank = filteredLeanks[currentIndex];
+  const isLoadingNextBatch =
+    !currentLeank && hasMore && leanks.length > 0 && !isFilterLoading;
+  const shouldShowDeckLoader = isFilterLoading || loading || isLoadingNextBatch;
 
   // ———————————————————————————
   // 2️⃣ Prefetch when near end
@@ -265,7 +267,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Main content */}
-        {!isFilterLoading && currentLeank ? (
+        {!shouldShowDeckLoader && currentLeank ? (
           <View className="flex-1 px-5 pt-5">
             <View className="h-5/6 items-center">
               <View
@@ -324,7 +326,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View className="flex-1 items-center justify-center">
-            {isFilterLoading || loading ? (
+            {shouldShowDeckLoader ? (
               <View className="items-center justify-center">
                 <Image
                   source={images.whiteIcon}

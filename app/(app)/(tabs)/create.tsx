@@ -2,6 +2,9 @@ import { classifyLeankCategory } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
 import CustomButton from "@/components/Button";
 import Calendar from "@/components/Calendar";
+import TimePickerBottomSheet, {
+  TimePickerBottomSheetHandle,
+} from "@/components/TimePickerBottomSheet";
 import { ToggleItem } from "@/components/Toggle";
 import { defaultCovers } from "@/constants/data";
 import {
@@ -20,9 +23,10 @@ import {
   MaterialCommunityIcons,
   MaterialIcons,
 } from "@expo/vector-icons";
+import { Portal } from "@gorhom/portal";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -36,7 +40,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 enum ModalType {
   CALENDAR = "calendar",
-  TIME = "time",
 }
 
 const TIME_OPTIONS = Object.values(Time);
@@ -63,6 +66,8 @@ export default function Create() {
   const [modalVisible, setModalVisible] = useState(false);
   const [isToggleEnabled, setIsToggleEnabled] = useState(false);
   const [modalContent, setModalContent] = useState<ModalType | null>(null);
+  const timeBottomSheetRef = useRef<TimePickerBottomSheetHandle>(null);
+  const didCommitTimeRef = useRef(false);
   const { currentUser, displayToast } = useGlobalContext();
 
   const { uploadFiles } = useAppwriteUpload();
@@ -222,31 +227,34 @@ export default function Create() {
   };
 
   const openModal = (type: ModalType) => {
-    if (type === ModalType.TIME) {
-      setPendingTime(time || TIME_OPTIONS[0]);
-    }
     setModalContent(type);
     setModalVisible(true);
+  };
+
+  const openTimeSheet = () => {
+    didCommitTimeRef.current = false;
+    setPendingTime(time || TIME_OPTIONS[0]);
+    requestAnimationFrame(() => {
+      timeBottomSheetRef.current?.snapToIndex(0);
+    });
   };
 
   const resetModal = () => {
     setModalVisible(false);
   };
 
-  const handleModalDoneClick = (modalContent: ModalType) => {
-    switch (modalContent) {
-      case ModalType.TIME: {
-        const next = pendingTime || TIME_OPTIONS[0];
-        setTime(next);
-        break;
-      }
-    }
-    resetModal();
+  const handleTimeSheetDone = () => {
+    didCommitTimeRef.current = true;
+    setTime(pendingTime || TIME_OPTIONS[0]);
+    timeBottomSheetRef.current?.close();
   };
 
-  const handleCloseTimeModal = () => {
-    setPendingTime(time || TIME_OPTIONS[0]);
-    resetModal();
+  const handleTimeSheetClose = () => {
+    if (!didCommitTimeRef.current) {
+      setPendingTime(time || TIME_OPTIONS[0]);
+    }
+
+    didCommitTimeRef.current = false;
   };
 
   if (!insets) {
@@ -254,193 +262,140 @@ export default function Create() {
   }
 
   return (
-    <ScrollView className="bg-white px-5 pt-5">
-      <TouchableOpacity
-        activeOpacity={0.6}
-        onPress={handleCoverPress}
-        className="h-64"
-      >
-        {memoizedCover}
-        {cover && (
-          <View className="absolute bottom-0 right-0 p-1 rounded-full bg-white">
-            <MaterialIcons name="camera-enhance" size={24} />
-          </View>
-        )}
-      </TouchableOpacity>
+    <>
+      <ScrollView className="bg-white px-5 pt-5">
+        <TouchableOpacity
+          activeOpacity={0.6}
+          onPress={handleCoverPress}
+          className="h-64"
+        >
+          {memoizedCover}
+          {cover && (
+            <View className="absolute bottom-0 right-0 p-1 rounded-full bg-white">
+              <MaterialIcons name="camera-enhance" size={24} />
+            </View>
+          )}
+        </TouchableOpacity>
 
-      <View className="py-5 gap-5">
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-2">Title</Text>
-          <View className=" h-14 bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
-            <TextInput
-              value={title}
-              autoCapitalize="none"
-              placeholder='e.g "Study session at my house?" '
-              placeholderTextColor="#9CA3AF"
-              className="p-0 "
-              onChangeText={setTitle}
-            />
-          </View>
-        </View>
-
-        <View>
-          <Text className="text-sm font-medium text-gray-700 mb-2">
-            Description
-          </Text>
-          <View className="h-20 bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
-            <TextInput
-              value={description}
-              autoCapitalize="none"
-              placeholder='e.g "going through a lot rn. Who wants to join me in studying?" '
-              multiline
-              numberOfLines={3}
-              placeholderTextColor="#9CA3AF"
-              className="p-0 "
-              onChangeText={setDescription}
-            />
-          </View>
-        </View>
-
-        <View className="flex-row gap-5">
-          <View className="w-[60%]">
-            <Text className="text-sm font-medium text-gray-700 mb-2">Date</Text>
-            <TouchableOpacity
-              onPress={() => openModal(ModalType.CALENDAR)}
-              className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
-            >
-              <Ionicons name="calendar" size={20} />
-              <Text
-                className={`font-plus-jakarta-regular flex-1 ml-2 ${
-                  date ? "text-black-300" : "text-gray-400"
-                }`}
-              >
-                {date
-                  ? new Date(date).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })
-                  : "Pick date"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-1">
-            <Text className="text-sm font-medium text-gray-700 mb-2">Time</Text>
-            <TouchableOpacity
-              onPress={() => openModal(ModalType.TIME)}
-              className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
-            >
-              <Ionicons name="time" size={20} />
-              <Text
-                className={`font-plus-jakarta-regular flex-1 ml-2 ${
-                  time ? "text-black-300" : "text-gray-400"
-                }`}
-              >
-                {time || "Time"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <ToggleItem
-          title="Online"
-          isToggleEnabled={isToggleEnabled}
-          setIsToggleEnabled={setIsToggleEnabled}
-        />
-        <CustomButton label="Post Leank" onPress={onPostLeank} />
-      </View>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        statusBarTranslucent
-        presentationStyle="overFullScreen"
-        onRequestClose={resetModal}
-      >
-        {modalContent === ModalType.CALENDAR && (
-          <View
-            style={{
-              paddingTop: insets.top,
-            }}
-            className="flex-1 justify-end color-black"
-          >
-            <Calendar onBack={handleOnCalendarModalDismiss} />
-          </View>
-        )}
-
-        {modalContent === ModalType.TIME && (
-          <View className="flex-1 justify-end bg-black/10">
-            <View
-              className="bg-white"
-              style={{
-                paddingBottom: Math.max(insets.bottom, 16),
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-              }}
-            >
-              <View className="px-5 pt-5 pb-3 border-b border-gray-200 flex-row items-center justify-between">
-                <Text className="text-lg font-semibold">Select a time</Text>
-                <TouchableOpacity
-                  onPress={handleCloseTimeModal}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Ionicons name="close" size={22} color="black" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView
-                style={{ maxHeight: 320 }}
-                contentContainerStyle={{ paddingHorizontal: 20 }}
-                showsVerticalScrollIndicator={false}
-              >
-                {TIME_OPTIONS.map((option) => {
-                  const selected = (pendingTime || TIME_OPTIONS[0]) === option;
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      onPress={() => {
-                        setPendingTime(option);
-                      }}
-                      className={`flex-row items-center py-3 px-2 mt-2 rounded-xl ${
-                        selected ? "bg-gray-100" : ""
-                      }`}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        className={`w-5 h-5 rounded-full border items-center justify-center ${
-                          selected ? "border-black" : "border-gray-400"
-                        }`}
-                      >
-                        {selected && (
-                          <View className="w-2.5 h-2.5 rounded-full bg-black" />
-                        )}
-                      </View>
-                      <Text
-                        className={`ml-3 text-base ${
-                          selected
-                            ? "font-semibold text-black"
-                            : "text-gray-800"
-                        }`}
-                      >
-                        {option}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-              <View className="px-5 pt-3 pb-5">
-                <CustomButton
-                  label="Done"
-                  onPress={() => {
-                    handleModalDoneClick(modalContent);
-                  }}
-                />
-              </View>
+        <View className="py-5 gap-5">
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Title
+            </Text>
+            <View className=" h-14 bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
+              <TextInput
+                value={title}
+                autoCapitalize="none"
+                placeholder='e.g "Study session at my house?" '
+                placeholderTextColor="#9CA3AF"
+                className="p-0 "
+                onChangeText={setTitle}
+              />
             </View>
           </View>
-        )}
-      </Modal>
-    </ScrollView>
+
+          <View>
+            <Text className="text-sm font-medium text-gray-700 mb-2">
+              Description
+            </Text>
+            <View className="h-20 bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
+              <TextInput
+                value={description}
+                autoCapitalize="none"
+                placeholder='e.g "going through a lot rn. Who wants to join me in studying?" '
+                multiline
+                numberOfLines={3}
+                placeholderTextColor="#9CA3AF"
+                className="p-0 "
+                onChangeText={setDescription}
+              />
+            </View>
+          </View>
+
+          <View className="flex-row gap-5">
+            <View className="w-[60%]">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Date
+              </Text>
+              <TouchableOpacity
+                onPress={() => openModal(ModalType.CALENDAR)}
+                className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
+              >
+                <Ionicons name="calendar" size={20} />
+                <Text
+                  className={`font-plus-jakarta-regular flex-1 ml-2 ${
+                    date ? "text-black-300" : "text-gray-400"
+                  }`}
+                >
+                  {date
+                    ? new Date(date).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })
+                    : "Pick date"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-sm font-medium text-gray-700 mb-2">
+                Time
+              </Text>
+              <TouchableOpacity
+                onPress={openTimeSheet}
+                className="h-14 flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200"
+              >
+                <Ionicons name="time" size={20} />
+                <Text
+                  className={`font-plus-jakarta-regular flex-1 ml-2 ${
+                    time ? "text-black-300" : "text-gray-400"
+                  }`}
+                >
+                  {time || "Time"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ToggleItem
+            title="Online"
+            isToggleEnabled={isToggleEnabled}
+            setIsToggleEnabled={setIsToggleEnabled}
+          />
+          <CustomButton label="Post Leank" onPress={onPostLeank} />
+        </View>
+
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          presentationStyle="overFullScreen"
+          onRequestClose={resetModal}
+        >
+          {modalContent === ModalType.CALENDAR && (
+            <View
+              style={{
+                paddingTop: insets.top,
+              }}
+              className="flex-1 justify-end color-black"
+            >
+              <Calendar onBack={handleOnCalendarModalDismiss} />
+            </View>
+          )}
+        </Modal>
+      </ScrollView>
+
+      <Portal>
+        <TimePickerBottomSheet
+          ref={timeBottomSheetRef}
+          value={pendingTime || TIME_OPTIONS[0]}
+          onChange={setPendingTime}
+          onDone={handleTimeSheetDone}
+          onClose={handleTimeSheetClose}
+        />
+      </Portal>
+    </>
   );
 }

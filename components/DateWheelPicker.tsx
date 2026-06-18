@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 
 const MONTHS = [
@@ -44,6 +44,9 @@ const getDaysInMonth = (year: number, month: number) =>
 
 const getDateKey = (date: Date) =>
   `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+const arePartsEqual = (a: DateParts, b: DateParts) =>
+  a.year === b.year && a.month === b.month && a.day === b.day;
 
 const dateToParts = (date: Date, today: Date): DateParts => {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -100,7 +103,7 @@ const getDayOptions = (year: number, month: number, today: Date) => {
   });
 };
 
-const Rail = ({
+const Rail = memo(function Rail({
   flex,
   selectedValue,
   values,
@@ -110,7 +113,7 @@ const Rail = ({
   selectedValue: number;
   values: { label: string; value: number }[];
   onValueChange: (value: number) => void;
-}) => {
+}) {
   return (
     <Picker
       selectedValue={selectedValue}
@@ -130,7 +133,7 @@ const Rail = ({
       ))}
     </Picker>
   );
-};
+});
 
 export default function DateWheelPicker({
   value,
@@ -173,19 +176,36 @@ export default function DateWheelPicker({
 
   const updatePart = useCallback(
     (nextPart: Partial<DateParts>) => {
+      const currentParts = partsRef.current;
       const nextParts = clampDateParts(
         {
-          ...partsRef.current,
+          ...currentParts,
           ...nextPart,
         },
         today,
       );
+
+      if (arePartsEqual(currentParts, nextParts)) {
+        return;
+      }
 
       partsRef.current = nextParts;
       setParts(nextParts);
       onChange(partsToDate(nextParts));
     },
     [onChange, today],
+  );
+  const handleMonthChange = useCallback(
+    (month: number) => updatePart({ month }),
+    [updatePart],
+  );
+  const handleDayChange = useCallback(
+    (day: number) => updatePart({ day }),
+    [updatePart],
+  );
+  const handleYearChange = useCallback(
+    (year: number) => updatePart({ year }),
+    [updatePart],
   );
 
   return (
@@ -194,19 +214,19 @@ export default function DateWheelPicker({
         flex={1.75}
         selectedValue={parts.month}
         values={monthOptions}
-        onValueChange={(month) => updatePart({ month })}
+        onValueChange={handleMonthChange}
       />
       <Rail
         flex={0.9}
         selectedValue={parts.day}
         values={dayOptions}
-        onValueChange={(day) => updatePart({ day })}
+        onValueChange={handleDayChange}
       />
       <Rail
         flex={1.1}
         selectedValue={parts.year}
         values={years}
-        onValueChange={(year) => updatePart({ year })}
+        onValueChange={handleYearChange}
       />
     </View>
   );

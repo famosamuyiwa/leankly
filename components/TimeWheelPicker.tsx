@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 const DEFAULT_TIME = "12:00 AM";
@@ -64,7 +64,13 @@ const parseTimeParts = (value: string): TimeParts => {
 const formatTimeParts = ({ hour, minuteTens, minuteOnes, period }: TimeParts) =>
   `${hour}:${minuteTens}${minuteOnes} ${period}`;
 
-const Rail = ({
+const arePartsEqual = (a: TimeParts, b: TimeParts) =>
+  a.hour === b.hour &&
+  a.minuteTens === b.minuteTens &&
+  a.minuteOnes === b.minuteOnes &&
+  a.period === b.period;
+
+const Rail = memo(function Rail({
   flex,
   selectedValue,
   values,
@@ -74,7 +80,7 @@ const Rail = ({
   selectedValue: string;
   values: string[];
   onValueChange: (value: string) => void;
-}) => {
+}) {
   return (
     <Picker
       selectedValue={selectedValue}
@@ -90,7 +96,7 @@ const Rail = ({
       ))}
     </Picker>
   );
-};
+});
 
 export default function TimeWheelPicker({
   value,
@@ -113,16 +119,37 @@ export default function TimeWheelPicker({
 
   const updatePart = useCallback(
     (nextPart: Partial<TimeParts>) => {
+      const currentParts = partsRef.current;
       const nextParts = {
-        ...partsRef.current,
+        ...currentParts,
         ...nextPart,
       };
+
+      if (arePartsEqual(currentParts, nextParts)) {
+        return;
+      }
 
       partsRef.current = nextParts;
       setParts(nextParts);
       onChange(formatTimeParts(nextParts));
     },
     [onChange],
+  );
+  const handleHourChange = useCallback(
+    (hour: string) => updatePart({ hour }),
+    [updatePart],
+  );
+  const handleMinuteTensChange = useCallback(
+    (minuteTens: string) => updatePart({ minuteTens }),
+    [updatePart],
+  );
+  const handleMinuteOnesChange = useCallback(
+    (minuteOnes: string) => updatePart({ minuteOnes }),
+    [updatePart],
+  );
+  const handlePeriodChange = useCallback(
+    (period: string) => updatePart({ period: period as TimePeriod }),
+    [updatePart],
   );
 
   return (
@@ -131,7 +158,7 @@ export default function TimeWheelPicker({
         flex={1.25}
         selectedValue={parts.hour}
         values={HOURS}
-        onValueChange={(hour) => updatePart({ hour })}
+        onValueChange={handleHourChange}
       />
 
       <View className="h-[190px] w-7 items-center justify-center pt-5">
@@ -144,19 +171,19 @@ export default function TimeWheelPicker({
         flex={1}
         selectedValue={parts.minuteTens}
         values={MINUTE_TENS}
-        onValueChange={(minuteTens) => updatePart({ minuteTens })}
+        onValueChange={handleMinuteTensChange}
       />
       <Rail
         flex={1}
         selectedValue={parts.minuteOnes}
         values={MINUTE_ONES}
-        onValueChange={(minuteOnes) => updatePart({ minuteOnes })}
+        onValueChange={handleMinuteOnesChange}
       />
       <Rail
         flex={1.35}
         selectedValue={parts.period}
         values={PERIODS}
-        onValueChange={(period) => updatePart({ period: period as TimePeriod })}
+        onValueChange={handlePeriodChange}
       />
     </View>
   );

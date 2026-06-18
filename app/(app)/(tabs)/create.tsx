@@ -119,12 +119,12 @@ export default function Create() {
     leankId: string,
     initialCategory: LeankCategory,
     leankTitle: string,
-    leankDescription: string
+    leankDescription: string,
   ) => {
     try {
       const classifiedCategory = await classifyLeankCategory(
         leankTitle,
-        leankDescription
+        leankDescription,
       );
 
       if (classifiedCategory && classifiedCategory !== initialCategory) {
@@ -138,7 +138,7 @@ export default function Create() {
     } catch (error) {
       console.warn(
         "Could not update leank category after classification",
-        error
+        error,
       );
     }
   };
@@ -209,7 +209,7 @@ export default function Create() {
         leank.$id,
         fallbackCategory,
         classificationTitle,
-        classificationDescription
+        classificationDescription,
       );
     } catch (e) {
       console.warn(e);
@@ -342,7 +342,7 @@ export default function Create() {
                   time ? "text-black-300" : "text-gray-400"
                 }`}
               >
-                {time || "Optional time"}
+                {time || "Time"}
               </Text>
             </TouchableOpacity>
           </View>

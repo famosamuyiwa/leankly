@@ -91,9 +91,9 @@ export const LeankCardBig = ({
 
   return (
     <View
-      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "} overflow-hidden flex-1`}
+      className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  flex-1`}
     >
-      <View className="h-[58%]">
+      <View className="h-[58%] rounded-t-3xl overflow-hidden">
         <Image
           source={coverSource}
           className="absolute h-full w-full"
@@ -163,9 +163,6 @@ export const LeankCardBig = ({
                   size={15}
                   color={Colors.primary}
                 />
-                <Text className="font-plus-jakarta-bold text-xs text-black-100">
-                  WHEN
-                </Text>
               </View>
               <Text className="font-plus-jakarta-extrabold text-sm text-black-300 line-clamp-1">
                 {dateLabel}
@@ -182,9 +179,6 @@ export const LeankCardBig = ({
                   size={16}
                   color={Colors.accent}
                 />
-                <Text className="font-plus-jakarta-bold text-xs text-black-100">
-                  CREW
-                </Text>
               </View>
               <Text className="font-plus-jakarta-extrabold text-sm text-black-300">
                 {item.peopleRequired || 1} needed

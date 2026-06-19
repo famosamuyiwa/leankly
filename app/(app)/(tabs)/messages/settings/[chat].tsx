@@ -2,7 +2,7 @@ import { updateArrayRow } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { LeankStatus, NavbarOptions } from "@/constants/enums";
-import { BasicUser, Leank, Participants } from "@/interfaces";
+import { BasicUser, Leank, Message, Participants } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { formatDate } from "@/lib/utils";
@@ -125,7 +125,7 @@ export default function Settings() {
     async (content: string) => {
       if (!activeLeank) return;
       try {
-        await db.createRow({
+        const msg = await db.createRow({
           databaseId: appwriteConfig.db,
           tableId: appwriteConfig.tables.messages,
           rowId: ID.unique(),
@@ -135,6 +135,16 @@ export default function Settings() {
             senderId: "system",
             senderName: "System",
             senderPhoto: "",
+          },
+        });
+        const systemMessage = msg as unknown as Message;
+        await db.updateRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.leanks,
+          rowId: activeLeank.$id,
+          data: {
+            lastMessage: systemMessage,
+            $updatedAt: new Date().toISOString(),
           },
         });
       } catch (e) {
@@ -156,11 +166,13 @@ export default function Settings() {
         action: "remove",
       });
 
-      await db.deleteRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.participants,
-        rowId: participantId,
-      });
+      if (participantId) {
+        await db.deleteRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.participants,
+          rowId: participantId,
+        });
+      }
       await createSystemMessage(`${currentUser.name} left the leank`);
     } catch (e) {
       console.error(e);
@@ -211,7 +223,7 @@ export default function Settings() {
     async (leanker: Participants) => {
       if (!currentUser || !activeLeank) return;
       try {
-        updateArrayRow({
+        await updateArrayRow({
           tableId: appwriteConfig.tables.leanks,
           rowId: activeLeank.$id,
           field: "participantIds",
@@ -219,7 +231,7 @@ export default function Settings() {
           action: "remove",
         });
 
-        db.deleteRow({
+        await db.deleteRow({
           databaseId: appwriteConfig.db,
           tableId: appwriteConfig.tables.participants,
           rowId: leanker.$id,
@@ -228,6 +240,7 @@ export default function Settings() {
           `${leanker.user.name} was removed from the chat`
         );
 
+        // Only update local state after Appwrite confirms both participant writes.
         setLeankers((prev) => prev.filter((l) => l.$id !== leanker.$id));
       } catch (e) {
         console.error(e);

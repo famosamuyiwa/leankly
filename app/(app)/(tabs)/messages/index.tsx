@@ -69,15 +69,29 @@ export default function MessagesScreen() {
         action: "add",
       });
 
-      await db.createRow({
+      // Accept can be retried after a partial failure; avoid duplicate participant rows.
+      const { total: existingParticipantTotal } = await db.listRows({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.participants,
-        rowId: ID.unique(),
-        data: {
-          leank: leank.$id,
-          user: user.$id,
-        },
+        queries: [
+          Query.select(["$id"]),
+          Query.equal("leank", leank.$id),
+          Query.equal("user", user.$id),
+          Query.limit(1),
+        ],
       });
+
+      if (existingParticipantTotal === 0) {
+        await db.createRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.participants,
+          rowId: ID.unique(),
+          data: {
+            leank: leank.$id,
+            user: user.$id,
+          },
+        });
+      }
 
       await db.updateRow({
         databaseId: appwriteConfig.db,
@@ -95,8 +109,7 @@ export default function MessagesScreen() {
         content: `${leank.title}`,
       };
 
-      // alert participant
-      sendPushNotification({
+      await sendPushNotification({
         type: PushNotificationTypes.ALERT,
         data: pn as PNAlert,
       });

@@ -2,17 +2,18 @@ import { updateArrayRow } from "@/appwrite/actions/leank.actions";
 import { appwriteConfig, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { LeankStatus, NavbarOptions } from "@/constants/enums";
-import { BasicUser, Participants } from "@/interfaces";
+import { BasicUser, Leank, Participants } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { formatDate } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
@@ -20,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Query } from "react-native-appwrite";
+import { ID, Query } from "react-native-appwrite";
 
 // Interop the Image component to recognize the 'className' prop
 cssInterop(Image, {
@@ -28,101 +29,128 @@ cssInterop(Image, {
 });
 
 export default function Settings() {
-  const { currentLeank } = useMessagesContext();
+  const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview } = useGlobalContext();
   const { showLoader, hideLoader } = useGlobalContext();
+  const currentUserId = currentUser?.$id;
+  const params = useLocalSearchParams<{ chat?: string }>();
+  const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
 
   const [leankers, setLeankers] = useState<Participants[]>([]);
   const [participantId, setParticipantId] = useState<string>("");
+  const [isLeankLoading, setIsLeankLoading] = useState(true);
+  const activeLeank = currentLeank?.$id === chatId ? currentLeank : undefined;
 
   const memoizedCover = useMemo(
     () => (
       <Image
-        source={{ uri: currentLeank?.cover }}
+        source={{ uri: activeLeank?.cover }}
         className="aspect-square rounded-b-3xl"
       />
     ),
-    [currentLeank]
+    [activeLeank]
   );
 
-  useEffect(() => {
-    fetchLeankers();
-  }, []);
-
-  const fetchLeankers = async () => {
-    if (!currentUser || !currentLeank) return;
+  const fetchLeank = useCallback(async () => {
+    if (!chatId || activeLeank) return;
     try {
-      const { rows, total } = await db.listRows({
+      const data = await db.getRow({
         databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.participants,
+        tableId: appwriteConfig.tables.leanks,
+        rowId: chatId,
         queries: [
-          Query.select(["leank.$id", "user.$id", "user.name", "user.avatar"]),
-          Query.equal("leank.$id", currentLeank.$id),
+          Query.select([
+            "*",
+            "owner.$id",
+            "owner.avatar",
+            "owner.name",
+            "owner.age",
+          ]),
         ],
       });
 
-      setLeankers(rows as unknown as Participants[]);
-      setParticipantId(
-        rows.filter((r) => r.user.$id === currentUser?.$id).map((r) => r.$id)[0]
-      );
+      setCurrentLeank(data as unknown as Leank);
     } catch (e) {
       console.log(e);
+    } finally {
+      setIsLeankLoading(false);
     }
-  };
+  }, [activeLeank, chatId, setCurrentLeank]);
 
-  const handleLeave = () => {
-    Alert.alert("Leave", "Are you sure you want to leave this leank?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Leave",
-        style: "destructive",
-        onPress: () => exitLeank(),
-      },
-    ]);
-  };
+  useEffect(() => {
+    // Context is only a fast path; route params let settings survive deep links and reloads.
+    fetchLeank();
+  }, [fetchLeank]);
 
-  const handleClose = () => {
-    Alert.alert("Close", "Are you sure you want to close this leank?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Close",
-        style: "destructive",
-        onPress: () => closeLeank(),
-      },
-    ]);
-  };
+  useEffect(() => {
+    if (!currentUserId || !activeLeank) return;
+    let isMounted = true;
 
-  const handleRemove = (item: Participants) => {
-    Alert.alert(
-      "Remove",
-      `Are you sure you want to remove ${item.user.name} from this leank?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => removeUser(item),
-        },
-      ]
-    );
-  };
+    const loadLeankers = async () => {
+      try {
+        const { rows } = await db.listRows({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.participants,
+          queries: [
+            Query.select([
+              "leank.$id",
+              "user.$id",
+              "user.name",
+              "user.avatar",
+              "user.age",
+            ]),
+            Query.equal("leank.$id", activeLeank.$id),
+          ],
+        });
 
-  const exitLeank = async () => {
-    if (!currentUser || !currentLeank) return;
+        if (!isMounted) return;
+        const participants = rows as unknown as Participants[];
+        setLeankers(participants);
+        setParticipantId(
+          participants.find((r) => r.user.$id === currentUserId)?.$id || ""
+        );
+      } catch (e) {
+        console.log(e);
+      }
+    };
+
+    void loadLeankers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeLeank, currentUserId]);
+
+  const createSystemMessage = useCallback(
+    async (content: string) => {
+      if (!activeLeank) return;
+      try {
+        await db.createRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.messages,
+          rowId: ID.unique(),
+          data: {
+            leankId: activeLeank.$id,
+            content,
+            senderId: "system",
+            senderName: "System",
+            senderPhoto: "",
+          },
+        });
+      } catch (e) {
+        console.log("Failed to create system message", e);
+      }
+    },
+    [activeLeank]
+  );
+
+  const exitLeank = useCallback(async () => {
+    if (!currentUser || !activeLeank) return;
     showLoader();
     try {
       await updateArrayRow({
         tableId: appwriteConfig.tables.leanks,
-        rowId: currentLeank.$id,
+        rowId: activeLeank.$id,
         field: "participantIds",
         values: [currentUser.$id],
         action: "remove",
@@ -145,16 +173,23 @@ export default function Settings() {
       });
       hideLoader();
     }
-  };
+  }, [
+    activeLeank,
+    createSystemMessage,
+    currentUser,
+    hideLoader,
+    participantId,
+    showLoader,
+  ]);
 
-  const closeLeank = async () => {
-    if (!currentUser || !currentLeank) return;
+  const closeLeank = useCallback(async () => {
+    if (!currentUser || !activeLeank) return;
     showLoader();
     try {
       await db.updateRow({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
-        rowId: currentLeank.$id,
+        rowId: activeLeank.$id,
         data: {
           status: LeankStatus.COMPLETED,
         },
@@ -170,52 +205,82 @@ export default function Settings() {
       });
       hideLoader();
     }
-  };
+  }, [activeLeank, currentUser, hideLoader, showLoader]);
 
-  const removeUser = async (leanker: Participants) => {
-    if (!currentUser || !currentLeank) return;
-    try {
-      updateArrayRow({
-        tableId: appwriteConfig.tables.leanks,
-        rowId: currentLeank.$id,
-        field: "participantIds",
-        values: [leanker.user.$id],
-        action: "remove",
-      });
+  const removeUser = useCallback(
+    async (leanker: Participants) => {
+      if (!currentUser || !activeLeank) return;
+      try {
+        updateArrayRow({
+          tableId: appwriteConfig.tables.leanks,
+          rowId: activeLeank.$id,
+          field: "participantIds",
+          values: [leanker.user.$id],
+          action: "remove",
+        });
 
-      db.deleteRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.participants,
-        rowId: leanker.$id,
-      });
-      await createSystemMessage(
-        `${leanker.user.name} was removed from the chat`
-      );
+        db.deleteRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.participants,
+          rowId: leanker.$id,
+        });
+        await createSystemMessage(
+          `${leanker.user.name} was removed from the chat`
+        );
 
-      setLeankers((prev) => prev.filter((l) => l.$id !== leanker.$id));
-    } catch (e) {
-      console.error(e);
-    }
-  };
+        setLeankers((prev) => prev.filter((l) => l.$id !== leanker.$id));
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    [activeLeank, createSystemMessage, currentUser]
+  );
 
-  const createSystemMessage = async (content: string) => {
-    try {
-      await db.createRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.messages,
-        rowId: require("react-native-appwrite").ID.unique(),
-        data: {
-          leankId: currentLeank?.$id,
-          content,
-          senderId: "system",
-          senderName: "System",
-          senderPhoto: "",
+  const handleLeave = useCallback(() => {
+    Alert.alert("Leave", "Are you sure you want to leave this leank?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Leave",
+        style: "destructive",
+        onPress: () => exitLeank(),
+      },
+    ]);
+  }, [exitLeank]);
+
+  const handleClose = useCallback(() => {
+    Alert.alert("Close", "Are you sure you want to close this leank?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Close",
+        style: "destructive",
+        onPress: () => closeLeank(),
+      },
+    ]);
+  }, [closeLeank]);
+
+  const handleRemove = useCallback((item: Participants) => {
+    Alert.alert(
+      "Remove",
+      `Are you sure you want to remove ${item.user.name} from this leank?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      });
-    } catch (e) {
-      console.log("Failed to create system message", e);
-    }
-  };
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => removeUser(item),
+        },
+      ]
+    );
+  }, [removeUser]);
 
   const leankerItem = (item: Participants, index: number) => (
     <View key={index} className="flex-row justify-between items-center">
@@ -237,13 +302,13 @@ export default function Settings() {
           />
         </TouchableOpacity>
         <Text className="font-plus-jakarta-semibold">
-          {item.user.$id === currentUser?.$id ? "You" : item.user.name}
+          {item.user.$id === currentUserId ? "You" : item.user.name}
         </Text>
       </View>
-      {item.user.$id === currentLeank?.owner?.$id ? (
+      {item.user.$id === activeLeank?.owner?.$id ? (
         <Text className="font-plus-jakarta-regular text-gray-400 ">Host</Text>
       ) : (
-        currentUser?.$id === currentLeank?.owner?.$id && (
+        currentUserId === activeLeank?.owner?.$id && (
           <TouchableOpacity
             activeOpacity={0.6}
             onPress={() => handleRemove(item)}
@@ -256,6 +321,18 @@ export default function Settings() {
       )}
     </View>
   );
+
+  if (!chatId) {
+    return <Text>We could not find this chat room</Text>;
+  }
+
+  if (!activeLeank && isLeankLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
@@ -279,11 +356,11 @@ export default function Settings() {
           </TouchableOpacity>
           <View className="gap-2">
             <Text className="font-plus-jakarta-bold text-3xl color-white">
-              {currentLeank?.title}
+              {activeLeank?.title}
             </Text>
-            {currentLeank?.description && (
+            {activeLeank?.description && (
               <Text className=" font-plus-jakarta-semibold color-gray-200">
-                {currentLeank.description}
+                {activeLeank.description}
               </Text>
             )}
           </View>
@@ -298,7 +375,7 @@ export default function Settings() {
             <Ionicons name="calendar-clear" size={16} color={Colors.accent} />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
-            {currentLeank ? formatDate(currentLeank.date) : "--"}
+            {activeLeank ? formatDate(activeLeank.date) : "--"}
           </Text>
         </View>
         <View className="flex-row items-center gap-3">
@@ -310,7 +387,7 @@ export default function Settings() {
             />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
-            {currentLeank?.time || "--"}
+            {activeLeank?.time || "--"}
           </Text>
         </View>
 
@@ -319,7 +396,7 @@ export default function Settings() {
             <Entypo name="location" size={16} color={Colors.accent} />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
-            {currentLeank?.location}
+            {activeLeank?.location}
           </Text>
         </View>
       </View>
@@ -331,8 +408,8 @@ export default function Settings() {
           </Text>
 
           <View className="gap-5">
-            {currentLeank?.owner &&
-              leankerItem({ user: currentLeank.owner } as Participants, 0)}
+            {activeLeank?.owner &&
+              leankerItem({ user: activeLeank.owner } as Participants, 0)}
             {leankers.map((item, index) => leankerItem(item, index))}
           </View>
         </View>
@@ -340,7 +417,7 @@ export default function Settings() {
         {/* Leave */}
         <TouchableOpacity
           onPress={
-            currentUser?.$id === currentLeank?.owner?.$id
+            currentUserId === activeLeank?.owner?.$id
               ? handleClose
               : handleLeave
           }
@@ -350,7 +427,7 @@ export default function Settings() {
           <View className="flex-row items-center justify-center">
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text className="text-white font-plus-jakarta-semibold text-lg ml-2">
-              {currentUser?.$id === currentLeank?.owner?.$id
+              {currentUserId === activeLeank?.owner?.$id
                 ? "Close"
                 : "Leave"}
             </Text>

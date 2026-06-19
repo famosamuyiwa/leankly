@@ -441,7 +441,11 @@ export default function Chat() {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
-            router.push("/messages/settings/[chat]");
+            if (!chatId) return;
+            router.push({
+              pathname: "/messages/settings/[chat]",
+              params: { chat: chatId },
+            });
           }}
           className="flex-row gap-5 items-center flex-1"
         >

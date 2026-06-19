@@ -239,9 +239,29 @@ export default function Chat() {
   useEffect(() => {
     if (!chatId) return;
 
-    const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
-    const unsubscribe = client.subscribe(channel, () => {
-      getMessages();
+    const hasMutationEvent = (events: string[] = []) =>
+      events.some((event) =>
+        ["create", "update", "delete"].some((action) =>
+          event.endsWith(action) || event.includes(`.${action}`)
+        )
+      );
+
+    const leankChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
+    const messageChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.messages}.rows`;
+
+    const unsubscribeLeank = client.subscribe(leankChannel, (event) => {
+      if (!hasMutationEvent(event.events)) return;
+      getLeank();
+    });
+
+    const unsubscribeMessages = client.subscribe(messageChannel, (event) => {
+      if (!hasMutationEvent(event.events)) return;
+      const payload = event.payload as Partial<Message>;
+
+      // Message row events are global, so filter before fetching to avoid noisy realtime reads.
+      if (payload?.leankId === chatId) {
+        getMessages();
+      }
     });
 
     const KeyboardDidShowlistener = Keyboard.addListener(
@@ -253,10 +273,11 @@ export default function Chat() {
     );
 
     return () => {
-      unsubscribe();
+      unsubscribeLeank();
+      unsubscribeMessages();
       KeyboardDidShowlistener.remove();
     };
-  }, [chatId, getMessages]);
+  }, [chatId, getLeank, getMessages]);
 
   const sendMessage = async () => {
     if (messageContent.trim() === "" || !currentUser) return;
@@ -328,8 +349,7 @@ export default function Chat() {
       setReplyTo(null);
       openSwipeRef.current?.close();
 
-      //update leank's last message
-      db.updateRow({
+      await db.updateRow({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         rowId: chatId,
@@ -339,8 +359,7 @@ export default function Chat() {
         },
       });
 
-      // alert participants
-      sendPushNotification({
+      await sendPushNotification({
         type: PushNotificationTypes.CHAT,
         data: (msg as unknown as Message) || baseMessage,
       });

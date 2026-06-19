@@ -50,6 +50,18 @@ type ReplySwipeHandle = {
   close: () => void;
 };
 
+type DateSeparatorItem = {
+  $id: string;
+  content: string;
+  senderId: "system";
+  senderName: "System";
+  senderPhoto: "";
+  leankId: string;
+  type: "system-date";
+};
+
+type ChatListItem = Message | DateSeparatorItem;
+
 export default function Chat() {
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
@@ -57,7 +69,7 @@ export default function Chat() {
 
   const { chat: chatId } = useLocalSearchParams();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatListItem[]>([]);
   const [messageContent, setMessageContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -219,7 +231,7 @@ export default function Chat() {
 
       setMessages((prev) => {
         const safePrev = Array.isArray(prev)
-          ? prev.filter((m) => m.type !== "system-date")
+          ? prev.filter(isRealMessage)
           : [];
         return injectDateSeparators([...safePrev, messageToUse]);
       });
@@ -300,7 +312,13 @@ export default function Chat() {
     [currentLeank]
   );
 
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: ChatListItem;
+    index: number;
+  }) => {
     const previousMessage = messages[index - 1];
     const nextMessage = messages[index + 1];
     const startsSenderGroup = !isSameChatSender(previousMessage, item);
@@ -480,9 +498,9 @@ const getUserColor = (id?: string | null) => {
   return colorPalette[index];
 };
 
-const injectDateSeparators = (raw: Message[] = []) => {
+const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
   if (!Array.isArray(raw)) return [];
-  const result: Message[] = [];
+  const result: ChatListItem[] = [];
   let lastKey = "";
 
   raw.forEach((msg, idx) => {
@@ -492,6 +510,7 @@ const injectDateSeparators = (raw: Message[] = []) => {
     const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
 
     if (dateKey !== lastKey) {
+      // Date separators are local UI rows only; Appwrite should only store real messages.
       result.push({
         $id: `date-${dateKey}-${idx}`,
         content: formatDateLabel(dateObj),
@@ -500,7 +519,7 @@ const injectDateSeparators = (raw: Message[] = []) => {
         senderPhoto: "",
         leankId: msg.leankId,
         type: "system-date",
-      } as Message);
+      });
       lastKey = dateKey;
     }
 
@@ -528,7 +547,15 @@ const formatDateLabel = (date: Date) => {
   });
 };
 
-function isSystemMessage(message?: Message) {
+function isDateSeparator(message?: ChatListItem): message is DateSeparatorItem {
+  return message?.type === "system-date";
+}
+
+function isRealMessage(message: ChatListItem): message is Message {
+  return !isDateSeparator(message);
+}
+
+function isSystemMessage(message?: ChatListItem) {
   return (
     !message ||
     message.senderId === "system" ||
@@ -537,13 +564,17 @@ function isSystemMessage(message?: Message) {
   );
 }
 
-function isSameChatSender(previousOrNext: Message | undefined, item: Message) {
+function isSameChatSender(
+  previousOrNext: ChatListItem | undefined,
+  item: ChatListItem
+) {
+  if (!previousOrNext) return false;
   if (isSystemMessage(previousOrNext) || isSystemMessage(item)) return false;
   return previousOrNext.senderId === item.senderId;
 }
 
 type MessageBubbleProps = {
-  item: Message;
+  item: ChatListItem;
   currentUserId?: string;
   showSenderName: boolean;
   showAvatar: boolean;
@@ -575,7 +606,7 @@ const MessageBubble = React.memo(
   }: MessageBubbleProps) => {
     const isSystem = isSystemMessage(item);
     const isSender = item.senderId === currentUserId;
-    const replyTarget = item.replyToMessageId
+    const replyTarget = isRealMessage(item) && item.replyToMessageId
       ? {
           messageId: item.replyToMessageId,
           senderId: item.replyToSenderId,
@@ -600,6 +631,8 @@ const MessageBubble = React.memo(
     );
 
     const handleReplySelect = React.useCallback(() => {
+      if (!isRealMessage(item)) return;
+
       const openSwipe = openSwipeRef.current;
       if (openSwipe && openSwipe !== swipeHandle) {
         openSwipe.close();
@@ -670,6 +703,7 @@ const MessageBubble = React.memo(
         </View>
       );
     }
+    const messageCreatedAt = isRealMessage(item) ? item.$createdAt : undefined;
 
     return (
       <View className="relative">
@@ -754,10 +788,12 @@ const MessageBubble = React.memo(
               <Text
                 className={`font-plus-jakarta-regular text-[10px] text-right ${isSender ? "color-gray-50" : "color-black"}`}
               >
-                {new Date(item.$createdAt!).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {messageCreatedAt
+                  ? new Date(messageCreatedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : ""}
               </Text>
             </Reanimated.View>
           </View>

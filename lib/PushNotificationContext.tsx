@@ -1,5 +1,5 @@
-import { useUser } from "@clerk/clerk-expo";
 import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
 import React, {
   createContext,
   ReactNode,
@@ -33,6 +33,19 @@ interface PushNotificationProviderProps {
   children: ReactNode;
 }
 
+const getNotificationLeankId = (data?: Record<string, unknown>) => {
+  const directLeankId = data?.leankId;
+  if (typeof directLeankId === "string") return directLeankId;
+
+  const nestedData = data?.data;
+  if (nestedData && typeof nestedData === "object") {
+    const nestedLeankId = (nestedData as Record<string, unknown>).leankId;
+    if (typeof nestedLeankId === "string") return nestedLeankId;
+  }
+
+  return undefined;
+};
+
 export const PushNotificationProvider: React.FC<
   PushNotificationProviderProps
 > = ({ children }) => {
@@ -40,7 +53,6 @@ export const PushNotificationProvider: React.FC<
   const [notification, setNotification] =
     useState<Notifications.Notification | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const { user } = useUser();
 
   useEffect(() => {
     registerForPushNotificationsAsync().then(
@@ -74,12 +86,17 @@ export const PushNotificationProvider: React.FC<
 
     const responseListener =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        // console.log(
-        //   "🔔 Notification Response: ",
-        //   JSON.stringify(response, null, 2),
-        //   JSON.stringify(response.notification.request.content.data, null, 2)
-        // );
-        // Handle the notification response here
+        const leankId = getNotificationLeankId(
+          response.notification.request.content.data as
+            | Record<string, unknown>
+            | undefined
+        );
+        if (!leankId) return;
+
+        router.push({
+          pathname: "/messages/[chat]",
+          params: { chat: leankId },
+        });
       });
 
     return () => {
@@ -87,22 +104,6 @@ export const PushNotificationProvider: React.FC<
       responseListener.remove();
     };
   }, []);
-
-  useEffect(() => {
-    if (!user || !expoPushToken) return;
-
-    const tokenUpdate = async () => {
-      try {
-        // await updateUserPushToken(expoPushToken);
-      } catch (err) {
-        console.log("error: ", err);
-      }
-    };
-
-    // if (!user.expoPushToken) {
-    //   tokenUpdate();
-    // }
-  }, [expoPushToken]);
 
   return (
     <NotificationContext.Provider

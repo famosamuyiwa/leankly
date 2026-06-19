@@ -13,13 +13,28 @@ import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
+const getNotificationLeankId = (data?: Record<string, unknown>) => {
+  const directLeankId = data?.leankId;
+  if (typeof directLeankId === "string") return directLeankId;
+
+  const nestedData = data?.data;
+  if (nestedData && typeof nestedData === "object") {
+    const nestedLeankId = (nestedData as Record<string, unknown>).leankId;
+    if (typeof nestedLeankId === "string") return nestedLeankId;
+  }
+
+  return undefined;
+};
+
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const current = currentScreenRef.current;
-    const { leankId } = notification.request.content.data;
+    const leankId = getNotificationLeankId(
+      notification.request.content.data as Record<string, unknown> | undefined
+    );
 
-    // Example: suppress notifications on Leank screens
-    if (current?.includes(`/messages/${leankId}`)) {
+    // Suppress foreground chat notifications only when that chat is already open.
+    if (leankId && current?.includes(`/messages/${leankId}`)) {
       return {
         shouldShowBanner: false,
         shouldPlaySound: false,

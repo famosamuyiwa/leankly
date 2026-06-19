@@ -6,7 +6,7 @@ import {
 } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
 import { PushNotificationTypes } from "@/constants/enums";
-import { BasicUser, Leank, Message } from "@/interfaces";
+import { BasicUser, Leank, Message, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
@@ -16,7 +16,7 @@ import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -66,22 +66,179 @@ export default function Chat() {
   const insets = useSafeAreaInsets();
   const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview } = useGlobalContext();
+  const currentUserId = currentUser?.$id;
 
-  const { chat: chatId } = useLocalSearchParams();
+  const params = useLocalSearchParams<{ chat?: string }>();
+  const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
 
   const [messages, setMessages] = useState<ChatListItem[]>([]);
   const [messageContent, setMessageContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const headerHeight = useHeaderHeight();
   const listRef = useRef<any>(null);
   const openSwipeRef = useRef<ReplySwipeHandle | null>(null);
+  const readWriteInFlightRef = useRef(false);
+  const lastReadAtRef = useRef(0);
 
-  useEffect(() => {
-    handleFirstLoad();
+  const applyMessages = useCallback((rawNext: Message[]) => {
+    const decorated = injectDateSeparators(rawNext);
+    setMessages((prev) => {
+      if (!Array.isArray(prev) || prev.length === 0) return decorated;
+      if (!Array.isArray(decorated)) return prev;
+      const prevLast = prev[prev.length - 1]?.$id;
+      const nextLast = decorated[decorated.length - 1]?.$id;
+      const sameLength = prev.length === decorated.length;
+      const sameLast = prevLast && nextLast && prevLast === nextLast;
+      if (sameLength && sameLast) return prev;
+      return decorated;
+    });
   }, []);
 
+  const getLeank = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      const data = await db.getRow({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.leanks,
+        rowId: chatId,
+        queries: [
+          Query.select(["*", "owner.$id", "owner.avatar", "owner.name"]),
+        ],
+      });
+
+      setCurrentLeank(data as unknown as Leank);
+    } catch (e) {
+      console.log(e);
+    }
+  }, [chatId, setCurrentLeank]);
+
+  const markAsRead = useCallback(
+    async (latestMessage?: Message) => {
+      if (!currentUserId || !chatId || !latestMessage?.$createdAt) return;
+      if (latestMessage.senderId === currentUserId) return;
+
+      const latestMessageTs = new Date(latestMessage.$createdAt).getTime();
+      if (!Number.isFinite(latestMessageTs)) return;
+
+      // Realtime and focus refreshes can overlap; this keeps read receipts idempotent.
+      if (
+        readWriteInFlightRef.current ||
+        latestMessageTs <= lastReadAtRef.current
+      ) {
+        return;
+      }
+
+      readWriteInFlightRef.current = true;
+      try {
+        const { rows, total } = await db.listRows({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.userChatMeta,
+          queries: [
+            Query.equal("leankId", chatId),
+            Query.equal("userId", currentUserId),
+          ],
+        });
+        const existingMeta = rows[0] as unknown as UserChatMeta | undefined;
+        const existingReadAtTs = existingMeta?.readAt
+          ? new Date(existingMeta.readAt).getTime()
+          : 0;
+
+        if (latestMessageTs <= existingReadAtTs) {
+          lastReadAtRef.current = Math.max(
+            lastReadAtRef.current,
+            existingReadAtTs
+          );
+          return;
+        }
+
+        const readAt = new Date().toISOString();
+        if (total > 0 && existingMeta?.$id) {
+          await db.updateRow({
+            databaseId: appwriteConfig.db,
+            tableId: appwriteConfig.tables.userChatMeta,
+            rowId: existingMeta.$id,
+            data: {
+              leankId: chatId,
+              userId: currentUserId,
+              readAt,
+              $updatedAt: readAt,
+            },
+          });
+        } else {
+          await db.createRow({
+            databaseId: appwriteConfig.db,
+            tableId: appwriteConfig.tables.userChatMeta,
+            rowId: ID.unique(),
+            data: {
+              leankId: chatId,
+              userId: currentUserId,
+              readAt,
+            },
+          });
+        }
+
+        lastReadAtRef.current = new Date(readAt).getTime();
+      } catch (e) {
+        console.log(e);
+      } finally {
+        readWriteInFlightRef.current = false;
+      }
+    },
+    [chatId, currentUserId]
+  );
+
+  const getMessages = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      const { rows } = await db.listRows({
+        databaseId: appwriteConfig.db,
+        tableId: appwriteConfig.tables.messages,
+        queries: [
+          Query.equal("leankId", chatId),
+          Query.limit(50),
+          Query.orderDesc("$createdAt"),
+        ],
+      });
+
+      const incoming = Array.isArray(rows)
+        ? (rows as unknown as Message[])
+        : [];
+      const latestMessage = incoming[0];
+      applyMessages([...incoming].reverse());
+
+      // Messages are queried newest-first, so rows[0] is the only row read state cares about.
+      await markAsRead(latestMessage);
+    } catch (e) {
+      console.log(e);
+    }
+  }, [applyMessages, chatId, markAsRead]);
+
   useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialChat = async () => {
+      try {
+        await Promise.all([getMessages(), getLeank()]);
+      } catch (e) {
+        console.log(e);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadInitialChat();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [getLeank, getMessages]);
+
+  useEffect(() => {
+    if (!chatId) return;
+
     const channel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
     const unsubscribe = client.subscribe(channel, () => {
       getMessages();
@@ -99,83 +256,14 @@ export default function Chat() {
       unsubscribe();
       KeyboardDidShowlistener.remove();
     };
-  }, [chatId]);
-
-  const handleFirstLoad = async () => {
-    try {
-      setIsLoading(true);
-      await getMessages();
-      await getLeank();
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getLeank = async () => {
-    try {
-      const data = await db.getRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        rowId: chatId as string,
-        queries: [
-          Query.select(["*", "owner.$id", "owner.avatar", "owner.name"]),
-        ],
-      });
-
-      setCurrentLeank(data as unknown as Leank);
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  const getMessages = async () => {
-    try {
-      const { rows, total } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.messages,
-        queries: [
-          Query.equal("leankId", chatId),
-          Query.limit(50),
-          Query.orderDesc("$createdAt"),
-        ],
-      });
-
-      const incoming = Array.isArray(rows)
-        ? (rows as unknown as Message[])
-        : [];
-      applyMessages([...incoming].reverse());
-
-      if (
-        total > 0 &&
-        (rows as unknown as Message[])[total - 1].senderId !== currentUser?.$id
-      ) {
-        markAsRead();
-      }
-    } catch (e) {
-      console.log(e);
-    }
-  };
-
-  const applyMessages = (rawNext: Message[]) => {
-    const decorated = injectDateSeparators(rawNext);
-    setMessages((prev) => {
-      if (!Array.isArray(prev) || prev.length === 0) return decorated;
-      if (!Array.isArray(decorated)) return prev;
-      const prevLast = prev[prev.length - 1]?.$id;
-      const nextLast = decorated[decorated.length - 1]?.$id;
-      const sameLength = prev.length === decorated.length;
-      const sameLast = prevLast && nextLast && prevLast === nextLast;
-      if (sameLength && sameLast) return prev;
-      return decorated;
-    });
-  };
+  }, [chatId, getMessages]);
 
   const sendMessage = async () => {
     if (messageContent.trim() === "" || !currentUser) return;
 
     try {
+      if (!chatId) return;
+
       const baseMessage = {
         content: messageContent,
         senderId: currentUser.$id,
@@ -244,7 +332,7 @@ export default function Chat() {
       db.updateRow({
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
-        rowId: chatId as string,
+        rowId: chatId,
         data: {
           lastMessage: messageToUse,
           $updatedAt: new Date().toISOString(),
@@ -262,43 +350,6 @@ export default function Chat() {
       setTimeout(() => {
         listRef.current?.scrollToEnd({ animate: true });
       }, 100);
-    }
-  };
-
-  const markAsRead = async () => {
-    if (!currentUser) return;
-    const { rows, total } = await db.listRows({
-      databaseId: appwriteConfig.db,
-      tableId: appwriteConfig.tables.userChatMeta,
-      queries: [
-        Query.equal("leankId", chatId),
-        Query.equal("userId", currentUser.$id),
-      ],
-    });
-
-    if (total > 0) {
-      await db.updateRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.userChatMeta,
-        rowId: rows[0].$id,
-        data: {
-          leankId: chatId,
-          userId: currentUser.$id,
-          readAt: new Date().toISOString(),
-          $updatedAt: new Date().toISOString(),
-        },
-      });
-    } else {
-      await db.createRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.userChatMeta,
-        rowId: ID.unique(),
-        data: {
-          leankId: chatId,
-          userId: currentUser.$id,
-          readAt: new Date().toISOString(),
-        },
-      });
     }
   };
 

@@ -47,6 +47,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const [showPreview, setShowPreview] = useState(false);
   const toastRef = useRef<any>({});
   const loaderRef = useRef<any>({});
+  const currentUserId = currentUser?.$id;
 
   const displayToast = (toast: ToastProps) => {
     toastRef.current.show({
@@ -57,74 +58,98 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
   //fetch first unread once after app launch
   useEffect(() => {
-    if (!currentUser) return;
-    loadBlocked();
+    if (!currentUserId) return;
+    let isMounted = true;
+
+    const loadBlocked = async () => {
+      try {
+        const rows = await fetchBlocked(currentUserId);
+        if (isMounted) {
+          setBlockedUserIds(rows.map((r) => r.blockedId));
+        }
+      } catch (e) {
+        console.log("Failed to load blocked users", e);
+      }
+    };
 
     const fetchUnread = async () => {
       try {
-        const { rows } = await db.listRows({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.leanks,
-          queries: [
-            Query.limit(10),
-            Query.select([
-              "lastMessage.senderId",
-              "lastMessage.$createdAt",
-              "ownerId",
-              "participantIds",
-              "status",
-            ]),
-            Query.or([
-              Query.equal("ownerId", currentUser.$id),
-              Query.contains("participantIds", currentUser.$id),
-            ]),
-            Query.equal("status", LeankStatus.ACTIVE),
-          ],
-        });
-        const chatRooms = rows as unknown as Leank[];
+        const pageRows = async <T,>(tableId: string, queries: any[]) => {
+          const pageSize = 100;
+          const allRows: T[] = [];
+          let offset = 0;
 
-        const { rows: metaRows } = await db.listRows({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.userChatMeta,
-          queries: [Query.equal("userId", currentUser.$id)],
-        });
-        const chatMetas = metaRows as unknown as UserChatMeta[];
+          while (true) {
+            const { rows, total } = await db.listRows({
+              databaseId: appwriteConfig.db,
+              tableId,
+              queries: [
+                ...queries,
+                Query.limit(pageSize),
+                Query.offset(offset),
+              ],
+            });
+            allRows.push(...(rows as unknown as T[]));
+            if (allRows.length >= total || rows.length < pageSize) break;
+            offset += rows.length;
+          }
+
+          return allRows;
+        };
+
+        // Unread badge accuracy needs every active chat, so fetch in bounded pages.
+        const chatRooms = await pageRows<Leank>(appwriteConfig.tables.leanks, [
+          Query.select([
+            "lastMessage.senderId",
+            "lastMessage.$createdAt",
+            "ownerId",
+            "participantIds",
+            "status",
+          ]),
+          Query.or([
+            Query.equal("ownerId", currentUserId),
+            Query.contains("participantIds", currentUserId),
+          ]),
+          Query.equal("status", LeankStatus.ACTIVE),
+        ]);
+
+        const chatMetas = await pageRows<UserChatMeta>(
+          appwriteConfig.tables.userChatMeta,
+          [
+            Query.select(["leankId", "userId", "readAt"]),
+            Query.equal("userId", currentUserId),
+          ]
+        );
 
         const unread = chatRooms.filter((room) => {
           const meta = chatMetas.find(
-            (m) => m.leankId === room.$id && m.userId === currentUser.$id
+            (m) => m.leankId === room.$id && m.userId === currentUserId
           );
           return (
             room.lastMessage &&
             new Date(room.lastMessage.$createdAt) >
               new Date(meta?.readAt || 0) &&
-            room.lastMessage.senderId !== currentUser.$id
+            room.lastMessage.senderId !== currentUserId
           );
         }).length;
 
-        setUnreadCount(unread);
+        if (isMounted) {
+          setUnreadCount(unread);
+        }
       } catch (e) {
         console.error(e);
       }
     };
 
-    fetchUnread();
+    void loadBlocked();
+    void fetchUnread();
 
     // optional cleanup (if you want to cancel or reset state later)
     return () => {
+      isMounted = false;
       setUnreadCount(0);
     };
-  }, [currentUser]);
-
-  const loadBlocked = async () => {
-    if (!currentUser?.$id) return;
-    try {
-      const rows = await fetchBlocked(currentUser.$id);
-      setBlockedUserIds(rows.map((r) => r.blockedId));
-    } catch (e) {
-      console.log("Failed to load blocked users", e);
-    }
-  };
+  }, [currentUserId]);
 
   const blockUser = async (userId: string) => {
     if (!userId || userId === currentUser?.$id) return;

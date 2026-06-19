@@ -238,10 +238,10 @@ export default function MessagesScreen() {
   useEffect(() => {
     if (!currentUserId) return;
 
-    const hasMutationEvent = (events: string[] = []) =>
-      events.some((event) =>
-        ["create", "update", "delete"].some((action) =>
-          event.endsWith(action) || event.includes(`.${action}`)
+    const getMutationAction = (events: string[] = []) =>
+      (["delete", "update", "create"] as const).find((action) =>
+        events.some(
+          (event) => event.endsWith(action) || event.includes(`.${action}`)
         )
       );
 
@@ -250,7 +250,7 @@ export default function MessagesScreen() {
     const chatMetaChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.userChatMeta}.rows`;
 
     const unsubscribeRequests = client.subscribe(requestChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
+      if (!getMutationAction(event.events)) return;
       const payload: any = event.payload;
       const leankOwnerId =
         payload?.leank?.ownerId ||
@@ -262,7 +262,8 @@ export default function MessagesScreen() {
     });
 
     const unsubscribeChats = client.subscribe(chatChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
+      const action = getMutationAction(event.events);
+      if (!action) return;
       const payload: any = event.payload;
       const participantIds: string[] = Array.isArray(payload?.participantIds)
         ? payload.participantIds
@@ -270,19 +271,57 @@ export default function MessagesScreen() {
       const isRelevant =
         payload?.ownerId === currentUserId ||
         participantIds.includes(currentUserId);
-      if (isRelevant) {
-        getChatDetails();
-      }
+      if (!isRelevant || !payload?.$id) return;
+
+      // Leank events include the changed row, so patch the list instead of refetching all chats.
+      setChatRooms((prev) => {
+        const shouldRemove =
+          action === "delete" ||
+          payload.status !== LeankStatus.ACTIVE ||
+          blockedUserIds.includes(payload.ownerId);
+        if (shouldRemove) {
+          return prev.filter((room) => room.$id !== payload.$id);
+        }
+
+        const incoming = payload as Leank;
+        const index = prev.findIndex((room) => room.$id === incoming.$id);
+        if (index === -1) return [incoming, ...prev];
+
+        const next = [...prev];
+        next[index] = { ...prev[index], ...incoming };
+        return next;
+      });
     });
 
     const unsubscribeChatMeta = client.subscribe(
       chatMetaChannel,
       (event) => {
-        if (!hasMutationEvent(event.events)) return;
+        const action = getMutationAction(event.events);
+        if (!action) return;
         const payload: any = event.payload;
-        if (payload?.userId === currentUserId) {
-          fetchChatMeta();
-        }
+        if (payload?.userId !== currentUserId) return;
+
+        setChatMetas((prev) => {
+          if (action === "delete") {
+            return prev.filter(
+              (meta) =>
+                meta.$id !== payload.$id &&
+                !(meta.leankId === payload.leankId && meta.userId === currentUserId)
+            );
+          }
+
+          const incoming = payload as UserChatMeta;
+          const index = prev.findIndex(
+            (meta) =>
+              meta.$id === incoming.$id ||
+              (meta.leankId === incoming.leankId && meta.userId === currentUserId)
+          );
+          if (index === -1) return [incoming, ...prev];
+
+          const next = [...prev];
+          next[index] = { ...prev[index], ...incoming };
+          return next;
+        });
       }
     );
 
@@ -293,9 +332,8 @@ export default function MessagesScreen() {
     };
   }, [
     currentUserId,
+    blockedUserIds,
     fetchRequests,
-    getChatDetails,
-    fetchChatMeta,
   ]);
 
   useEffect(() => {

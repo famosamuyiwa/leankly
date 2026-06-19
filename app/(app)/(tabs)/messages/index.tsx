@@ -37,6 +37,24 @@ import { Text, View } from "react-native";
 import { ID, Query } from "react-native-appwrite";
 import { RefreshControl } from "react-native-gesture-handler";
 
+const CHAT_ROOM_SELECT_FIELDS = [
+  "cover",
+  "title",
+  "lastMessage.senderName",
+  "lastMessage.content",
+  "lastMessage.senderId",
+  "lastMessage.$createdAt",
+  "ownerId",
+  "participantIds",
+  "status",
+];
+
+const getParticipantIds = (value: any): string[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.values)) return value.values;
+  return [];
+};
+
 export default function MessagesScreen() {
   const params = useLocalSearchParams<{
     nav?: string;
@@ -183,17 +201,7 @@ export default function MessagesScreen() {
         databaseId: appwriteConfig.db,
         tableId: appwriteConfig.tables.leanks,
         queries: [
-          Query.select([
-            "cover",
-            "title",
-            "lastMessage.senderName",
-            "lastMessage.content",
-            "lastMessage.senderId",
-            "lastMessage.$createdAt",
-            "ownerId",
-            "participantIds",
-            "status",
-          ]),
+          Query.select(CHAT_ROOM_SELECT_FIELDS),
           Query.or([
             Query.equal("ownerId", currentUserId),
             Query.contains("participantIds", currentUserId),
@@ -209,6 +217,57 @@ export default function MessagesScreen() {
       console.log(e);
     }
   }, [blockedUserIds, currentUserId]);
+
+  const isVisibleChatRoom = useCallback(
+    (room: Partial<Leank>) => {
+      if (!currentUserId) return false;
+      const participantIds = getParticipantIds(room.participantIds);
+      return (
+        room.status === LeankStatus.ACTIVE &&
+        !blockedUserIds.includes(room.ownerId || "") &&
+        (room.ownerId === currentUserId || participantIds.includes(currentUserId))
+      );
+    },
+    [blockedUserIds, currentUserId]
+  );
+
+  const upsertChatRoom = useCallback((room: Leank) => {
+    setChatRooms((prev) => {
+      const index = prev.findIndex((item) => item.$id === room.$id);
+      if (index === -1) return [room, ...prev];
+
+      const next = [...prev];
+      next[index] = { ...prev[index], ...room };
+      return next;
+    });
+  }, []);
+
+  const removeChatRoom = useCallback((chatId: string) => {
+    setChatRooms((prev) => prev.filter((room) => room.$id !== chatId));
+  }, []);
+
+  const refreshChatRoom = useCallback(
+    async (chatId: string) => {
+      try {
+        const row = await db.getRow({
+          databaseId: appwriteConfig.db,
+          tableId: appwriteConfig.tables.leanks,
+          rowId: chatId,
+          queries: [Query.select(CHAT_ROOM_SELECT_FIELDS)],
+        });
+        const room = row as unknown as Leank;
+        if (isVisibleChatRoom(room)) {
+          upsertChatRoom(room);
+        } else {
+          removeChatRoom(chatId);
+        }
+      } catch (e) {
+        console.log(e);
+        removeChatRoom(chatId);
+      }
+    },
+    [isVisibleChatRoom, removeChatRoom, upsertChatRoom]
+  );
 
   const fetchChatMeta = useCallback(async () => {
     if (!currentUserId) return;
@@ -256,7 +315,7 @@ export default function MessagesScreen() {
         payload?.leank?.ownerId ||
         payload?.leank?.owner?.$id ||
         payload?.ownerId;
-      if (leankOwnerId === currentUserId) {
+      if (!leankOwnerId || leankOwnerId === currentUserId) {
         fetchRequests();
       }
     });
@@ -265,32 +324,33 @@ export default function MessagesScreen() {
       const action = getMutationAction(event.events);
       if (!action) return;
       const payload: any = event.payload;
-      const participantIds: string[] = Array.isArray(payload?.participantIds)
-        ? payload.participantIds
-        : payload?.participantIds?.values || [];
-      const isRelevant =
-        payload?.ownerId === currentUserId ||
-        participantIds.includes(currentUserId);
-      if (!isRelevant || !payload?.$id) return;
+      const payloadId = payload?.$id;
+      if (!payloadId) {
+        getChatDetails();
+        return;
+      }
 
-      // Leank events include the changed row, so patch the list instead of refetching all chats.
-      setChatRooms((prev) => {
-        const shouldRemove =
-          action === "delete" ||
-          payload.status !== LeankStatus.ACTIVE ||
-          blockedUserIds.includes(payload.ownerId);
-        if (shouldRemove) {
-          return prev.filter((room) => room.$id !== payload.$id);
-        }
+      if (action === "delete") {
+        removeChatRoom(payloadId);
+        return;
+      }
 
-        const incoming = payload as Leank;
-        const index = prev.findIndex((room) => room.$id === incoming.$id);
-        if (index === -1) return [incoming, ...prev];
+      // Some Appwrite events are sparse; fetch only the affected chat when relevance is unknown.
+      if (
+        !payload.ownerId ||
+        typeof payload.status !== "string" ||
+        !("participantIds" in payload)
+      ) {
+        refreshChatRoom(payloadId);
+        return;
+      }
 
-        const next = [...prev];
-        next[index] = { ...prev[index], ...incoming };
-        return next;
-      });
+      const incoming = payload as Leank;
+      if (isVisibleChatRoom(incoming)) {
+        upsertChatRoom(incoming);
+      } else {
+        removeChatRoom(payloadId);
+      }
     });
 
     const unsubscribeChatMeta = client.subscribe(
@@ -332,8 +392,12 @@ export default function MessagesScreen() {
     };
   }, [
     currentUserId,
-    blockedUserIds,
     fetchRequests,
+    getChatDetails,
+    isVisibleChatRoom,
+    refreshChatRoom,
+    removeChatRoom,
+    upsertChatRoom,
   ]);
 
   useEffect(() => {

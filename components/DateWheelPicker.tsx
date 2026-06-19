@@ -32,6 +32,7 @@ const pickerItemStyle = {
   fontFamily: "Plus-Jakarta-SemiBold",
   fontSize: 20,
   color: "black",
+  textAlign: "center" as const,
 };
 
 const getToday = () => {
@@ -209,21 +210,21 @@ export default function DateWheelPicker({
   );
 
   return (
-    <View className="h-[190px] w-full flex-row items-center justify-center px-1">
+    <View className="h-[190px] w-full flex-row items-center justify-center">
       <Rail
-        flex={1.75}
+        flex={1.65}
         selectedValue={parts.month}
         values={monthOptions}
         onValueChange={handleMonthChange}
       />
       <Rail
-        flex={0.9}
+        flex={1.0}
         selectedValue={parts.day}
         values={dayOptions}
         onValueChange={handleDayChange}
       />
       <Rail
-        flex={1.1}
+        flex={1.3}
         selectedValue={parts.year}
         values={years}
         onValueChange={handleYearChange}

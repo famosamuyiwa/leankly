@@ -6,6 +6,9 @@ import { RedisModule } from "./redis/redis.module";
 import { RequestIdMiddleware } from "./common/request-id.middleware";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
+import { ModerationModule } from "./moderation/moderation.module";
+import { ReferralsModule } from "./referrals/referrals.module";
+import { UsageModule } from "./usage/usage.module";
 
 @Module({
   imports: [
@@ -15,6 +18,9 @@ import { UsersModule } from "./users/users.module";
     AuthModule,
     HealthModule,
     UsersModule,
+    ModerationModule,
+    ReferralsModule,
+    UsageModule,
   ],
 })
 export class AppModule implements NestModule {

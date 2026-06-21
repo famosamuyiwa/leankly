@@ -12,6 +12,11 @@ enum UserRole {
   ADMIN
 }
 
+enum UsageFeature {
+  INTEREST
+  UNDO
+}
+
 model User {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   appwriteUserId String    @unique @map("appwrite_user_id")
@@ -40,6 +45,90 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  blocksCreated    Block[]          @relation("Blocker")
+  blocksReceived   Block[]          @relation("Blocked")
+  reportsCreated   Report[]         @relation("Reporter")
+  reportsReceived  Report[]         @relation("Reported")
+  referralsCreated Referral[]       @relation("Referrer")
+  referralReceived Referral?        @relation("Referred")
+  referredBy       User?            @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referredUsers    User[]           @relation("UserReferrals")
+  dailyUsage       DailyUsage[]
+  entitlement      UserEntitlement?
+
   @@index([isActive, deletedAt])
   @@map("users")
+}
+
+model Block {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+model Report {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId String   @map("reporter_id") @db.Uuid
+  reportedId String   @map("reported_id") @db.Uuid
+  reason     String
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("Reported", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([reportedId, createdAt])
+  @@index([reporterId, createdAt])
+  @@map("reports")
+}
+
+model Referral {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  referrerId String   @map("referrer_id") @db.Uuid
+  referredId String   @unique @map("referred_id") @db.Uuid
+  code       String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  referrer User @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred User @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, referredId])
+  @@map("referrals")
+}
+
+model DailyUsage {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  feature   UsageFeature
+  usageDate DateTime     @map("usage_date") @db.Date
+  count     Int          @default(0)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feature, usageDate])
+  @@map("daily_usage")
+}
+
+model UserEntitlement {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  isPro       Boolean   @default(false) @map("is_pro")
+  expiresAt   DateTime? @map("expires_at")
+  lastEventAt DateTime? @map("last_event_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_entitlements")
 }

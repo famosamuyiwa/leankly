@@ -1,9 +1,12 @@
 import "reflect-metadata";
+import "./instrument";
 import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
+import { WorkerModule } from "./worker.module";
 
 async function bootstrap() {
-  await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
+  await NestFactory.createApplicationContext(WorkerModule, {
+    bufferLogs: true,
+  });
 }
 
 void bootstrap();

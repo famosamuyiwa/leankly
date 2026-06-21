@@ -7,7 +7,16 @@ import { ApiResponseInterceptor } from "./common/api-response.interceptor";
 
 export function configureApplication(app: INestApplication) {
   app.use(helmet());
-  app.use(pinoHttp({ genReqId: (request) => request.id }));
+  app.use(
+    pinoHttp({
+      genReqId: (request) => request.id,
+      redact: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "res.headers.set-cookie",
+      ],
+    }),
+  );
   app.enableCors({
     origin: (process.env.CORS_ORIGINS || "")
       .split(",")

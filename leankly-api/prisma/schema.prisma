@@ -169,6 +169,18 @@ model UserEntitlement {
   @@map("user_entitlements")
 }
 
+model RevenueCatWebhookEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId     String   @unique @map("event_id")
+  eventType   String   @map("event_type")
+  appUserId   String?  @map("app_user_id")
+  payload     Json
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([appUserId, processedAt])
+  @@map("revenuecat_webhook_events")
+}
+
 model Leank {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId        String        @map("owner_id") @db.Uuid

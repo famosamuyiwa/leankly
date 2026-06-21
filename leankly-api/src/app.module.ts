@@ -14,6 +14,9 @@ import { MediaModule } from "./media/media.module";
 import { LeanksModule } from "./leanks/leanks.module";
 import { ReactionsModule } from "./reactions/reactions.module";
 import { MessagesModule } from "./messages/messages.module";
+import { EntitlementsModule } from "./entitlements/entitlements.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { MessagesModule } from "./messages/messages.module";
     LeanksModule,
     ReactionsModule,
     MessagesModule,
+    EntitlementsModule,
+    WebhooksModule,
+    AdminModule,
   ],
 })
 export class AppModule implements NestModule {

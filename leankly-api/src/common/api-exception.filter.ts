@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
@@ -28,6 +29,21 @@ export class ApiExceptionFilter implements ExceptionFilter {
         : Array.isArray(objectPayload.message)
           ? objectPayload.message.join(", ")
           : objectPayload.message || "Request failed";
+
+    if (status >= 500 && process.env.SENTRY_DSN) {
+      Sentry.withScope((scope) => {
+        const requestId =
+          typeof request.id === "string" || typeof request.id === "number"
+            ? request.id
+            : "unknown";
+        scope.setTag("request_id", requestId);
+        scope.setContext("request", {
+          method: request.method,
+          path: request.path,
+        });
+        Sentry.captureException(exception);
+      });
+    }
 
     response.status(status).json({
       ok: false,

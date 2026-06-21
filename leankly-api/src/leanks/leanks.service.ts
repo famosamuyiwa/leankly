@@ -9,6 +9,7 @@ import { LeankCategory, LeankStatus, Prisma, User } from "@prisma/client";
 import { JobsService } from "../jobs/jobs.service";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { categoryFromValue } from "./leank.constants";
 import { CreateLeankDto, UpdateLeankDto } from "./dto/create-leank.dto";
 import { FeedQueryDto } from "./dto/feed-query.dto";
@@ -26,6 +27,7 @@ export class LeanksService {
     private readonly media: MediaService,
     private readonly jobs: JobsService,
     private readonly config: ConfigService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async create(user: User, input: CreateLeankDto) {
@@ -210,13 +212,43 @@ export class LeanksService {
   }
 
   async close(user: User, id: string) {
-    await this.assertOwner(user, id);
-    const leank = await this.prisma.leank.update({
-      where: { id },
-      data: { status: LeankStatus.COMPLETED },
-      include,
+    const result = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.leank.findUnique({
+        where: { id },
+        select: { ownerId: true, status: true },
+      });
+      if (!existing) throw new NotFoundException("Leank not found");
+      if (existing.ownerId !== user.id)
+        throw new ForbiddenException("Only the host can close this leank");
+      if (existing.status === LeankStatus.COMPLETED) {
+        return {
+          leank: await tx.leank.findUniqueOrThrow({ where: { id }, include }),
+          message: null,
+        };
+      }
+      const message = await tx.message.create({
+        data: {
+          leankId: id,
+          senderName: "Leankly",
+          content: "This leank has ended",
+          type: "SYSTEM",
+        },
+      });
+      const leank = await tx.leank.update({
+        where: { id },
+        data: {
+          status: LeankStatus.COMPLETED,
+          lastMessageId: message.id,
+          lastMessageAt: message.createdAt,
+        },
+        include,
+      });
+      return { leank, message };
     });
-    return presentLeank(leank);
+    this.realtime.emitLeank(id, "leank.updated", presentLeank(result.leank));
+    if (result.message)
+      this.realtime.emitLeank(id, "message.created", result.message);
+    return presentLeank(result.leank);
   }
 
   private async assertOwner(user: User, id: string) {

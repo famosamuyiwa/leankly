@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { FREE_LIMITS, utcUsageDate } from "../usage/usage.service";
 import { CreateReactionDto } from "./dto/create-reaction.dto";
 
@@ -24,6 +25,7 @@ export class ReactionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async react(user: User, input: CreateReactionDto) {
@@ -89,11 +91,12 @@ export class ReactionsService {
         })
         .catch(() => undefined);
     }
+    this.realtime.emitLeank(input.leankId, "reaction.updated", result.reaction);
     return { reaction: result.reaction };
   }
 
   async undo(user: User, leankId: string) {
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         await this.lockUser(tx, user.id);
         const reaction = await tx.reaction.findUnique({
@@ -121,6 +124,8 @@ export class ReactionsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    this.realtime.emitLeank(leankId, "reaction.updated", result);
+    return result;
   }
 
   async requests(user: User) {
@@ -197,16 +202,23 @@ export class ReactionsService {
         create: { leankId: reaction.leankId, userId: reaction.userId },
         update: {},
       });
+      let systemMessage = null;
       if (reaction.status !== ReactionStatus.ACCEPTED) {
         await tx.reaction.update({
           where: { id: reaction.id },
           data: { status: ReactionStatus.ACCEPTED },
         });
+        systemMessage = await this.addSystemMessage(
+          tx,
+          reaction.leankId,
+          `${reaction.user.name} joined the leank`,
+        );
       }
       return {
         participant,
         reaction,
         alreadyAccepted: reaction.status === ReactionStatus.ACCEPTED,
+        systemMessage,
       };
     });
 
@@ -220,6 +232,17 @@ export class ReactionsService {
         })
         .catch(() => undefined);
     }
+    this.realtime.emitLeank(result.reaction.leankId, "reaction.updated", {
+      id: result.reaction.id,
+      status: ReactionStatus.ACCEPTED,
+    });
+    if (result.systemMessage) {
+      this.realtime.emitLeank(
+        result.reaction.leankId,
+        "message.created",
+        result.systemMessage,
+      );
+    }
     return {
       participant: result.participant,
       alreadyAccepted: result.alreadyAccepted,
@@ -227,19 +250,22 @@ export class ReactionsService {
   }
 
   async decline(user: User, reactionId: string) {
-    const reaction = await this.prisma.reaction.findUnique({
-      where: { id: reactionId },
-      include: { leank: { select: { ownerId: true } } },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const reaction = await tx.reaction.findUnique({
+        where: { id: reactionId },
+        include: { leank: { select: { ownerId: true } } },
+      });
+      if (!reaction) throw new NotFoundException("Request not found");
+      if (reaction.leank.ownerId !== user.id)
+        throw new ForbiddenException("Only the host can decline requests");
+      if (reaction.status === ReactionStatus.ACCEPTED)
+        throw new ConflictException("Accepted requests cannot be declined");
+      return tx.reaction.update({
+        where: { id: reactionId },
+        data: { status: ReactionStatus.DECLINED },
+      });
     });
-    if (!reaction) throw new NotFoundException("Request not found");
-    if (reaction.leank.ownerId !== user.id)
-      throw new ForbiddenException("Only the host can decline requests");
-    if (reaction.status === ReactionStatus.ACCEPTED)
-      throw new ConflictException("Accepted requests cannot be declined");
-    const updated = await this.prisma.reaction.update({
-      where: { id: reactionId },
-      data: { status: ReactionStatus.DECLINED },
-    });
+    this.realtime.emitLeank(updated.leankId, "reaction.updated", updated);
     return { reaction: updated };
   }
 
@@ -262,31 +288,59 @@ export class ReactionsService {
   }
 
   async leave(user: User, leankId: string) {
-    const leank = await this.prisma.leank.findUnique({
-      where: { id: leankId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const leank = await tx.leank.findUnique({ where: { id: leankId } });
+      if (!leank) throw new NotFoundException("Leank not found");
+      if (leank.ownerId === user.id)
+        throw new BadRequestException("Hosts must close the leank");
+      const deleted = await tx.participant.deleteMany({
+        where: { leankId, userId: user.id },
+      });
+      const message = deleted.count
+        ? await this.addSystemMessage(
+            tx,
+            leankId,
+            `${user.name} left the leank`,
+          )
+        : null;
+      return { leankId, left: deleted.count > 0, message };
     });
-    if (!leank) throw new NotFoundException("Leank not found");
-    if (leank.ownerId === user.id)
-      throw new BadRequestException("Hosts must close the leank");
-    const deleted = await this.prisma.participant.deleteMany({
-      where: { leankId, userId: user.id },
-    });
-    return { leankId, left: deleted.count > 0 };
+    if (result.message)
+      this.realtime.emitLeank(leankId, "message.created", result.message);
+    return { leankId, left: result.left };
   }
 
   async remove(user: User, leankId: string, participantUserId: string) {
-    const leank = await this.prisma.leank.findUnique({
-      where: { id: leankId },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const leank = await tx.leank.findUnique({ where: { id: leankId } });
+      if (!leank) throw new NotFoundException("Leank not found");
+      if (leank.ownerId !== user.id)
+        throw new ForbiddenException("Only the host can remove participants");
+      if (participantUserId === user.id)
+        throw new BadRequestException("Hosts cannot remove themselves");
+      const participant = await tx.user.findUnique({
+        where: { id: participantUserId },
+        select: { name: true },
+      });
+      const deleted = await tx.participant.deleteMany({
+        where: { leankId, userId: participantUserId },
+      });
+      const message = deleted.count
+        ? await this.addSystemMessage(
+            tx,
+            leankId,
+            `${participant?.name || "A participant"} was removed`,
+          )
+        : null;
+      return { removed: deleted.count > 0, message };
     });
-    if (!leank) throw new NotFoundException("Leank not found");
-    if (leank.ownerId !== user.id)
-      throw new ForbiddenException("Only the host can remove participants");
-    if (participantUserId === user.id)
-      throw new BadRequestException("Hosts cannot remove themselves");
-    const deleted = await this.prisma.participant.deleteMany({
-      where: { leankId, userId: participantUserId },
+    if (result.message)
+      this.realtime.emitLeank(leankId, "message.created", result.message);
+    this.realtime.emitUser(participantUserId, "leank.updated", {
+      leankId,
+      removed: result.removed,
     });
-    return { leankId, userId: participantUserId, removed: deleted.count > 0 };
+    return { leankId, userId: participantUserId, removed: result.removed };
   }
 
   private async consumeInterest(tx: Prisma.TransactionClient, userId: string) {
@@ -365,5 +419,25 @@ export class ReactionsService {
     });
     if (!leank)
       throw new ForbiddenException("You are not a member of this leank");
+  }
+
+  private async addSystemMessage(
+    tx: Prisma.TransactionClient,
+    leankId: string,
+    content: string,
+  ) {
+    const message = await tx.message.create({
+      data: {
+        leankId,
+        senderName: "Leankly",
+        content,
+        type: "SYSTEM",
+      },
+    });
+    await tx.leank.update({
+      where: { id: leankId },
+      data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
+    });
+    return message;
   }
 }

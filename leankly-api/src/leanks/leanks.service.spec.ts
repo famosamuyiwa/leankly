@@ -15,6 +15,7 @@ describe("LeanksService feed", () => {
       {} as never,
       {} as never,
       {} as never,
+      {} as never,
     );
     await expect(
       service.feed(user, { limit: 10, radiusKm: 25, categories: ["Other"] }),
@@ -29,6 +30,7 @@ describe("LeanksService feed", () => {
     };
     const service = new LeanksService(
       prisma as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

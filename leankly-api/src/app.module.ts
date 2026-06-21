@@ -13,6 +13,7 @@ import { JobsModule } from "./jobs/jobs.module";
 import { MediaModule } from "./media/media.module";
 import { LeanksModule } from "./leanks/leanks.module";
 import { ReactionsModule } from "./reactions/reactions.module";
+import { MessagesModule } from "./messages/messages.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ReactionsModule } from "./reactions/reactions.module";
     MediaModule,
     LeanksModule,
     ReactionsModule,
+    MessagesModule,
   ],
 })
 export class AppModule implements NestModule {

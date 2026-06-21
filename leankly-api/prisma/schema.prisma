@@ -43,6 +43,11 @@ enum ReactionStatus {
   DECLINED
 }
 
+enum MessageType {
+  USER
+  SYSTEM
+}
+
 model User {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   appwriteUserId String    @unique @map("appwrite_user_id")
@@ -84,6 +89,8 @@ model User {
   ownedLeanks      Leank[]          @relation("LeankOwner")
   participations   Participant[]
   reactions        Reaction[]
+  messages         Message[]
+  chatMetadata     UserChatMeta[]
 
   @@index([isActive, deletedAt])
   @@map("users")
@@ -183,9 +190,12 @@ model Leank {
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
-  owner        User          @relation("LeankOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User           @relation("LeankOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   participants Participant[]
   reactions    Reaction[]
+  messages     Message[]      @relation("LeankMessages")
+  lastMessage  Message?       @relation("LastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
+  chatMetadata UserChatMeta[]
 
   @@index([status, createdAt, id])
   @@index([ownerId, createdAt])
@@ -224,4 +234,45 @@ model Reaction {
   @@unique([userId, leankId])
   @@index([leankId, isLiked, status, createdAt])
   @@map("reactions")
+}
+
+model Message {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leankId        String      @map("leank_id") @db.Uuid
+  senderId       String?     @map("sender_id") @db.Uuid
+  senderName     String      @map("sender_name")
+  senderPhoto    String?     @map("sender_photo")
+  content        String
+  type           MessageType @default(USER)
+  replyToId      String?     @map("reply_to_id") @db.Uuid
+  replyToContent String?     @map("reply_to_content")
+  replyToSender  String?     @map("reply_to_sender")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  leank          Leank     @relation("LeankMessages", fields: [leankId], references: [id], onDelete: Cascade)
+  sender         User?     @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo        Message?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies        Message[] @relation("MessageReplies")
+  lastMessageFor Leank[]   @relation("LastMessage")
+
+  @@index([leankId, createdAt, id])
+  @@index([senderId, createdAt])
+  @@map("messages")
+}
+
+model UserChatMeta {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leankId   String    @map("leank_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  leank Leank @relation(fields: [leankId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leankId, userId])
+  @@index([userId, readAt])
+  @@map("user_chat_meta")
 }

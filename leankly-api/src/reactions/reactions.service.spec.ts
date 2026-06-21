@@ -33,7 +33,11 @@ describe("ReactionsService", () => {
         findMany: jest.fn(() => Promise.resolve(requests)),
       },
     };
-    const service = new ReactionsService(prisma as never, {} as never);
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
 
     await expect(service.requests(user)).resolves.toEqual(
       expect.objectContaining({
@@ -48,13 +52,19 @@ describe("ReactionsService", () => {
 
   it("prevents a host from leaving their own leank", async () => {
     const prisma = {
+      $transaction: jest.fn(),
       leank: {
-        findUnique: jest.fn(() =>
-          Promise.resolve({ id: "leank-1", ownerId: user.id }),
-        ),
+        findUnique: jest.fn(() => Promise.resolve({ ownerId: user.id })),
       },
     };
-    const service = new ReactionsService(prisma as never, {} as never);
+    prisma.$transaction.mockImplementation(
+      (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
 
     await expect(service.leave(user, "leank-1")).rejects.toBeInstanceOf(
       BadRequestException,
@@ -63,13 +73,19 @@ describe("ReactionsService", () => {
 
   it("restricts participant removal to the host", async () => {
     const prisma = {
+      $transaction: jest.fn(),
       leank: {
-        findUnique: jest.fn(() =>
-          Promise.resolve({ id: "leank-1", ownerId: "another-user" }),
-        ),
+        findUnique: jest.fn(() => Promise.resolve({ ownerId: "another-user" })),
       },
     };
-    const service = new ReactionsService(prisma as never, {} as never);
+    prisma.$transaction.mockImplementation(
+      (callback: (tx: typeof prisma) => unknown) => callback(prisma),
+    );
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+    );
 
     await expect(
       service.remove(user, "leank-1", "participant-1"),

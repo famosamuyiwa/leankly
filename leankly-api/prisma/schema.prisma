@@ -17,6 +17,32 @@ enum UsageFeature {
   UNDO
 }
 
+enum LeankStatus {
+  ACTIVE    @map("Active")
+  COMPLETED @map("Completed")
+  CANCELED  @map("Canceled")
+}
+
+enum LeankCategory {
+  FITNESS      @map("Fitness & Sports")
+  STUDY        @map("Study & Learning")
+  SOCIAL       @map("Social & Nightlife")
+  VOLUNTEERING @map("Volunteering & Causes")
+  HEALTH       @map("Health & Wellness")
+  CREATIVE     @map("Creative & Arts")
+  FOOD         @map("Food & Drinks")
+  TRAVEL       @map("Travel & Outdoors")
+  CAREER       @map("Career & Networking")
+  GAMING       @map("Gaming & Esports")
+  OTHER        @map("Other")
+}
+
+enum ReactionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   appwriteUserId String    @unique @map("appwrite_user_id")
@@ -55,6 +81,9 @@ model User {
   referredUsers    User[]           @relation("UserReferrals")
   dailyUsage       DailyUsage[]
   entitlement      UserEntitlement?
+  ownedLeanks      Leank[]          @relation("LeankOwner")
+  participations   Participant[]
+  reactions        Reaction[]
 
   @@index([isActive, deletedAt])
   @@map("users")
@@ -131,4 +160,68 @@ model UserEntitlement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_entitlements")
+}
+
+model Leank {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId        String        @map("owner_id") @db.Uuid
+  title          String
+  description    String        @default("")
+  coverUrl       String        @map("cover_url")
+  coverFileId    String?       @map("cover_file_id")
+  status         LeankStatus   @default(ACTIVE)
+  category       LeankCategory @default(OTHER)
+  eventDate      DateTime      @map("event_date") @db.Date
+  time           String        @default("")
+  location       String
+  locationLat    Float?        @map("location_lat")
+  locationLng    Float?        @map("location_lng")
+  isOnline       Boolean       @default(false) @map("is_online")
+  peopleRequired Int           @default(1) @map("people_required")
+  lastMessageId  String?       @map("last_message_id") @db.Uuid
+  lastMessageAt  DateTime?     @map("last_message_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  owner        User          @relation("LeankOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  participants Participant[]
+  reactions    Reaction[]
+
+  @@index([status, createdAt, id])
+  @@index([ownerId, createdAt])
+  @@index([eventDate, status])
+  @@index([category, status])
+  @@index([locationLat, locationLng])
+  @@map("leanks")
+}
+
+model Participant {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  leankId  String   @map("leank_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  leank Leank @relation(fields: [leankId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leankId, userId])
+  @@index([userId, joinedAt])
+  @@map("participants")
+}
+
+model Reaction {
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  leankId   String         @map("leank_id") @db.Uuid
+  isLiked   Boolean        @map("is_liked")
+  status    ReactionStatus @default(PENDING)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leank Leank @relation(fields: [leankId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, leankId])
+  @@index([leankId, isLiked, status, createdAt])
+  @@map("reactions")
 }

@@ -48,8 +48,4 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   avatarFileId?: string;
-
-  @IsOptional()
-  @IsString()
-  avatarUrl?: string;
 }

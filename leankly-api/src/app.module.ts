@@ -9,6 +9,9 @@ import { UsersModule } from "./users/users.module";
 import { ModerationModule } from "./moderation/moderation.module";
 import { ReferralsModule } from "./referrals/referrals.module";
 import { UsageModule } from "./usage/usage.module";
+import { JobsModule } from "./jobs/jobs.module";
+import { MediaModule } from "./media/media.module";
+import { LeanksModule } from "./leanks/leanks.module";
 
 @Module({
   imports: [
@@ -21,6 +24,9 @@ import { UsageModule } from "./usage/usage.module";
     ModerationModule,
     ReferralsModule,
     UsageModule,
+    JobsModule,
+    MediaModule,
+    LeanksModule,
   ],
 })
 export class AppModule implements NestModule {

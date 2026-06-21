@@ -3,19 +3,34 @@ import { User } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { UpdatePushTargetDto } from "./dto/update-push-target.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { MediaService } from "../media/media.service";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly media: MediaService,
+  ) {}
 
   getProfile(user: User) {
     return this.toResponse(user);
   }
 
   async updateProfile(user: User, input: UpdateUserDto) {
+    const avatar = input.avatarFileId
+      ? await this.media.confirm(user, {
+          fileId: input.avatarFileId,
+          bucket: "avatars",
+          purpose: "avatar",
+        })
+      : null;
     const updated = await this.prisma.user.update({
       where: { id: user.id },
-      data: input,
+      data: {
+        ...input,
+        avatarFileId: avatar?.fileId || input.avatarFileId,
+        avatarUrl: avatar?.viewUrl,
+      },
     });
     return this.toResponse(updated);
   }

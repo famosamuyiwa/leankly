@@ -21,7 +21,7 @@ import {
   EmailOtpChallenge,
   OAuthProviderName,
 } from "./types";
-import { upsertAppwriteProfile } from "./profileSync";
+import { syncBackendProfile } from "./profileSync";
 import { clearApiJwt, apiClient } from "@/lib/api/client";
 import { deletePushTarget, syncPushTarget } from "@/lib/pushTarget";
 import { realtime } from "@/lib/api/realtime";
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accountUser: Models.User<Models.Preferences>,
       fallbackName?: string,
     ) => {
-      const profile = await upsertAppwriteProfile({
+      const profile = await syncBackendProfile({
         accountUser,
         fallbackName,
       });

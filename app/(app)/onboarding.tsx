@@ -1,8 +1,8 @@
-import { applyReferralCode } from "@/appwrite/actions/user.actions";
 import { ProfileBottomSheet } from "@/components/BottomSheet";
 import CustomButton from "@/components/Button";
 import useImagePicker from "@/hooks/useImagePicker";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { apiClient, ApiError } from "@/lib/api/client";
 import { ProfileProvider, useProfileContext } from "@/lib/ProfileContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Portal, PortalProvider } from "@gorhom/portal";
@@ -90,7 +90,7 @@ function OnboardingContent() {
         transition={300}
       />
     ),
-    [avatar]
+    [avatar],
   );
 
   const onContinue = async () => {
@@ -106,11 +106,11 @@ function OnboardingContent() {
       // Optionally apply referral code if provided
       if (referralCode?.trim()) {
         try {
-          const res = await applyReferralCode(
-            currentUser.$id,
-            referralCode.trim()
-          );
-          if (res.ok && isMountedRef.current) {
+          const res = await apiClient.applyReferral(referralCode.trim());
+          if (
+            (res.applied || res.reason === "ALREADY_APPLIED") &&
+            isMountedRef.current
+          ) {
             displayToast({
               type: "success" as any,
               description: "Referral applied",
@@ -128,8 +128,19 @@ function OnboardingContent() {
             });
           }
         } catch (e) {
-          // Do not block onboarding on referral failure
-          if (isMountedRef.current) {
+          const code = e instanceof ApiError ? e.code : "ERROR";
+          if (code === "INVALID_CODE" || code === "SELF_REFERRAL") {
+            if (isMountedRef.current) {
+              displayToast({
+                type: "warning" as any,
+                description:
+                  code === "SELF_REFERRAL"
+                    ? "You cannot refer yourself"
+                    : "Invalid referral code",
+              });
+            }
+          } else if (isMountedRef.current) {
+            // Referral failures never block profile completion.
             displayToast({
               type: "error" as any,
               description: "Could not apply referral code",

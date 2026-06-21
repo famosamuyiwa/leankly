@@ -7,7 +7,7 @@ type SyncProfileInput = {
   fallbackName?: string;
 };
 
-export async function upsertAppwriteProfile({
+export async function syncBackendProfile({
   accountUser,
   fallbackName,
 }: SyncProfileInput): Promise<User> {

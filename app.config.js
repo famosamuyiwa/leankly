@@ -74,7 +74,8 @@ export default {
     },
     extra: {
       mapboxAccessToken: process.env.EXPO_MAPBOX_ACCESS_TOKEN,
-      appwriteApiBaseUrl: process.env.EXPO_PUBLIC_APPWRITE_API_BASE_URL,
+      apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+      socketUrl: process.env.EXPO_PUBLIC_SOCKET_URL,
       eas: {
         projectId: "627c3530-bc48-4c22-8b50-1887a6af6422",
       },

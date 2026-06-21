@@ -1,7 +1,3 @@
-import {
-  deleteLeankAction,
-  recordLeankAction,
-} from "@/appwrite/actions/leank.actions";
 import { LeankCardBig } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import Filters from "@/components/Filters";
@@ -11,7 +7,7 @@ import { useLeanksFeed } from "@/hooks/useLeanksFeed";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
-import { ApiError } from "@/lib/api/client";
+import { apiClient, ApiError } from "@/lib/api/client";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -132,7 +128,7 @@ export default function HomeScreen() {
 
       const reactedLeank = currentLeank;
       await Promise.all([
-        recordLeankAction(currentUser.$id, reactedLeank.$id, isLiked),
+        apiClient.react(reactedLeank.$id, isLiked ? "like" : "skip"),
         waitForActionLoader(),
       ]);
 
@@ -176,10 +172,10 @@ export default function HomeScreen() {
 
     try {
       const [result] = await Promise.all([
-        deleteLeankAction(currentUser.$id, lastAction.leankId),
+        apiClient.undoReaction(lastAction.leankId),
         waitForActionLoader(),
       ]);
-      if (!result.ok) return;
+      if (!result.undone) return;
 
       setDeckState({
         filterKey,

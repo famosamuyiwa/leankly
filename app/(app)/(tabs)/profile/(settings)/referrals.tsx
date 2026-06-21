@@ -1,11 +1,8 @@
-import {
-  getOrCreateReferral,
-  getReferralStats,
-} from "@/appwrite/actions/user.actions";
 import { AppGradient } from "@/components/AppGradient";
 import { Colors } from "@/constants/common";
 import { mascotPoses } from "@/constants/data";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { apiClient } from "@/lib/api/client";
 import { Entypo, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -32,9 +29,8 @@ const ReferralsScreen = () => {
     const load = async () => {
       if (!currentUser?.$id) return;
       try {
-        const { referralCode } = await getOrCreateReferral(currentUser.$id);
-        setCode(referralCode);
-        const stats = await getReferralStats(currentUser.$id);
+        const stats = await apiClient.getReferral();
+        setCode(stats.referralCode);
         setCount(stats.referralCount);
         setBonusInterests(stats.bonusInterests || 0);
       } catch {}

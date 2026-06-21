@@ -29,7 +29,7 @@ export const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
     const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
 
     if (dateKey !== lastKey) {
-      // Date separators are local UI rows only; Appwrite should only store real messages.
+      // Date separators are local UI rows only; the backend stores real messages.
       result.push({
         $id: `date-${dateKey}-${idx}`,
         content: formatDateLabel(dateObj),

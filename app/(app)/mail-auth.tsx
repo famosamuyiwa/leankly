@@ -27,12 +27,16 @@ const SignInMailScreen = () => {
   const {
     loginWithEmail,
     signUpWithEmail,
+    resendEmailOtp,
+    verifyEmailOtp,
     requestPasswordRecovery,
   } = useAuthSession();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpUserId, setOtpUserId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentScreen, setCurrentScreen] = useState(Screens.LOGIN_1);
   const tint = Colors.primary;
@@ -48,6 +52,8 @@ const SignInMailScreen = () => {
     setName("");
     setPassword("");
     setConfirmPassword("");
+    setOtp("");
+    setOtpUserId("");
     setCurrentScreen(screen);
   };
 
@@ -87,7 +93,21 @@ const SignInMailScreen = () => {
       });
     }
     try {
-      await loginWithEmail({ email, password });
+      const challenge = await loginWithEmail({
+        email: email.trim(),
+        password,
+      });
+      if (challenge) {
+        setOtpUserId(challenge.userId);
+        setOtp("");
+        setPassword("");
+        setCurrentScreen(Screens.OTP);
+        displayToast({
+          type: ToastType.SUCCESS,
+          description: "A six-digit code was sent to your email.",
+        });
+        return;
+      }
       router.replace("/");
     } catch (err: any) {
       return displayToast({
@@ -100,7 +120,12 @@ const SignInMailScreen = () => {
   }
 
   async function onHandleSignup() {
-    if (name === "" || email === "" || password === "" || confirmPassword === "") {
+    if (
+      name === "" ||
+      email === "" ||
+      password === "" ||
+      confirmPassword === ""
+    ) {
       setIsLoading(false);
       return displayToast({
         type: ToastType.ERROR,
@@ -115,16 +140,20 @@ const SignInMailScreen = () => {
       });
     }
     try {
-      await signUpWithEmail({
-        email,
+      const challenge = await signUpWithEmail({
+        email: email.trim(),
         password,
-        name,
+        name: name.trim(),
       });
+      setOtpUserId(challenge.userId);
+      setOtp("");
+      setPassword("");
+      setConfirmPassword("");
+      setCurrentScreen(Screens.OTP);
       displayToast({
         type: ToastType.SUCCESS,
-        description: "Check your email to verify your account.",
+        description: "A six-digit code was sent to your email.",
       });
-      showScreen(Screens.LOGIN_1);
     } catch (err: any) {
       return displayToast({
         type: ToastType.ERROR,
@@ -155,6 +184,50 @@ const SignInMailScreen = () => {
       return displayToast({
         type: ToastType.ERROR,
         description: error?.message || "Unable to send reset link",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function onVerifyOtp() {
+    if (!otpUserId || otp.length !== 6) {
+      return displayToast({
+        type: ToastType.ERROR,
+        description: "Enter the six-digit code from your email.",
+      });
+    }
+
+    setIsLoading(true);
+    try {
+      await verifyEmailOtp(otpUserId, otp);
+      router.replace("/");
+    } catch (error: any) {
+      displayToast({
+        type: ToastType.ERROR,
+        description: error?.message || "Unable to verify the code",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function onResendOtp() {
+    if (!otpUserId || !email) return;
+
+    setIsLoading(true);
+    try {
+      const challenge = await resendEmailOtp(email.trim(), otpUserId);
+      setOtpUserId(challenge.userId);
+      setOtp("");
+      displayToast({
+        type: ToastType.SUCCESS,
+        description: "A new six-digit code was sent.",
+      });
+    } catch (error: any) {
+      displayToast({
+        type: ToastType.ERROR,
+        description: error?.message || "Unable to resend the code",
       });
     } finally {
       setIsLoading(false);
@@ -350,7 +423,11 @@ const SignInMailScreen = () => {
                     Name
                   </Text>
                   <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
-                    <Ionicons name="person-outline" size={20} color={secColor} />
+                    <Ionicons
+                      name="person-outline"
+                      size={20}
+                      color={secColor}
+                    />
                     <TextInput
                       key={`${currentScreen}-name`}
                       value={name}
@@ -509,6 +586,85 @@ const SignInMailScreen = () => {
         </Animated.View>
       )}
 
+      {/*--------------------------EMAIL OTP-------------------------------*/}
+      {currentScreen === Screens.OTP && (
+        <Animated.View
+          layout={LinearTransition}
+          entering={FadeIn.duration(500)}
+          className="flex-1"
+        >
+          <SafeAreaView style={styles.container4}>
+            <View
+              style={[
+                styles.container3,
+                { justifyContent: "flex-start", flexDirection: "row" },
+              ]}
+            >
+              <Pressable onPress={() => showScreen(Screens.LOGIN_1)}>
+                <View style={[styles.backBtnBorder, { borderColor }]}>
+                  <Ionicons
+                    name="chevron-back"
+                    style={{ color, fontSize: 25 }}
+                  />
+                </View>
+              </Pressable>
+            </View>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : undefined}
+              keyboardVerticalOffset={20}
+              style={styles.container2}
+            >
+              <Text className="font-plus-jakarta-bold" style={styles.heading}>
+                Verify your email
+              </Text>
+              <Text
+                className="font-plus-jakarta-regular"
+                style={styles.otpDescription}
+              >
+                Enter the six-digit code sent to {email}. You can read the code
+                on any device and enter it here.
+              </Text>
+              <TextInput
+                value={otp}
+                onChangeText={(value) =>
+                  setOtp(value.replace(/\D/g, "").slice(0, 6))
+                }
+                autoFocus
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
+                keyboardType="number-pad"
+                maxLength={6}
+                editable={!isLoading}
+                placeholder="000000"
+                placeholderTextColor="#D1D5DB"
+                accessibilityLabel="Six-digit email verification code"
+                style={[styles.otpInput, { borderColor }]}
+              />
+              <View style={[templateStyles.buttonSize, { marginTop: 24 }]}>
+                <CustomButton
+                  label="Verify email"
+                  onPress={onVerifyOtp}
+                  isLoading={isLoading}
+                  isDisabled={otp.length !== 6 || !otpUserId}
+                />
+              </View>
+              <TouchableOpacity
+                disabled={isLoading}
+                onPress={onResendOtp}
+                style={styles.resendButton}
+              >
+                <Text
+                  className="font-plus-jakarta-semibold"
+                  style={{ color: tint }}
+                >
+                  Resend code
+                </Text>
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </Animated.View>
+      )}
+
       {/*--------------------------FORGOT PASSWORD-------------------------------*/}
       {currentScreen === Screens.FORGOT_PASSWORD && (
         <Animated.View
@@ -545,8 +701,8 @@ const SignInMailScreen = () => {
                   className="font-plus-jakarta-regular"
                   style={{ color: "darkgrey", marginTop: 10 }}
                 >
-                  Don&apos;t worry! It happens. Please enter the email associated
-                  with this account
+                  Don&apos;t worry! It happens. Please enter the email
+                  associated with this account
                 </Text>
               </View>
               <View style={{ marginVertical: 30 }}>
@@ -642,6 +798,27 @@ const styles = StyleSheet.create({
   subheading: {
     marginTop: 8,
     marginBottom: 30,
+  },
+  otpDescription: {
+    color: "darkgrey",
+    lineHeight: 22,
+    marginTop: 10,
+    marginBottom: 32,
+  },
+  otpInput: {
+    borderWidth: 1,
+    borderRadius: 14,
+    color: "#111827",
+    fontSize: 30,
+    letterSpacing: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    textAlign: "center",
+    width: "100%",
+  },
+  resendButton: {
+    alignItems: "center",
+    paddingVertical: 14,
   },
 });
 

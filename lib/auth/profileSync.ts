@@ -9,6 +9,15 @@ type SyncProfileInput = {
   fallbackName?: string;
 };
 
+function makeInitialsAvatarUrl(name: string) {
+  const url = new URL(`${appwriteConfig.endpoint}/avatars/initials`);
+  url.searchParams.set("name", name);
+  url.searchParams.set("width", "200");
+  url.searchParams.set("height", "200");
+  url.searchParams.set("project", appwriteConfig.projectId);
+  return url.toString();
+}
+
 export async function upsertAppwriteProfile({
   accountUser,
   expoPushToken,
@@ -45,7 +54,7 @@ export async function upsertAppwriteProfile({
       data: {
         name,
         email: accountUser.email || "",
-        avatar: "",
+        avatar: makeInitialsAvatarUrl(name),
         age: null,
         location: "",
         locationLat: null,

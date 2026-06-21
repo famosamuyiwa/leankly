@@ -1,5 +1,11 @@
 import "dotenv/config";
 
+const appwriteProjectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
+
+if (!appwriteProjectId) {
+  throw new Error("EXPO_PUBLIC_APPWRITE_PROJECT_ID is not set");
+}
+
 export default {
   expo: {
     name: "Leankly",
@@ -7,7 +13,7 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/liquid-glass-icon.png",
-    scheme: "leankly",
+    scheme: ["leankly", `appwrite-callback-${appwriteProjectId}`],
     userInterfaceStyle: "light",
     newArchEnabled: true,
     ios: {

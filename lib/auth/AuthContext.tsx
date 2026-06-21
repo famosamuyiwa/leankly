@@ -15,21 +15,23 @@ import React, {
 } from "react";
 import { ID, Models, OAuthProvider } from "react-native-appwrite";
 import { authRedirects, makeOAuthReturnUrl } from "./redirects";
-import { AuthCredentials, AuthSessionState, OAuthProviderName } from "./types";
+import {
+  AuthCredentials,
+  AuthSessionState,
+  EmailOtpChallenge,
+  OAuthProviderName,
+} from "./types";
 import { upsertAppwriteProfile } from "./profileSync";
 
 type AuthContextValue = AuthSessionState & {
   refreshSession: () => Promise<void>;
-  loginWithEmail: (credentials: AuthCredentials) => Promise<void>;
-  signUpWithEmail: (credentials: AuthCredentials) => Promise<void>;
-  sendVerificationEmail: () => Promise<void>;
+  loginWithEmail: (
+    credentials: AuthCredentials,
+  ) => Promise<EmailOtpChallenge | null>;
+  signUpWithEmail: (credentials: AuthCredentials) => Promise<EmailOtpChallenge>;
+  resendEmailOtp: (email: string, userId: string) => Promise<EmailOtpChallenge>;
+  verifyEmailOtp: (userId: string, otp: string) => Promise<void>;
   requestPasswordRecovery: (email: string) => Promise<void>;
-  completePasswordRecovery: (
-    userId: string,
-    secret: string,
-    password: string
-  ) => Promise<void>;
-  completeEmailVerification: (userId: string, secret: string) => Promise<void>;
   startOAuth: (provider: OAuthProviderName) => Promise<void>;
   logout: () => Promise<void>;
   deactivateAccount: () => Promise<void>;
@@ -57,7 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const bootstrapRef = useRef(false);
 
   const applyAccountUser = useCallback(
-    async (accountUser: Models.User<Models.Preferences>, fallbackName?: string) => {
+    async (
+      accountUser: Models.User<Models.Preferences>,
+      fallbackName?: string,
+    ) => {
       const profile = await upsertAppwriteProfile({
         accountUser,
         expoPushToken,
@@ -74,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       });
     },
-    [expoPushToken, setCurrentUser]
+    [expoPushToken, setCurrentUser],
   );
 
   const refreshSession = useCallback(async () => {
@@ -111,35 +116,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async ({ email, password }: AuthCredentials) => {
       await account.createEmailPasswordSession({ email, password });
       const accountUser = await account.get();
-      await applyAccountUser(accountUser);
-      if (!accountUser.emailVerification) {
-        await account
-          .createVerification({ url: authRedirects.emailVerify })
-          .catch(() => {});
-        throw new Error("Check your email to verify your account.");
-      }
-    },
-    [applyAccountUser]
-  );
 
-  const sendVerificationEmail = useCallback(async () => {
-    await account.createVerification({ url: authRedirects.emailVerify });
-  }, []);
+      if (!accountUser.emailVerification) {
+        // A token session cannot be created while this password session is active.
+        await account.deleteSession({ sessionId: "current" });
+        const token = await account.createEmailToken({
+          userId: accountUser.$id,
+          email: accountUser.email,
+        });
+        return { userId: token.userId };
+      }
+
+      await applyAccountUser(accountUser);
+      return null;
+    },
+    [applyAccountUser],
+  );
 
   const signUpWithEmail = useCallback(
     async ({ email, password, name }: AuthCredentials) => {
-      await account.create({
+      const accountUser = await account.create({
         userId: ID.unique(),
         email,
         password,
         name,
       });
-      await account.createEmailPasswordSession({ email, password });
-      await sendVerificationEmail();
-      const accountUser = await account.get();
-      await applyAccountUser(accountUser, name);
+
+      const token = await account.createEmailToken({
+        userId: accountUser.$id,
+        email: accountUser.email,
+      });
+      return { userId: token.userId };
     },
-    [applyAccountUser, sendVerificationEmail]
+    [],
+  );
+
+  const resendEmailOtp = useCallback(async (email: string, userId: string) => {
+    const token = await account.createEmailToken({ userId, email });
+    return { userId: token.userId };
+  }, []);
+
+  const verifyEmailOtp = useCallback(
+    async (userId: string, otp: string) => {
+      if (!/^\d{6}$/.test(otp)) {
+        throw new Error("Enter the six-digit code from your email.");
+      }
+
+      await account.createSession({ userId, secret: otp });
+      const accountUser = await account.get();
+      await applyAccountUser(accountUser);
+    },
+    [applyAccountUser],
   );
 
   const requestPasswordRecovery = useCallback(async (email: string) => {
@@ -149,25 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const completePasswordRecovery = useCallback(
-    async (userId: string, secret: string, password: string) => {
-      await account.updateRecovery({ userId, secret, password });
-    },
-    []
-  );
-
-  const completeEmailVerification = useCallback(
-    async (userId: string, secret: string) => {
-      await account.updateVerification({ userId, secret });
-      await refreshSession();
-    },
-    [refreshSession]
-  );
-
   const startOAuth = useCallback(
     async (provider: OAuthProviderName) => {
       const callbackUrl = makeOAuthReturnUrl();
-      const url = account.createOAuth2Session({
+      const url = account.createOAuth2Token({
         provider: providerMap[provider],
         success: callbackUrl,
         failure: callbackUrl,
@@ -176,13 +188,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Appwrite did not return an OAuth URL.");
       }
 
+      const callbackScheme = `${new URL(callbackUrl).protocol}//`;
       const result = await WebBrowser.openAuthSessionAsync(
         url.toString(),
-        callbackUrl
+        callbackScheme,
       );
 
       if (result.type === "success") {
-        await refreshSession();
+        const redirectUrl = new URL(result.url);
+        const oauthError =
+          redirectUrl.searchParams.get("error_description") ||
+          redirectUrl.searchParams.get("error");
+        if (oauthError) {
+          throw new Error(oauthError);
+        }
+
+        const userId = redirectUrl.searchParams.get("userId");
+        const secret = redirectUrl.searchParams.get("secret");
+        if (!userId || !secret) {
+          throw new Error("Appwrite did not return OAuth credentials.");
+        }
+
+        await account.createSession({ userId, secret });
+        const accountUser = await account.get();
+        await applyAccountUser(accountUser);
         return;
       }
 
@@ -191,7 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Sign in was cancelled",
       });
     },
-    [displayToast, refreshSession]
+    [applyAccountUser, displayToast],
   );
 
   const logout = useCallback(async () => {
@@ -233,10 +262,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshSession,
       loginWithEmail,
       signUpWithEmail,
-      sendVerificationEmail,
+      resendEmailOtp,
+      verifyEmailOtp,
       requestPasswordRecovery,
-      completePasswordRecovery,
-      completeEmailVerification,
       startOAuth,
       logout,
       deactivateAccount,
@@ -246,14 +274,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshSession,
       loginWithEmail,
       signUpWithEmail,
-      sendVerificationEmail,
+      resendEmailOtp,
+      verifyEmailOtp,
       requestPasswordRecovery,
-      completePasswordRecovery,
-      completeEmailVerification,
       startOAuth,
       logout,
       deactivateAccount,
-    ]
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

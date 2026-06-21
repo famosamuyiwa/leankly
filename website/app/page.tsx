@@ -252,7 +252,7 @@ function ProductPreview() {
             <AnimatedLetters text="Find your crew. Do whatever you want." />
           </h2>
           <p className="mt-5 max-w-xl text-base font-medium leading-7 text-muted md:text-lg">
-            Leankly turns the your phone into a feed of invitations... study
+            Leankly turns your phone into a feed of invitations... study
             sessions, runs, food crawls, museum days, gaming nights, volunteer
             shifts, and whatever else makes a good side quest.
           </p>

@@ -19,4 +19,8 @@ export type AuthCredentials = {
   name?: string;
 };
 
+export type EmailOtpChallenge = {
+  userId: string;
+};
+
 export type OAuthProviderName = "google" | "apple";

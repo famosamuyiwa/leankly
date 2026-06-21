@@ -4,13 +4,17 @@ import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { RequestIdMiddleware } from "./common/request-id.middleware";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     RedisModule,
+    AuthModule,
     HealthModule,
+    UsersModule,
   ],
 })
 export class AppModule implements NestModule {

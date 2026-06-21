@@ -1,0 +1,559 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/db": {
+      "get": {
+        "operationId": "HealthController_getDatabaseHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/redis": {
+      "get": {
+        "operationId": "HealthController_getRedisHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/v1/users/me": {
+      "get": {
+        "operationId": "UsersController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "patch": {
+        "operationId": "UsersController_updateMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_deleteMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/v1/users/me/push-token": {
+      "patch": {
+        "operationId": "UsersController_updatePushTarget",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/v1/media/confirm": {
+      "post": {
+        "operationId": "MediaController_confirm",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Media"
+        ]
+      }
+    },
+    "/v1/blocks": {
+      "get": {
+        "operationId": "ModerationController_listBlocks",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      },
+      "post": {
+        "operationId": "ModerationController_block",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/v1/reports": {
+      "post": {
+        "operationId": "ModerationController_report",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Moderation"
+        ]
+      }
+    },
+    "/v1/users/me/referral": {
+      "get": {
+        "operationId": "ReferralsController_getStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Referrals"
+        ]
+      }
+    },
+    "/v1/users/me/referral/apply": {
+      "post": {
+        "operationId": "ReferralsController_apply",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Referrals"
+        ]
+      }
+    },
+    "/v1/users/me/usage": {
+      "get": {
+        "operationId": "UsageController_getUsage",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Usage"
+        ]
+      }
+    },
+    "/v1/users/me/entitlements": {
+      "get": {
+        "operationId": "UsageController_getEntitlements",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Usage"
+        ]
+      }
+    },
+    "/v1/leanks": {
+      "post": {
+        "operationId": "LeanksController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/feed": {
+      "get": {
+        "operationId": "LeanksController_feed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/hosted": {
+      "get": {
+        "operationId": "LeanksController_hosted",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/attended": {
+      "get": {
+        "operationId": "LeanksController_attended",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/chats": {
+      "get": {
+        "operationId": "LeanksController_chats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/{id}": {
+      "get": {
+        "operationId": "LeanksController_getById",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      },
+      "patch": {
+        "operationId": "LeanksController_update",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/close": {
+      "post": {
+        "operationId": "LeanksController_close",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/reactions": {
+      "post": {
+        "operationId": "ReactionsController_react",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/reactions/{leankId}": {
+      "delete": {
+        "operationId": "ReactionsController_undo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/reactions/requests": {
+      "get": {
+        "operationId": "ReactionsController_requests",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/reactions/{id}/accept": {
+      "post": {
+        "operationId": "ReactionsController_accept",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/reactions/{id}/decline": {
+      "post": {
+        "operationId": "ReactionsController_decline",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/participants": {
+      "get": {
+        "operationId": "ReactionsController_participants",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/leave": {
+      "post": {
+        "operationId": "ReactionsController_leave",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/participants/{userId}": {
+      "delete": {
+        "operationId": "ReactionsController_remove",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Reactions"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/messages": {
+      "get": {
+        "operationId": "MessagesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Messages"
+        ]
+      },
+      "post": {
+        "operationId": "MessagesController_send",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Messages"
+        ]
+      }
+    },
+    "/v1/leanks/{id}/read": {
+      "patch": {
+        "operationId": "MessagesController_markRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Messages"
+        ]
+      }
+    },
+    "/v1/users/me/unread-count": {
+      "get": {
+        "operationId": "MessagesController_unread",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Messages"
+        ]
+      }
+    },
+    "/v1/entitlements/me": {
+      "get": {
+        "operationId": "EntitlementsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Entitlements"
+        ]
+      }
+    },
+    "/v1/webhooks/revenuecat": {
+      "post": {
+        "operationId": "WebhooksController_revenuecat",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/admin/reports": {
+      "get": {
+        "operationId": "AdminController_reports",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/v1/admin/users/{id}/suspension": {
+      "patch": {
+        "operationId": "AdminController_suspend",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Leankly API",
+    "description": "",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {}
+  }
+}

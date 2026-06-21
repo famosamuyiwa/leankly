@@ -21,25 +21,21 @@ const Loader = forwardRef(function Loader(_props, ref) {
   const [label, setLabel] = useState("");
   const [pulse, setPulse] = useState(false);
 
-  const show = (lab?: string, pul?: boolean) => {
-    if (lab) setLabel(lab);
-    if (pul) setPulse(pul);
-    setVisibility(true);
-  };
-
-  const hide = () => {
-    setVisibility(false);
-    setPulse(false);
-    setLabel("");
-  };
-
   useImperativeHandle(
     ref,
     () => ({
-      show: (lab?: string, pulse?: boolean) => show(lab, pulse),
-      hide: () => hide(),
+      show: (lab?: string, pul?: boolean) => {
+        if (lab) setLabel(lab);
+        if (pul) setPulse(pul);
+        setVisibility(true);
+      },
+      hide: () => {
+        setVisibility(false);
+        setPulse(false);
+        setLabel("");
+      },
     }),
-    [show, hide]
+    [],
   );
 
   return (

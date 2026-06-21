@@ -5,7 +5,7 @@ import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
 import { useMemo, useState } from "react";
 import {
@@ -26,10 +26,9 @@ cssInterop(Image, {
 export default function PaywallScreen() {
   const { upgradeToPro, packages, loading, restorePurchases } = usePremium();
   const router = useRouter();
-  const { reason } = useLocalSearchParams<{ reason?: string }>();
   const [processing, setProcessing] = useState(false);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
-    null
+    null,
   );
   const isBusy = loading || processing;
 
@@ -41,7 +40,7 @@ export default function PaywallScreen() {
 
   const highlightedPackageId = useMemo(() => {
     const monthly = packages.find((pkg) =>
-      pkg.identifier?.toLowerCase().includes("month")
+      pkg.identifier?.toLowerCase().includes("month"),
     );
     return monthly?.identifier ?? packages[packages.length - 1]?.identifier;
   }, [packages]);
@@ -64,7 +63,7 @@ export default function PaywallScreen() {
     if (!selectedPackage) {
       Alert.alert(
         "Store unavailable",
-        "Subscription products are still loading. Please try again in a moment."
+        "Subscription products are still loading. Please try again in a moment.",
       );
       return;
     }
@@ -79,7 +78,7 @@ export default function PaywallScreen() {
       console.log("error: ", error);
       Alert.alert(
         "Purchase failed",
-        "We couldn't complete the purchase. Try again later."
+        "We couldn't complete the purchase. Try again later.",
       );
     } finally {
       setProcessing(false);
@@ -96,12 +95,12 @@ export default function PaywallScreen() {
       }
       Alert.alert(
         "No purchases found",
-        "We couldn't find an active subscription for this account."
+        "We couldn't find an active subscription for this account.",
       );
     } catch (error: any) {
       Alert.alert(
         "Restore failed",
-        error?.message || "Something went wrong. Please try again."
+        error?.message || "Something went wrong. Please try again.",
       );
     } finally {
       setProcessing(false);

@@ -56,6 +56,15 @@ export class UsersService {
   async deleteProfile(user: User) {
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
+      await tx.leank.deleteMany({ where: { ownerId: user.id } });
+      await tx.participant.deleteMany({ where: { userId: user.id } });
+      await tx.reaction.deleteMany({ where: { userId: user.id } });
+      await tx.userChatMeta.deleteMany({ where: { userId: user.id } });
+      await tx.leank.updateMany({
+        where: { lastMessage: { is: { senderId: user.id } } },
+        data: { lastMessageId: null, lastMessageAt: null },
+      });
+      await tx.message.deleteMany({ where: { senderId: user.id } });
       await tx.block.deleteMany({
         where: { OR: [{ blockerId: user.id }, { blockedId: user.id }] },
       });
@@ -69,7 +78,14 @@ export class UsersService {
       await tx.userEntitlement.deleteMany({ where: { userId: user.id } });
       await tx.user.update({
         where: { id: user.id },
-        data: { deletedAt, isActive: false, pushEnabled: false },
+        data: {
+          deletedAt,
+          isActive: false,
+          pushEnabled: false,
+          pushTargetId: null,
+          pushProviderId: null,
+          pushPlatform: null,
+        },
       });
     });
     return { deletedAt };

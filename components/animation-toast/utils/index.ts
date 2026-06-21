@@ -1,6 +1,3 @@
-import React from "react";
-import { MaterialIcons } from "@expo/vector-icons";
-
 export const getStyles = (type: string) => {
   switch (type) {
     case "success":

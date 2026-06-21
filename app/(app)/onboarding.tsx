@@ -61,13 +61,12 @@ function OnboardingContent() {
   useEffect(() => {
     // Force editing mode on onboarding
     if (!isEditing) setIsEditing(true);
-  }, [isEditing]);
+  }, [isEditing, setIsEditing]);
 
   useEffect(() => {
     // Cleanup on unmount
     return () => {
       isMountedRef.current = false;
-      bottomSheetRef.current?.close();
     };
   }, []);
 

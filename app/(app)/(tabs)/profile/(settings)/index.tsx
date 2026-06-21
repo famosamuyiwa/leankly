@@ -13,7 +13,7 @@ import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
@@ -44,33 +44,36 @@ export default function Settings() {
     ]);
   };
 
-  const handleNavigation = (action: Screens | Links) => {
-    let route: any;
-    switch (action) {
-      case Screens.NOTIFICATIONS:
-        alertComingSoon();
-        break;
-      case Links.CONTACT_SUPPORT:
-        Linking.openURL("https://leankly.com/contact");
-        break;
-      case Links.PRIVACY_POLICY:
-        Linking.openURL("https://leankly.com/privacy");
-        break;
-      case Links.SOCIAL_MEDIA:
-        Linking.openURL("https://x.com/leanklyapp");
-        break;
-      case Screens.EDIT_PROFILE:
-        route = "/(app)/(tabs)/profile/(settings)/edit-profile";
-        break;
-      case Screens.REFER_A_FRIEND:
-        route = "/(app)/(tabs)/profile/(settings)/referrals";
-        break;
-      default:
-        route = "/";
-    }
-    if (!route) return;
-    router.navigate(route);
-  };
+  const handleNavigation = useCallback(
+    (action: Screens | Links) => {
+      let route: any;
+      switch (action) {
+        case Screens.NOTIFICATIONS:
+          alertComingSoon();
+          break;
+        case Links.CONTACT_SUPPORT:
+          Linking.openURL("https://leankly.com/contact");
+          break;
+        case Links.PRIVACY_POLICY:
+          Linking.openURL("https://leankly.com/privacy");
+          break;
+        case Links.SOCIAL_MEDIA:
+          Linking.openURL("https://x.com/leanklyapp");
+          break;
+        case Screens.EDIT_PROFILE:
+          route = "/(app)/(tabs)/profile/(settings)/edit-profile";
+          break;
+        case Screens.REFER_A_FRIEND:
+          route = "/(app)/(tabs)/profile/(settings)/referrals";
+          break;
+        default:
+          route = "/";
+      }
+      if (!route) return;
+      router.navigate(route);
+    },
+    [alertComingSoon],
+  );
 
   const memoizedProfile = useMemo(() => {
     return (
@@ -97,7 +100,7 @@ export default function Settings() {
         </View>
       </TouchableOpacity>
     );
-  }, [avatar, name]);
+  }, [avatar, handleNavigation, name]);
 
   return (
     <Animated.ScrollView

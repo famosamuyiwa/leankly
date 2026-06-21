@@ -72,7 +72,7 @@ const ReferralsScreen = () => {
       } else if (result.action === Share.dismissedAction) {
         // Share was dismissed
       }
-    } catch (error) {
+    } catch {
       // Fallback to clipboard
       try {
         // await Clipboard.setStringAsync(message);

@@ -11,14 +11,17 @@
     "start:dev": "nest start --watch",
     "start:worker": "node dist/worker.js",
     "start:worker:dev": "tsx watch src/worker.ts",
-    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint": "eslint \"{src,test,scripts}/**/*.ts\"",
     "test": "jest --runInBand --no-watchman",
     "test:cov": "jest --coverage --runInBand --no-watchman",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand --no-watchman",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "openapi": "tsx src/openapi.ts"
+    "openapi": "tsx src/openapi.ts",
+    "perf:seed": "tsx scripts/seed-performance.ts",
+    "perf:load": "k6 run performance/feed.k6.js",
+    "verify": "npm run lint && npm test && npm run test:e2e && npm run build"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",

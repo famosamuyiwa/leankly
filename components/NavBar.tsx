@@ -14,7 +14,7 @@ const NavBar = ({
   const params = useLocalSearchParams<{ nav?: string }>();
   const [selectedNav, setSelectedNav] = useState(
     params.nav ??
-      (screen === Screens.CHAT ? NavbarOptions.REQUESTS : NavbarOptions.HOSTED)
+      (screen === Screens.CHAT ? NavbarOptions.REQUESTS : NavbarOptions.HOSTED),
   );
 
   const handleCategoryPress = (nav: string) => {
@@ -22,12 +22,11 @@ const NavBar = ({
       return;
     }
     setSelectedNav(nav);
-    router.setParams({ nav });
   };
 
   useEffect(() => {
     router.setParams({ nav: selectedNav });
-  }, []);
+  }, [selectedNav]);
 
   return (
     <View className="flex-row bg-primary-100 p-2 rounded-full justify-between">

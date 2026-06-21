@@ -1,12 +1,90 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
-import { User } from "@prisma/client";
+import { LeankStatus, Prisma, ReactionStatus, User } from "@prisma/client";
 import { ReactionsService } from "./reactions.service";
 
 const user = {
   id: "00000000-0000-4000-8000-000000000001",
+  name: "Tester",
 } as User;
 
 describe("ReactionsService", () => {
+  it("locks quota state in a serializable transaction before post-commit effects", async () => {
+    const events: string[] = [];
+    const reaction = {
+      id: "reaction-1",
+      userId: user.id,
+      leankId: "leank-1",
+      isLiked: true,
+      status: ReactionStatus.PENDING,
+    };
+    const tx = {
+      $queryRaw: jest.fn(() => Promise.resolve([])),
+      leank: {
+        findUnique: jest.fn(() =>
+          Promise.resolve({
+            id: "leank-1",
+            title: "Coffee",
+            ownerId: "owner-1",
+            status: LeankStatus.ACTIVE,
+            owner: { appwriteUserId: "appwrite-owner", name: "Host" },
+          }),
+        ),
+      },
+      reaction: {
+        findUnique: jest.fn(() => Promise.resolve(null)),
+        upsert: jest.fn(() => {
+          events.push("reaction-written");
+          return Promise.resolve(reaction);
+        }),
+      },
+      userEntitlement: { findUnique: jest.fn(() => Promise.resolve(null)) },
+      dailyUsage: {
+        upsert: jest.fn(() => Promise.resolve({ id: "usage-1", count: 4 })),
+        update: jest.fn(() => Promise.resolve()),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn(
+        async (callback: (client: typeof tx) => unknown) => {
+          const result = await callback(tx);
+          events.push("committed");
+          return result;
+        },
+      ),
+    };
+    const jobs = {
+      enqueuePush: jest.fn(() => {
+        events.push("push-enqueued");
+        return Promise.resolve();
+      }),
+    };
+    const realtime = {
+      emitLeank: jest.fn(() => events.push("realtime-emitted")),
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      jobs as never,
+      realtime as never,
+    );
+
+    await service.react(user, { leankId: "leank-1", action: "like" });
+
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.dailyUsage.update).toHaveBeenCalledWith({
+      where: { id: "usage-1" },
+      data: { count: { increment: 1 } },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+    expect(events.indexOf("committed")).toBeLessThan(
+      events.indexOf("push-enqueued"),
+    );
+    expect(events.indexOf("committed")).toBeLessThan(
+      events.indexOf("realtime-emitted"),
+    );
+  });
+
   it("limits request visibility for a free host", async () => {
     const requests = [
       {

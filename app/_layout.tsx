@@ -1,8 +1,8 @@
 import { PushNotificationProvider } from "@/lib/PushNotificationContext";
 import "./global.css";
 
-import GlobalProvider from "@/lib/GlobalContext";
-import PremiumProvider from "@/lib/PremiumContext";
+import { GlobalProvider } from "@/lib/GlobalContext";
+import { PremiumProvider } from "@/lib/PremiumContext";
 import { currentScreenRef } from "@/lib/ScreenTracker";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import { useFonts } from "expo-font";

@@ -225,7 +225,7 @@ export const RequestCard = ({
               {item.user?.name}, {item.user?.age}
             </Text>
             <Text className="font-plus-jakarta-regular text-sm text-gray-400">
-              {timeElapsed(item.$createdAt)}
+              {timeElapsed(item.$createdAt || "")}
             </Text>
           </View>
 
@@ -297,7 +297,9 @@ export const ChatCard = ({
           </Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
             {timeElapsed(
-              item.lastMessage ? item.lastMessage.$createdAt : item.$createdAt,
+              item.lastMessage
+                ? item.lastMessage.$createdAt || ""
+                : item.$createdAt || "",
             )}
           </Text>
         </View>

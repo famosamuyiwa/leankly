@@ -9,20 +9,24 @@ import {
 } from "./enums";
 
 export const user: User = {
+  $id: "user-1",
   avatar:
     "https://nyc.cloud.appwrite.io/v1/storage/buckets/68cb2bb6002b3b62070d/files/68d74390000e5794550f/view?project=68cb274e000a797620ce",
   name: "Olu",
   email: "nenling19@gmail.com",
-  age: "23",
+  age: 23,
   location: "Nigeria",
+  bonusInterests: 0,
 };
 
 export const user2: User = {
+  $id: "user-2",
   avatar: "https://picsum.photos/200/300",
   name: "Ayo Balogun",
   email: "nanling19@gmail.com",
-  age: "21",
+  age: 21,
   location: "Nigeria",
+  bonusInterests: 0,
 };
 
 export const defaultCover =
@@ -127,10 +131,11 @@ export const filterDescriptions = {
 export const dummyLeanks: Leank[] = [
   {
     $id: "1",
+    ownerId: user.$id,
     title: "Run With me ! ",
     cover: "https://picsum.photos/200/300", // sample image url
     location: "Syracuse",
-    date: "2025-10-10T12:00:00.000Z",
+    date: new Date("2025-10-10T12:00:00.000Z"),
     time: "2:00 PM",
     description:
       "Looking for a running buddy for my daily 5K route around the park.",
@@ -141,34 +146,38 @@ export const dummyLeanks: Leank[] = [
   },
   {
     $id: "2",
+    ownerId: user.$id,
     title: "Early morning gym sesh? ",
     cover: "https://picsum.photos/200/300", // sample image url
     location: "NYC",
-    date: "2025-10-10T12:00:00.000Z",
+    date: new Date("2025-10-10T12:00:00.000Z"),
     time: "2:00 PM",
   },
   {
     $id: "3",
+    ownerId: user.$id,
     title: "Hospital trip",
     cover: "https://picsum.photos/200/300", // sample image url
     location: "Newark",
-    date: "2025-10-10T12:00:00.000Z",
+    date: new Date("2025-10-10T12:00:00.000Z"),
     time: "2:00 PM",
   },
   {
     $id: "4",
+    ownerId: user.$id,
     title: "Hospital trip",
     cover: "https://picsum.photos/200/300", // sample image url
     location: "Newark",
-    date: "2025-10-10T12:00:00.000Z",
+    date: new Date("2025-10-10T12:00:00.000Z"),
     time: "2:00 PM",
   },
   {
     $id: "5",
+    ownerId: user.$id,
     title: "Hospital trip",
     cover: "https://picsum.photos/200/300", // sample image url
     location: "Newark",
-    date: "2025-10-10T12:00:00.000Z",
+    date: new Date("2025-10-10T12:00:00.000Z"),
     time: "2:00 PM",
   },
 ];
@@ -176,6 +185,8 @@ export const dummyLeanks: Leank[] = [
 export const dummyRequests: LeankRequest[] = [
   {
     $id: "1",
+    userId: user2.$id,
+    leankId: dummyLeanks[2].$id,
     user: user2,
     leank: dummyLeanks[2],
     $createdAt: new Date().toISOString(),

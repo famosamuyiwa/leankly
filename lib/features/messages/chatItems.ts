@@ -53,7 +53,7 @@ export const formatDateLabel = (date: Date) => {
   const startOfDay = (d: Date) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const diffDays = Math.floor(
-    (startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24)
+    (startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24),
   );
 
   if (diffDays === 0) return "Today";
@@ -67,7 +67,7 @@ export const formatDateLabel = (date: Date) => {
 };
 
 export function isDateSeparator(
-  message?: ChatListItem
+  message?: ChatListItem,
 ): message is DateSeparatorItem {
   return message?.type === "system-date";
 }
@@ -87,7 +87,7 @@ export function isSystemMessage(message?: ChatListItem) {
 
 export function isSameChatSender(
   previousOrNext: ChatListItem | undefined,
-  item: ChatListItem
+  item: ChatListItem,
 ) {
   if (!previousOrNext) return false;
   if (isSystemMessage(previousOrNext) || isSystemMessage(item)) return false;

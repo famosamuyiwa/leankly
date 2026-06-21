@@ -13,7 +13,7 @@ const useImagePicker = () => {
     isUpload: boolean,
     editable?: boolean,
     allowMultiple?: boolean,
-    mediaType?: MediaType | MediaType[]
+    mediaType?: MediaType | MediaType[],
   ) {
     return new Promise(async (resolve, reject) => {
       // No permissions request is necessary for launching the image library
@@ -37,12 +37,12 @@ const useImagePicker = () => {
       if (isUpload) {
         try {
           //Upload each image and collect URLs
-          const urls = await uploadFiles(newMedia, 3); // limit concurrency to 3
+          const uploaded = await uploadFiles(newMedia, 3);
 
           setMediaResults([]);
           // Return promise resolve on successful upload
           resolve({
-            urls,
+            urls: uploaded.map((item) => item.url),
           });
         } catch (error) {
           reject(error);

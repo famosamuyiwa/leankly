@@ -44,6 +44,9 @@ export type ChatDetailResponse = {
 
 export type RequestListResponse = {
   requests: RequestSummary[];
+  totalPending?: number;
+  visibleCount?: number;
+  isLocked?: boolean;
 };
 
 export type ParticipantListResponse = {

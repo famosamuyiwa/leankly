@@ -1,4 +1,3 @@
-import { Models } from "react-native-appwrite";
 import {
   LeankCategory,
   LeankStatus,
@@ -12,7 +11,14 @@ export interface ToastProps {
   duration?: number;
 }
 
-export interface User extends Models.Row {
+export interface BackendDocument {
+  $id: string;
+  $createdAt?: string;
+  $updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface User extends BackendDocument {
   avatar: string;
   name: string;
   email: string;
@@ -27,13 +33,13 @@ export interface User extends Models.Row {
   referralCount?: number;
 }
 
-export interface Leank extends Models.Row {
+export interface Leank extends BackendDocument {
   cover: string;
   title: string;
-  description: string;
+  description?: string;
   status?: LeankStatus;
   category?: LeankCategory;
-  peopleRequired: number;
+  peopleRequired?: number;
   date: Date;
   time: string;
   location: string;
@@ -45,7 +51,7 @@ export interface Leank extends Models.Row {
   lastMessage?: Message;
 }
 
-export interface Reactions extends Models.Row {
+export interface Reactions extends BackendDocument {
   userId: string;
   leankId: string;
   isLiked: boolean;
@@ -53,14 +59,14 @@ export interface Reactions extends Models.Row {
   status?: RequestAction;
 }
 
-export interface LeankRequest extends Models.Row {
+export interface LeankRequest extends BackendDocument {
   userId: string;
   leankId: string;
   user: User;
   leank: Leank;
 }
 
-export interface Message extends Models.Row {
+export interface Message extends BackendDocument {
   content: string;
   senderId: string;
   senderName: string;
@@ -97,7 +103,7 @@ export interface Report {
   $createdAt?: string;
 }
 
-export interface UserChatMeta extends Models.Row {
+export interface UserChatMeta extends BackendDocument {
   leankId: string;
   userId: string;
   readAt: Date;
@@ -120,7 +126,7 @@ export interface MediaResult {
   size?: any;
 }
 
-export interface Participants extends Models.Row {
+export interface Participants extends BackendDocument {
   leank: Leank;
   user: User;
 }

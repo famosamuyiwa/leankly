@@ -20,6 +20,7 @@ import {
   hasActiveEntitlement,
   isRevenueCatNativeAvailable,
 } from "./revenuecat";
+import { useAuthSession } from "./auth/AuthContext";
 
 type PremiumContextType = {
   isPro: boolean;
@@ -40,6 +41,7 @@ export const PremiumProvider = ({
   children: React.ReactNode;
 }) => {
   const { currentUser } = useGlobalContext();
+  const { accountUser } = useAuthSession();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [currentOffering, setCurrentOffering] =
     useState<PurchasesOffering | null>(null);
@@ -108,7 +110,7 @@ export const PremiumProvider = ({
       if (!configured) return;
 
       try {
-        const appUserId = currentUser?.$id;
+        const appUserId = accountUser?.$id;
         if (appUserId && lastAppUserIdRef.current !== appUserId) {
           if (isRevenueCatNativeAvailable()) {
             const { customerInfo: info } = await Purchases.logIn(appUserId);
@@ -129,7 +131,7 @@ export const PremiumProvider = ({
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.$id, userResolved]);
+  }, [accountUser?.$id, userResolved]);
 
   const upgradeToPro = useCallback(
     async (selectedPackage?: PurchasesPackage) => {
@@ -161,7 +163,7 @@ export const PremiumProvider = ({
         setLoading(false);
       }
     },
-    [currentOffering, fetchOfferings]
+    [currentOffering, fetchOfferings],
   );
 
   const restorePurchases = useCallback(async () => {
@@ -183,11 +185,11 @@ export const PremiumProvider = ({
 
   const isPro = useMemo(
     () => hasActiveEntitlement(customerInfo),
-    [customerInfo]
+    [customerInfo],
   );
   const packages = useMemo(
     () => currentOffering?.availablePackages ?? [],
-    [currentOffering]
+    [currentOffering],
   );
 
   const openPaywall = (reason?: string) => {

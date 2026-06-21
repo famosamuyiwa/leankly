@@ -10,6 +10,8 @@ import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 
 const getNotificationLeankId = (data?: Record<string, unknown>) => {
   const directLeankId = data?.leankId;
@@ -28,7 +30,7 @@ Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const current = currentScreenRef.current;
     const leankId = getNotificationLeankId(
-      notification.request.content.data as Record<string, unknown> | undefined
+      notification.request.content.data as Record<string, unknown> | undefined,
     );
 
     // Suppress foreground chat notifications only when that chat is already open.
@@ -80,14 +82,16 @@ export default function Layout() {
 
   if (!fontsLoaded) return null;
   return (
-    <PushNotificationProvider>
-      <GlobalProvider>
-        <AuthProvider>
-          <PremiumProvider>
-            <Slot />
-          </PremiumProvider>
-        </AuthProvider>
-      </GlobalProvider>
-    </PushNotificationProvider>
+    <QueryClientProvider client={queryClient}>
+      <PushNotificationProvider>
+        <GlobalProvider>
+          <AuthProvider>
+            <PremiumProvider>
+              <Slot />
+            </PremiumProvider>
+          </AuthProvider>
+        </GlobalProvider>
+      </PushNotificationProvider>
+    </QueryClientProvider>
   );
 }

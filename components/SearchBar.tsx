@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
 
 import { AntDesign, Feather } from "@expo/vector-icons";
@@ -22,12 +22,8 @@ const SearchBar = ({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    if (value !== undefined) setSearch(value);
-  }, [value]);
-
   const handleSearch = (text: string) => {
-    setSearch(text);
+    if (value === undefined) setSearch(text);
     onChangeText?.(text);
   };
 
@@ -49,7 +45,7 @@ const SearchBar = ({
         <Feather name="search" size={20} color="#9CA3AF" />
         <TextInput
           ref={inputRef}
-          value={search}
+          value={value ?? search}
           onChangeText={handleSearch}
           placeholder={placeholder ?? "Search for anything"}
           placeholderTextColor={"#9CA3AF"}

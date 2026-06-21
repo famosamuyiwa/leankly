@@ -16,7 +16,7 @@ cssInterop(Image, {
   className: { target: "style" },
 });
 
-const Loader = forwardRef(({}, ref) => {
+const Loader = forwardRef(function Loader(_props, ref) {
   const [visibility, setVisibility] = useState(false);
   const [label, setLabel] = useState("");
   const [pulse, setPulse] = useState(false);

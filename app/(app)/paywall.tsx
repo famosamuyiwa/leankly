@@ -7,7 +7,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { cssInterop } from "nativewind";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,14 +31,7 @@ export default function PaywallScreen() {
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
     null
   );
-  const defaultPackage = packages[0];
   const isBusy = loading || processing;
-
-  useEffect(() => {
-    if (!selectedPackageId && defaultPackage?.identifier) {
-      setSelectedPackageId(defaultPackage.identifier);
-    }
-  }, [defaultPackage?.identifier, selectedPackageId]);
 
   const selectedPackage = useMemo(() => {
     if (!packages.length) return undefined;

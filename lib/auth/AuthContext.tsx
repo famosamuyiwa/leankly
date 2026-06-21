@@ -22,6 +22,10 @@ import {
   OAuthProviderName,
 } from "./types";
 import { upsertAppwriteProfile } from "./profileSync";
+import { clearApiJwt, apiClient } from "@/lib/api/client";
+import { deletePushTarget, syncPushTarget } from "@/lib/pushTarget";
+import { realtime } from "@/lib/api/realtime";
+import { queryClient } from "@/lib/queryClient";
 
 type AuthContextValue = AuthSessionState & {
   refreshSession: () => Promise<void>;
@@ -65,9 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       const profile = await upsertAppwriteProfile({
         accountUser,
-        expoPushToken,
         fallbackName,
       });
+      if (expoPushToken) {
+        await syncPushTarget(accountUser.$id, expoPushToken).catch((error) =>
+          console.warn("Push target registration failed", error),
+        );
+      }
       setCurrentUser(profile);
       setState({
         status: "authenticated",
@@ -225,10 +233,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      if (state.accountUser) await deletePushTarget(state.accountUser.$id);
       await account.deleteSession({ sessionId: "current" });
     } catch {
       // Appwrite throws when there is no current session; logout should still clear local state.
     } finally {
+      clearApiJwt();
+      realtime.disconnect();
+      queryClient.clear();
       setCurrentUser(undefined);
       setState({
         status: "unauthenticated",
@@ -240,10 +252,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error: null,
       });
     }
-  }, [setCurrentUser]);
+  }, [setCurrentUser, state.accountUser]);
 
   const deactivateAccount = useCallback(async () => {
+    await apiClient.deleteMe();
+    if (state.accountUser) await deletePushTarget(state.accountUser.$id);
     await account.updateStatus();
+    clearApiJwt();
+    realtime.disconnect();
+    queryClient.clear();
     setCurrentUser(undefined);
     setState({
       status: "unauthenticated",
@@ -254,7 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile: null,
       error: null,
     });
-  }, [setCurrentUser]);
+  }, [setCurrentUser, state.accountUser]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

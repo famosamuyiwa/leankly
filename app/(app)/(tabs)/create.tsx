@@ -1,5 +1,3 @@
-import { classifyLeankCategory } from "@/appwrite/actions/leank.actions";
-import { appwriteConfig, db } from "@/appwrite/config";
 import CustomButton from "@/components/Button";
 import DatePickerBottomSheet, {
   DatePickerBottomSheetHandle,
@@ -8,18 +6,12 @@ import TimePickerBottomSheet, {
   TimePickerBottomSheetHandle,
 } from "@/components/TimePickerBottomSheet";
 import { ToggleItem } from "@/components/Toggle";
-import { defaultCovers } from "@/constants/data";
-import {
-  LeankCategory,
-  LeankStatus,
-  LocationFilterEnum,
-  Time,
-  ToastType,
-} from "@/constants/enums";
+import { Time, ToastType } from "@/constants/enums";
 import { useAppwriteUpload } from "@/hooks/useBucket";
 import useImagePicker from "@/hooks/useImagePicker";
 import { MediaResult } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { apiClient } from "@/lib/api/client";
 import {
   Ionicons,
   MaterialCommunityIcons,
@@ -36,7 +28,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { ID } from "react-native-appwrite";
 
 const TIME_OPTIONS = Object.values(Time);
 
@@ -112,34 +103,6 @@ export default function Create() {
     setIsToggleEnabled(false);
   };
 
-  const updateCategoryAfterClassification = async (
-    leankId: string,
-    initialCategory: LeankCategory,
-    leankTitle: string,
-    leankDescription: string,
-  ) => {
-    try {
-      const classifiedCategory = await classifyLeankCategory(
-        leankTitle,
-        leankDescription,
-      );
-
-      if (classifiedCategory && classifiedCategory !== initialCategory) {
-        await db.updateRow({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.leanks,
-          rowId: leankId,
-          data: { category: classifiedCategory },
-        });
-      }
-    } catch (error) {
-      console.warn(
-        "Could not update leank category after classification",
-        error,
-      );
-    }
-  };
-
   const onPostLeank = async () => {
     if (!title || !date) {
       return displayToast({
@@ -148,17 +111,15 @@ export default function Create() {
       });
     }
 
-    const classificationTitle = title;
-    const classificationDescription = description;
-    const fallbackCategory = LeankCategory.OTHER;
-
     showLoader("Posting leank...");
 
-    let url = undefined;
+    let coverFileId: string | undefined;
 
     try {
       if (coverMediaResult) {
-        url = (await uploadFiles([coverMediaResult], 3))[0]; // limit concurrency to 3
+        coverFileId = (
+          await uploadFiles([coverMediaResult], 1, "leank_cover")
+        )[0].fileId;
       }
     } catch {
       displayToast({
@@ -170,30 +131,20 @@ export default function Create() {
     }
 
     const data = {
-      cover:
-        url || defaultCovers[Math.floor(Math.random() * defaultCovers.length)],
+      coverFileId,
       title,
       description,
-      category: fallbackCategory,
-      date,
+      date: date.toISOString(),
       time,
-      location: isToggleEnabled
-        ? LocationFilterEnum.ONLINE
-        : currentUser?.location,
-      locationLat: isToggleEnabled ? null : (currentUser?.locationLat ?? null),
-      locationLng: isToggleEnabled ? null : (currentUser?.locationLng ?? null),
-      status: LeankStatus.ACTIVE,
-      ownerId: currentUser?.$id,
-      owner: currentUser?.$id,
+      isOnline: isToggleEnabled,
+      location: isToggleEnabled ? undefined : currentUser?.location,
+      locationLat: isToggleEnabled ? undefined : currentUser?.locationLat,
+      locationLng: isToggleEnabled ? undefined : currentUser?.locationLng,
+      peopleRequired: 1,
     };
 
     try {
-      const leank = await db.createRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        rowId: ID.unique(),
-        data,
-      });
+      await apiClient.createLeank(data);
 
       displayToast({
         type: ToastType.SUCCESS,
@@ -201,13 +152,6 @@ export default function Create() {
       });
 
       reset();
-
-      void updateCategoryAfterClassification(
-        leank.$id,
-        fallbackCategory,
-        classificationTitle,
-        classificationDescription,
-      );
     } catch (e) {
       console.warn(e);
       displayToast({

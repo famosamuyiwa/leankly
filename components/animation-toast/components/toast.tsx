@@ -18,7 +18,7 @@ import { getStyles } from "../utils";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ToastProps } from "@/interfaces";
 
-const Toast = forwardRef(({}, ref) => {
+const Toast = forwardRef(function Toast(_props, ref) {
   const toastTopAnimation = useSharedValue(-100);
   const [state, setState] = useState({
     title: "",

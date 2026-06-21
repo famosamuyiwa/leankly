@@ -2,7 +2,6 @@ import {
   deleteLeankAction,
   recordLeankAction,
 } from "@/appwrite/actions/leank.actions";
-import { consumeBonusInterest } from "@/appwrite/actions/user.actions";
 import { LeankCardBig } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import Filters from "@/components/Filters";
@@ -12,7 +11,7 @@ import { useLeanksFeed } from "@/hooks/useLeanksFeed";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
-import { FreeLimits, canUse, increment } from "@/lib/featureGates";
+import { ApiError } from "@/lib/api/client";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
@@ -59,12 +58,11 @@ export default function HomeScreen() {
     currentUser,
     showLoader,
     hideLoader,
-    setCurrentUser,
     blockedUserIds,
     openUserPreview,
   } = useGlobalContext();
   const { filters } = useFiltersContext();
-  const { isPro, openPaywall } = usePremium();
+  const { openPaywall } = usePremium();
   const filterKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
 
   // ✅ use the new hook version
@@ -124,31 +122,6 @@ export default function HomeScreen() {
 
       setIsReacting(true);
 
-      // Only gate and count when liking a leank; skips do not count
-      if (isLiked && !isPro) {
-        const dailyAllowed = await canUse(
-          currentUser.$id,
-          "interest",
-          FreeLimits.INTERESTS_PER_DAY,
-        );
-        if (!dailyAllowed) {
-          const bonus = await consumeBonusInterest(currentUser.$id);
-          if (!bonus.ok) {
-            openPaywall("Unlimited interests");
-            return;
-          }
-          // Optimistically reflect bonus deduction in global user
-          setCurrentUser((prev: any) =>
-            prev
-              ? {
-                  ...prev,
-                  bonusInterests: Math.max(0, (prev.bonusInterests || 0) - 1),
-                }
-              : prev,
-          );
-        }
-      }
-
       void Haptics.impactAsync(
         isLiked
           ? Haptics.ImpactFeedbackStyle.Medium
@@ -179,10 +152,10 @@ export default function HomeScreen() {
           ],
         };
       });
-
-      // count only after a successful LIKE for free users
-      if (isLiked && !isPro) await increment(currentUser.$id, "interest");
     } catch (err) {
+      if (err instanceof ApiError && err.status === 402) {
+        openPaywall("Unlimited interests");
+      }
       console.error("Reaction error:", err);
     } finally {
       if (didShowLoader) hideLoader();
@@ -197,18 +170,6 @@ export default function HomeScreen() {
     if (reactionHistory.length === 0) return;
     if (!currentUser?.$id) return;
     const lastAction = reactionHistory[reactionHistory.length - 1];
-
-    if (!isPro) {
-      const allowed = await canUse(
-        currentUser.$id,
-        "undo",
-        FreeLimits.UNDOS_PER_DAY,
-      );
-      if (!allowed) {
-        openPaywall("Unlimited rewinds");
-        return;
-      }
-    }
 
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     showLoader(undefined, true);
@@ -225,9 +186,9 @@ export default function HomeScreen() {
         currentIndex: lastAction.index,
         reactionHistory: reactionHistory.slice(0, -1),
       });
-
-      if (!isPro) {
-        await increment(currentUser.$id, "undo");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) {
+        openPaywall("Unlimited rewinds");
       }
     } finally {
       hideLoader();
@@ -241,10 +202,7 @@ export default function HomeScreen() {
 
   return (
     <GestureHandlerRootView className="flex-1 bg-white">
-      <View
-        className="flex-1 bg-white"
-        style={{ paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-white" style={{ paddingTop: insets.top }}>
         {/* Header filters */}
         <View className="pl-5">
           <Filters screen={Screens.HOME} />

@@ -1,9 +1,3 @@
-import {
-  blockUser as blockUserAPI,
-  fetchBlocked,
-  reportUser as reportUserAPI,
-} from "@/appwrite/actions/user.actions";
-import { appwriteConfig, db } from "@/appwrite/config";
 import { Toast } from "@/components/animation-toast/components";
 import Loader from "@/components/Loader";
 import UserPreviewModal from "@/components/UserPreviewModal";
@@ -62,9 +56,9 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
     const loadBlocked = async () => {
       try {
-        const rows = await fetchBlocked(currentUserId);
+        const { blockedUserIds } = await apiClient.getBlocks();
         if (isMounted) {
-          setBlockedUserIds(rows.map((r) => r.blockedId));
+          setBlockedUserIds(blockedUserIds);
         }
       } catch (e) {
         console.log("Failed to load blocked users", e);
@@ -97,9 +91,9 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const blockUser = async (userId: string) => {
     if (!userId || userId === currentUser?.$id) return;
     try {
-      await blockUserAPI(currentUser!.$id, userId);
-      const rows = await fetchBlocked(currentUser!.$id);
-      setBlockedUserIds(rows.map((r) => r.blockedId));
+      await apiClient.blockUser(userId);
+      const response = await apiClient.getBlocks();
+      setBlockedUserIds(response.blockedUserIds);
       displayToast({
         type: "success",
         description: "User blocked",
@@ -128,7 +122,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const reportUser = async (userId: string, reason: string, notes?: string) => {
     if (!currentUser?.$id || !userId || !reason) return;
     try {
-      await reportUserAPI(currentUser.$id, userId, reason, notes);
+      await apiClient.reportUser(userId, reason, notes);
       displayToast({
         type: "success",
         description: "Report submitted",
@@ -151,11 +145,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
   const refetchCurrentUser = async () => {
     if (!currentUser) return;
-    const user = await db.getRow({
-      databaseId: appwriteConfig.db,
-      tableId: appwriteConfig.tables.user,
-      rowId: currentUser?.$id,
-    });
+    const user = await apiClient.getMe();
 
     if (user) {
       setCurrentUser(user as unknown as User);

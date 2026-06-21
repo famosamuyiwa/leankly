@@ -1,8 +1,8 @@
-import { appwriteConfig, client } from "@/appwrite/config";
 import { Leank, Message } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { apiClient } from "@/lib/api/client";
+import { realtime } from "@/lib/api/realtime";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard } from "react-native";
@@ -12,13 +12,6 @@ import {
   injectDateSeparators,
   isRealMessage,
 } from "./chatItems";
-
-const hasMutationEvent = (events: string[] = []) =>
-  events.some((event) =>
-    ["create", "update", "delete"].some(
-      (action) => event.endsWith(action) || event.includes(`.${action}`)
-    )
-  );
 
 export function useChatScreen() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
@@ -40,7 +33,8 @@ export function useChatScreen() {
       if (!Array.isArray(prev) || prev.length === 0) return decorated;
       const prevLast = prev[prev.length - 1]?.$id;
       const nextLast = decorated[decorated.length - 1]?.$id;
-      if (prev.length === decorated.length && prevLast === nextLast) return prev;
+      if (prev.length === decorated.length && prevLast === nextLast)
+        return prev;
       return decorated;
     });
   }, []);
@@ -92,26 +86,25 @@ export function useChatScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    const leankChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
-    const messageChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.messages}.rows`;
-
-    const unsubscribeLeank = client.subscribe(leankChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
+    const unsubscribeRoom = realtime.subscribeLeank(chatId);
+    const unsubscribeLeank = realtime.subscribe("leank.updated", (payload) => {
+      const updatedId = payload?.leankId || payload?.id || payload?.$id;
+      if (updatedId !== chatId) return;
       void loadLeank().catch(() => {});
     });
-
-    const unsubscribeMessages = client.subscribe(messageChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload = event.payload as Partial<Message>;
-      // Message row events are global, so filter before fetching to avoid noisy realtime reads.
-      if (payload?.leankId === chatId) {
-        void loadMessages().catch(() => {});
-      }
-    });
+    const unsubscribeMessages = realtime.subscribe(
+      "message.created",
+      (payload) => {
+        if (payload?.leankId === chatId) {
+          void loadMessages().catch(() => {});
+        }
+      },
+    );
 
     return () => {
       unsubscribeLeank();
       unsubscribeMessages();
+      unsubscribeRoom();
     };
   }, [chatId, loadLeank, loadMessages]);
 
@@ -121,7 +114,7 @@ export function useChatScreen() {
       () =>
         setTimeout(() => {
           listRef.current?.scrollToEnd({ animate: true });
-        }, 100)
+        }, 100),
     );
 
     return () => {
@@ -136,9 +129,6 @@ export function useChatScreen() {
       const response = await apiClient.sendMessage(chatId, {
         content: messageContent,
         replyToMessageId: replyTo?.$id,
-        replyToSenderId: replyTo?.senderId,
-        replyToSenderName: replyTo?.senderName,
-        replyToContent: replyTo?.content,
       });
 
       setMessages((prev) => {

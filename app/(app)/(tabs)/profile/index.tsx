@@ -1,4 +1,3 @@
-import { appwriteConfig, db } from "@/appwrite/config";
 import { LeankCard } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import NavBar from "@/components/NavBar";
@@ -7,15 +6,15 @@ import { Leank } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { useProfileContext } from "@/lib/ProfileContext";
-import { FreeLimits, getCount } from "@/lib/featureGates";
+import { apiClient } from "@/lib/api/client";
 import { Fontisto } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
-import { Query } from "react-native-appwrite";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Interop the Image component to recognize the 'className' prop
@@ -35,44 +34,44 @@ export default function Profile() {
 
   const { avatar, name } = useProfileContext();
   const { currentUser } = useGlobalContext();
-  const { isPro, openPaywall, restorePurchases } = usePremium();
-  const [leanks, setLeanks] = useState<Leank[]>([]);
-  const [leankCounts, setLeankCounts] = useState({
-    hosted: 0,
-    attended: 0,
+  const { isPro, openPaywall } = usePremium();
+  const hostedQuery = useQuery({
+    queryKey: ["leanks", "hosted", currentUser?.$id],
+    queryFn: apiClient.getHosted,
+    enabled: Boolean(currentUser),
   });
-  const [interestsLeft, setInterestsLeft] = useState<number | null>(null);
+  const attendedQuery = useQuery({
+    queryKey: ["leanks", "attended", currentUser?.$id],
+    queryFn: apiClient.getAttended,
+    enabled: Boolean(currentUser),
+  });
+  const usageQuery = useQuery({
+    queryKey: ["usage", currentUser?.$id],
+    queryFn: apiClient.getUsage,
+    enabled: Boolean(currentUser && !isPro),
+  });
+  const leanks =
+    nav === NavbarOptions.HOSTED
+      ? hostedQuery.data?.items || []
+      : attendedQuery.data?.items || [];
+  const leankCounts = {
+    hosted: hostedQuery.data?.items.length || 0,
+    attended: attendedQuery.data?.items.length || 0,
+  };
+  const interestsLeft = usageQuery.data
+    ? Math.max(
+        0,
+        usageQuery.data.limits.interests - usageQuery.data.interestsUsedToday,
+      )
+    : null;
 
-  useEffect(() => {
-    getLeankDetails();
-  }, [nav]);
-
-  useEffect(() => {
-    getLeankCounts();
-  }, []);
-
-  useEffect(() => {
-    const loadInterestsLeft = async () => {
-      if (!currentUser?.$id || isPro) {
-        setInterestsLeft(null);
-        return;
-      }
-      const used = await getCount(currentUser.$id, "interest");
-      const left = Math.max(0, FreeLimits.INTERESTS_PER_DAY - used);
-      setInterestsLeft(left);
-    };
-    loadInterestsLeft();
-  }, [currentUser?.$id, currentUser?.referralCount, isPro]);
-
-  const renderItem = memo(({ item }: { item: Leank }) => (
+  const renderItem = ({ item }: { item: Leank }) => (
     <View className="mx-5 mb-5">
       <LeankCard item={item} />
     </View>
-  ));
+  );
 
-  const loadMore = () => {};
-
-  const listEmptyComponent = memo(() => {
+  const listEmptyComponent = () => {
     return (
       <View className="h-3/4 items-center justify-center">
         <EmptyLeanks
@@ -83,74 +82,16 @@ export default function Profile() {
         />
       </View>
     );
-  });
-
-  const getLeankCounts = async () => {
-    if (!currentUser) return;
-
-    try {
-      // Hosted
-      const hosted = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries: [Query.equal("ownerId", currentUser?.$id)],
-      });
-
-      // Attended
-      const attended = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries: [Query.contains("participantIds", currentUser?.$id)],
-      });
-
-      setLeankCounts({
-        hosted: hosted.total ?? hosted.rows.length,
-        attended: attended.total ?? attended.rows.length,
-      });
-    } catch (e) {
-      console.error("Error counting leanks:", e);
-    }
-  };
-
-  const getLeankDetails = async () => {
-    if (!currentUser) return;
-
-    try {
-      const queries = [
-        Query.limit(10),
-        Query.select([
-          "cover",
-          "title",
-          "date",
-          "time",
-          "ownerId",
-          "location",
-          "participantIds",
-        ]),
-      ];
-
-      if (nav === NavbarOptions.HOSTED) {
-        queries.push(Query.equal("ownerId", currentUser.$id));
-      } else {
-        queries.push(Query.contains("participantIds", currentUser.$id));
-      }
-
-      const { rows, total } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        queries,
-      });
-      setLeanks(rows as unknown as Leank[]);
-    } catch (e) {
-      console.log(e);
-    }
   };
 
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await getLeankDetails();
-      await getLeankCounts();
+      await Promise.all([
+        hostedQuery.refetch(),
+        attendedQuery.refetch(),
+        usageQuery.refetch(),
+      ]);
     } catch (e) {
       console.log(e);
     } finally {
@@ -158,64 +99,61 @@ export default function Profile() {
     }
   };
 
-  const listHeaderComponent = useMemo(
-    () => (
-      <View className="gap-4 px-5 my-5">
-        <TouchableOpacity
-          activeOpacity={0.6}
-          className="p-5 absolute self-end "
-          onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
-        >
-          <Fontisto name="player-settings" size={30} />
-        </TouchableOpacity>
-        <Image
-          source={{ uri: avatar }}
-          className="w-20 h-20 rounded-full"
-          contentFit="cover"
-        />
-        <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
-        {!isPro && (
-          <View className="flex-row items-center gap-3 flex-wrap">
-            {interestsLeft !== null && (
-              <Text className="text-secondary-300 font-plus-jakarta-regular">
-                {interestsLeft} interests left today
-                {currentUser?.bonusInterests && currentUser.bonusInterests > 0
-                  ? ` (+${currentUser.bonusInterests} bonus)`
-                  : ""}
-              </Text>
-            )}
-            <TouchableOpacity
-              onPress={async () => openPaywall("Unlock Leankly+")}
-              activeOpacity={0.7}
-              className={"bg-black px-4 py-2 rounded-xl"}
-            >
-              <Text className="text-white font-plus-jakarta-semibold">
-                Unlock Leankly+
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-        <View className="flex-row gap-5">
-          <Text className="color-gray-400">
-            <Text className="color-black font-plus-jakarta-bold">
-              {leankCounts.hosted}
-            </Text>{" "}
-            Hosted
-          </Text>
-          <Text className="color-gray-400">
-            <Text className="color-black font-plus-jakarta-bold">
-              {leankCounts.attended}
-            </Text>{" "}
-            Attended
-          </Text>
+  const listHeaderComponent = (
+    <View className="gap-4 px-5 my-5">
+      <TouchableOpacity
+        activeOpacity={0.6}
+        className="p-5 absolute self-end "
+        onPress={() => router.navigate("/(app)/(tabs)/profile/(settings)")}
+      >
+        <Fontisto name="player-settings" size={30} />
+      </TouchableOpacity>
+      <Image
+        source={{ uri: avatar }}
+        className="w-20 h-20 rounded-full"
+        contentFit="cover"
+      />
+      <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
+      {!isPro && (
+        <View className="flex-row items-center gap-3 flex-wrap">
+          {interestsLeft !== null && (
+            <Text className="text-secondary-300 font-plus-jakarta-regular">
+              {interestsLeft} interests left today
+              {currentUser?.bonusInterests && currentUser.bonusInterests > 0
+                ? ` (+${currentUser.bonusInterests} bonus)`
+                : ""}
+            </Text>
+          )}
+          <TouchableOpacity
+            onPress={async () => openPaywall("Unlock Leankly+")}
+            activeOpacity={0.7}
+            className={"bg-black px-4 py-2 rounded-xl"}
+          >
+            <Text className="text-white font-plus-jakarta-semibold">
+              Unlock Leankly+
+            </Text>
+          </TouchableOpacity>
         </View>
-
-        <View className="px-5">
-          <NavBar screen={Screens.PROFILE} />
-        </View>
+      )}
+      <View className="flex-row gap-5">
+        <Text className="color-gray-400">
+          <Text className="color-black font-plus-jakarta-bold">
+            {leankCounts.hosted}
+          </Text>{" "}
+          Hosted
+        </Text>
+        <Text className="color-gray-400">
+          <Text className="color-black font-plus-jakarta-bold">
+            {leankCounts.attended}
+          </Text>{" "}
+          Attended
+        </Text>
       </View>
-    ),
-    [avatar, name, leankCounts, isPro, interestsLeft]
+
+      <View className="px-5">
+        <NavBar screen={Screens.PROFILE} />
+      </View>
+    </View>
   );
 
   if (!insets) {

@@ -1,4 +1,3 @@
-import { appwriteConfig, db } from "@/appwrite/config";
 import { ToastType } from "@/constants/enums";
 import { useAppwriteUpload } from "@/hooks/useBucket";
 import { MediaResult } from "@/interfaces";
@@ -10,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { useGlobalContext } from "./GlobalContext";
+import { apiClient } from "./api/client";
 
 interface EditProfileContextType {
   // Editing state
@@ -42,7 +42,7 @@ interface EditProfileContextType {
 }
 
 const EditProfileContext = createContext<EditProfileContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
@@ -67,7 +67,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     typeof currentUser?.locationLat === "number" &&
       typeof currentUser?.locationLng === "number"
       ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
-      : null
+      : null,
   );
   const [email, setEmail] = useState(currentUser?.email ?? "");
   const { uploadFiles, progress, isUploading } = useAppwriteUpload();
@@ -103,7 +103,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       typeof currentUser.locationLat === "number" &&
         typeof currentUser.locationLng === "number"
         ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
-        : null
+        : null,
     );
   }, [currentUser]);
 
@@ -118,7 +118,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       typeof currentUser.locationLat === "number" &&
         typeof currentUser.locationLng === "number"
         ? { lat: currentUser.locationLat, lng: currentUser.locationLng }
-        : null
+        : null,
     );
   };
 
@@ -141,25 +141,20 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setIsSaving(true);
     try {
       if (!currentUser) return;
-      let url = undefined;
+      let avatarFileId: string | undefined;
 
       if (avatarMediaResult) {
-        url = (await uploadFiles([avatarMediaResult], 3))[0]; // limit concurrency to 3
+        avatarFileId = (await uploadFiles([avatarMediaResult], 1, "avatar"))[0]
+          .fileId;
       }
 
-      await db.updateRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.user,
-        rowId: currentUser.$id,
-        data: {
-          avatar: url || currentUser.avatar,
-          name,
-          email,
-          age,
-          location,
-          locationLat: locationCoords?.lat ?? null,
-          locationLng: locationCoords?.lng ?? null,
-        },
+      await apiClient.updateMe({
+        avatarFileId,
+        name,
+        age,
+        location,
+        locationLat: locationCoords?.lat,
+        locationLng: locationCoords?.lng,
       });
 
       refetchCurrentUser();
@@ -195,15 +190,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         name,
         email,
         age,
-      location,
-      locationCoords,
-      setAvatar,
-      setAvatarMediaResult,
-      setName,
-      setEmail,
-      setAge,
-      setLocation,
-      setLocationCoords,
+        location,
+        locationCoords,
+        setAvatar,
+        setAvatarMediaResult,
+        setName,
+        setEmail,
+        setAge,
+        setLocation,
+        setLocationCoords,
 
         // Actions
         handleSave,
@@ -220,7 +215,7 @@ export function useProfileContext() {
   const context = useContext(EditProfileContext);
   if (context === undefined) {
     throw new Error(
-      "useEditProfile must be used within an EditProfileProvider"
+      "useEditProfile must be used within an EditProfileProvider",
     );
   }
   return context;

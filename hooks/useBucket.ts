@@ -1,111 +1,76 @@
 import { appwriteConfig, storage } from "@/appwrite/config";
 import { MediaResult } from "@/interfaces";
+import { apiClient } from "@/lib/api/client";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useState } from "react";
 import { ID } from "react-native-appwrite";
 
-/* ---------------------------------------------
-   🧩  useAppwriteUpload Hook
----------------------------------------------- */
+export type UploadPurpose = "avatar" | "leank_cover";
+export type UploadedFile = { fileId: string; url: string };
+
 export function useAppwriteUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const bucketId = appwriteConfig.storage;
-
-  /* -------------------------------------------------
-     🔸 Helper – Compress single image before upload
-  --------------------------------------------------- */
-  const compressImage = async (uri: string) => {
-    try {
-      const manipulated = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1080 } }], // adjust as needed
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      return manipulated.uri;
-    } catch (err) {
-      console.warn("Image compression failed:", err);
-      return uri; // fallback to original
-    }
-  };
-
-  /* -------------------------------------------------
-     🚀 Upload Handler (supports multi-upload)
-  --------------------------------------------------- */
   const uploadFiles = async (
     files: MediaResult[],
-    concurrency = 4 // safe default for mobile
-  ): Promise<URL[]> => {
+    concurrency = 4,
+    purpose: UploadPurpose = "leank_cover",
+  ): Promise<UploadedFile[]> => {
     setError(null);
     setProgress(0);
     setIsUploading(true);
+    const bucketId =
+      purpose === "avatar"
+        ? appwriteConfig.avatarBucket
+        : appwriteConfig.leankCoverBucket;
+    if (!bucketId)
+      throw new Error(`Storage bucket for ${purpose} is not configured`);
+    let nextIndex = 0;
+    let completed = 0;
+    const output: UploadedFile[] = new Array(files.length);
+
+    const worker = async () => {
+      while (nextIndex < files.length) {
+        const index = nextIndex++;
+        const source = files[index];
+        const compressed = await ImageManipulator.manipulateAsync(
+          source.uri,
+          [{ resize: { width: 1080 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG },
+        );
+        const uploaded = await storage.createFile({
+          bucketId,
+          fileId: ID.unique(),
+          file: {
+            uri: compressed.uri,
+            name: source.name || `upload_${Date.now()}_${index}.jpg`,
+            type: "image/jpeg",
+            size: source.size || 0,
+          },
+        });
+        const confirmed = await apiClient.confirmMedia({
+          fileId: uploaded.$id,
+          bucket: purpose === "avatar" ? "avatars" : "leank_covers",
+          purpose,
+        });
+        output[index] = { fileId: uploaded.$id, url: confirmed.viewUrl };
+        completed += 1;
+        setProgress(Math.round((completed / files.length) * 100));
+      }
+    };
 
     try {
-      const uploadedUrls: URL[] = [];
-      let completed = 0;
-
-      // Helper: single file upload
-      const uploadSingle = async (file: {
-        uri: string;
-        name?: string;
-        type?: string;
-        size?: any;
-      }) => {
-        try {
-          const result = await storage.createFile({
-            bucketId,
-            fileId: ID.unique(),
-            file: {
-              uri: file.uri,
-              name: file.name || `upload_${Date.now()}.jpg`,
-              type: file.type || "image/jpeg",
-              size: file.size || 0,
-            },
-          });
-
-          const fileUrl = storage.getFileViewURL(bucketId, result.$id);
-
-          uploadedUrls.push(fileUrl);
-
-          completed++;
-          setProgress(Math.round((completed / files.length) * 100));
-        } catch (err: any) {
-          console.warn(`⚠️ Failed to upload ${file.name || file.uri}:`, err);
-          throw err;
-        }
-      };
-
-      // Concurrency limiter
-      const chunks: Promise<void>[] = [];
-      let active = 0;
-      let index = 0;
-
-      const next = async () => {
-        if (index >= files.length) return;
-        const current = files[index++];
-        active++;
-        await uploadSingle(current);
-        active--;
-        if (index < files.length) await next();
-      };
-
-      // Start limited concurrent uploads
-      const initial = Math.min(concurrency, files.length);
-      for (let i = 0; i < initial; i++) {
-        chunks.push(next());
-      }
-
-      await Promise.all(chunks);
-
+      await Promise.all(
+        Array.from({ length: Math.min(concurrency, files.length) }, worker),
+      );
+      return output;
+    } catch (cause: any) {
+      setError(cause?.message || "Upload failed");
+      throw cause;
+    } finally {
       setIsUploading(false);
-      return uploadedUrls;
-    } catch (err: any) {
-      console.error("❌ Upload failed:", err);
-      setError(err.message || "Upload failed");
-      setIsUploading(false);
-      throw err;
     }
   };
 

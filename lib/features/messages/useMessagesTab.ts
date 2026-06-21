@@ -1,10 +1,9 @@
-import { appwriteConfig, client } from "@/appwrite/config";
 import { LeankStatus, NavbarOptions } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
-import { FreeLimits } from "@/lib/featureGates";
 import { apiClient } from "@/lib/api/client";
+import { realtime } from "@/lib/api/realtime";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -13,13 +12,6 @@ const getParticipantIds = (value: any): string[] => {
   if (Array.isArray(value?.values)) return value.values;
   return [];
 };
-
-const hasMutationEvent = (events: string[] = []) =>
-  events.some((event) =>
-    ["create", "update", "delete"].some(
-      (action) => event.endsWith(action) || event.includes(`.${action}`)
-    )
-  );
 
 export function useMessagesTab() {
   const params = useLocalSearchParams<{ nav?: string }>();
@@ -31,6 +23,7 @@ export function useMessagesTab() {
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
   const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
   const [requests, setRequests] = useState<LeankRequest[]>([]);
+  const [requestsLocked, setRequestsLocked] = useState(false);
   const refreshTimersRef = useRef<{
     chats?: ReturnType<typeof setTimeout>;
     requests?: ReturnType<typeof setTimeout>;
@@ -62,6 +55,7 @@ export function useMessagesTab() {
     if (!currentUserId) return;
     const response = await apiClient.getRequests();
     setRequests(response.requests);
+    setRequestsLocked(Boolean(response.isLocked));
   }, [currentUserId]);
 
   const refreshChat = useCallback(
@@ -89,7 +83,7 @@ export function useMessagesTab() {
         await loadUnreadCount().catch(() => {});
       }
     },
-    [currentUserId, loadUnreadCount]
+    [currentUserId, loadUnreadCount],
   );
 
   const schedule = useCallback(
@@ -101,7 +95,7 @@ export function useMessagesTab() {
         void callback().catch(() => {});
       }, 300);
     },
-    []
+    [],
   );
 
   const handleAcceptRequest = useCallback(
@@ -110,12 +104,13 @@ export function useMessagesTab() {
       try {
         const response = await apiClient.acceptRequest(request.$id);
         setRequests(response.requests);
+        setRequestsLocked(Boolean(response.isLocked));
         await loadChats();
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, loadChats, showLoader]
+    [hideLoader, loadChats, showLoader],
   );
 
   const handleDeclineRequest = useCallback(
@@ -124,18 +119,19 @@ export function useMessagesTab() {
       try {
         const response = await apiClient.declineRequest(request.$id);
         setRequests(response.requests);
+        setRequestsLocked(Boolean(response.isLocked));
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, showLoader]
+    [hideLoader, showLoader],
   );
 
   const handleChatPress = useCallback(
     (chat: Leank) => {
       setChatMetas((prev) => {
         const index = prev.findIndex(
-          (meta) => meta.leankId === chat.$id && meta.userId === currentUserId
+          (meta) => meta.leankId === chat.$id && meta.userId === currentUserId,
         );
         if (index === -1) return prev;
         const next = [...prev];
@@ -148,7 +144,7 @@ export function useMessagesTab() {
         params: { chat: chat.$id },
       });
     },
-    [currentUserId]
+    [currentUserId],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -168,71 +164,36 @@ export function useMessagesTab() {
     useCallback(() => {
       void loadChats().catch(() => {});
       void loadRequests().catch(() => {});
-    }, [loadChats, loadRequests])
+    }, [loadChats, loadRequests]),
   );
 
   useEffect(() => {
     if (!currentUserId) return;
-
-    const requestChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.reactions}.rows`;
-    const chatChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows`;
-    const messageChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.messages}.rows`;
-    const chatMetaChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.userChatMeta}.rows`;
-
-    const unsubscribeRequests = client.subscribe(requestChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload: any = event.payload;
-      const ownerId = payload?.leank?.ownerId || payload?.ownerId;
-      if (!ownerId || ownerId === currentUserId) {
-        schedule("requests", loadRequests);
-      }
-    });
-
-    const unsubscribeChats = client.subscribe(chatChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload: any = event.payload;
-      if (payload?.$id) {
-        void refreshChat(payload.$id);
-        return;
-      }
-      schedule("chats", loadChats);
-    });
-
-    const unsubscribeMessages = client.subscribe(messageChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload: any = event.payload;
-      const chatId = payload?.leankId;
-      // Message events are global; filter first so unrelated chats do not trigger Appwrite reads.
-      if (chatId && chatIdsRef.current.has(chatId)) {
-        void refreshChat(chatId);
-      }
-    });
-
-    const unsubscribeChatMeta = client.subscribe(chatMetaChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload: any = event.payload;
-      if (payload?.userId !== currentUserId) return;
-
-      setChatMetas((prev) => {
-        const index = prev.findIndex(
-          (meta) =>
-            meta.$id === payload.$id ||
-            (meta.leankId === payload.leankId &&
-              meta.userId === currentUserId)
-        );
-        if (index === -1) return [payload as UserChatMeta, ...prev];
-        const next = [...prev];
-        next[index] = { ...next[index], ...(payload as UserChatMeta) };
-        return next;
-      });
-      schedule("unread", loadUnreadCount);
-    });
+    const unsubscribers = [
+      realtime.subscribe("reaction.updated", () =>
+        schedule("requests", loadRequests),
+      ),
+      realtime.subscribe("leank.updated", (payload) => {
+        const chatId = payload?.leankId || payload?.id || payload?.$id;
+        if (chatId) void refreshChat(chatId);
+        else schedule("chats", loadChats);
+      }),
+      realtime.subscribe("message.created", (payload) => {
+        const chatId = payload?.leankId;
+        if (chatId && chatIdsRef.current.has(chatId)) {
+          void refreshChat(chatId);
+        }
+      }),
+      realtime.subscribe("chatMeta.updated", () =>
+        schedule("chats", loadChats),
+      ),
+      realtime.subscribe("unread.changed", () =>
+        schedule("unread", loadUnreadCount),
+      ),
+    ];
 
     return () => {
-      unsubscribeRequests();
-      unsubscribeChats();
-      unsubscribeMessages();
-      unsubscribeChatMeta();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
       Object.values(refreshTimersRef.current).forEach((timer) => {
         if (timer) clearTimeout(timer);
       });
@@ -246,14 +207,20 @@ export function useMessagesTab() {
     schedule,
   ]);
 
+  useEffect(() => {
+    const unsubscribers = chatRooms.map((chat) =>
+      realtime.subscribeLeank(chat.$id),
+    );
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [chatRooms]);
+
   const visibleRequests = useMemo(() => {
-    if (isPro) return requests;
-    return requests.slice(0, FreeLimits.REQUESTS_VISIBLE);
-  }, [isPro, requests]);
+    return requests;
+  }, [requests]);
 
   const shouldShowRequestsPaywall = useMemo(
-    () => !isChats && !isPro && requests.length > FreeLimits.REQUESTS_VISIBLE,
-    [isChats, isPro, requests.length]
+    () => !isChats && !isPro && requestsLocked,
+    [isChats, isPro, requestsLocked],
   );
 
   return {

@@ -1,6 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { View } from "react-native";
+import { ColorValue, View } from "react-native";
+
+type GradientColors = readonly [ColorValue, ColorValue, ...ColorValue[]];
 
 export const AppGradient = ({
   children,
@@ -8,7 +10,7 @@ export const AppGradient = ({
   style,
 }: {
   children: any;
-  colors: string[];
+  colors: GradientColors;
   style?: any;
 }) => {
   return (
@@ -26,7 +28,7 @@ export const AppGradientRounded = ({
   colors,
 }: {
   children: any;
-  colors: string[];
+  colors: GradientColors;
 }) => {
   return (
     <LinearGradient colors={colors} className={"flex-1 rounded-full"}>
@@ -40,7 +42,7 @@ export const AppGradientMessage = ({
   colors,
 }: {
   children: any;
-  colors: string[];
+  colors: GradientColors;
 }) => {
   return (
     <LinearGradient

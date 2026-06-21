@@ -96,7 +96,7 @@ export function useChatSettings() {
         console.error(error);
       }
     },
-    [chatId, currentUser]
+    [chatId, currentUser],
   );
 
   const handleLeave = useCallback(() => {
@@ -120,18 +120,22 @@ export function useChatSettings() {
         `Are you sure you want to remove ${item.user.name} from this leank?`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Remove", style: "destructive", onPress: () => removeUser(item) },
-        ]
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => removeUser(item),
+          },
+        ],
       );
     },
-    [removeUser]
+    [removeUser],
   );
 
   const openLeankerPreview = useCallback(
     (user: BasicUser) => {
       openUserPreview(user);
     },
-    [openUserPreview]
+    [openUserPreview],
   );
 
   const leankerCount = useMemo(() => leankers.length + 1, [leankers.length]);

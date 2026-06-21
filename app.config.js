@@ -6,7 +6,7 @@ export default {
     slug: "leankly",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/liquid-glass-icon.png",
     scheme: "leankly",
     userInterfaceStyle: "light",
     newArchEnabled: true,
@@ -15,6 +15,9 @@ export default {
       bundleIdentifier: "com.barrakudadev.leankly",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSAppTransportSecurity: {
+          NSAllowsLocalNetworking: true,
+        },
       },
     },
     android: {
@@ -65,7 +68,7 @@ export default {
     },
     extra: {
       mapboxAccessToken: process.env.EXPO_MAPBOX_ACCESS_TOKEN,
-      clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      appwriteApiBaseUrl: process.env.EXPO_PUBLIC_APPWRITE_API_BASE_URL,
       eas: {
         projectId: "627c3530-bc48-4c22-8b50-1887a6af6422",
       },

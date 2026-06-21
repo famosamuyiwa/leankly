@@ -1,0 +1,9 @@
+{
+  "name": "leankly-appwrite-api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "node-appwrite": "^17.0.0"
+  }
+}

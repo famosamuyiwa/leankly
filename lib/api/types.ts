@@ -1,0 +1,51 @@
+import {
+  Leank,
+  LeankRequest,
+  Message,
+  Participants,
+  UserChatMeta,
+} from "@/interfaces";
+
+export type ApiResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: { code: string; message: string; status: number } };
+
+export type ChatSummary = Leank;
+
+export type ChatMessage = Message;
+
+export type ChatMessagePage = {
+  messages: ChatMessage[];
+  nextCursor: string | null;
+};
+
+export type RequestSummary = LeankRequest;
+
+export type UnreadCountResponse = {
+  unreadCount: number;
+};
+
+export type QuotaState = {
+  interestsUsed: number;
+  interestsLimit: number;
+  bonusInterests: number;
+  isPro: boolean;
+};
+
+export type ChatListResponse = {
+  chats: ChatSummary[];
+  metas: UserChatMeta[];
+  unreadCount: number;
+};
+
+export type ChatDetailResponse = {
+  chat: ChatSummary;
+};
+
+export type RequestListResponse = {
+  requests: RequestSummary[];
+};
+
+export type ParticipantListResponse = {
+  participants: Participants[];
+};

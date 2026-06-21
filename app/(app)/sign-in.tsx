@@ -34,20 +34,25 @@ const SignIn = () => {
     },
   );
 
-  const { signInWithGoogle } = useGoogleSSO();
+  const { signInWithApple, signInWithGoogle } = useGoogleSSO();
 
   const handleLogin = async (provider: LoginProvider) => {
-    switch (provider) {
-      case LoginProvider.GOOGLE:
-        signInWithGoogle();
-        break;
-      case LoginProvider.APPLE:
-        break;
-      case LoginProvider.MAIL:
-        router.navigate("/mail-auth");
-        break;
-      default:
-        Alert.alert("Error", "Invalid login provider");
+    try {
+      switch (provider) {
+        case LoginProvider.GOOGLE:
+          await signInWithGoogle();
+          break;
+        case LoginProvider.APPLE:
+          await signInWithApple();
+          break;
+        case LoginProvider.MAIL:
+          router.navigate("/mail-auth");
+          break;
+        default:
+          Alert.alert("Error", "Invalid login provider");
+      }
+    } catch (error: any) {
+      Alert.alert("Sign in failed", error?.message || "Please try again.");
     }
   };
 

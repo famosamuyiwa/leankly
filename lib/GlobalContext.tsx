@@ -7,8 +7,8 @@ import { appwriteConfig, db } from "@/appwrite/config";
 import { Toast } from "@/components/animation-toast/components";
 import Loader from "@/components/Loader";
 import UserPreviewModal from "@/components/UserPreviewModal";
-import { LeankStatus } from "@/constants/enums";
-import { BasicUser, Leank, ToastProps, User, UserChatMeta } from "@/interfaces";
+import { BasicUser, ToastProps, User } from "@/interfaces";
+import { apiClient } from "@/lib/api/client";
 import React, {
   ReactNode,
   createContext,
@@ -17,7 +17,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Query } from "react-native-appwrite";
 
 interface GlobalContextType {
   currentUser: User | undefined;
@@ -74,67 +73,11 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
 
     const fetchUnread = async () => {
       try {
-        const pageRows = async <T,>(tableId: string, queries: any[]) => {
-          const pageSize = 100;
-          const allRows: T[] = [];
-          let offset = 0;
-
-          while (true) {
-            const { rows, total } = await db.listRows({
-              databaseId: appwriteConfig.db,
-              tableId,
-              queries: [
-                ...queries,
-                Query.limit(pageSize),
-                Query.offset(offset),
-              ],
-            });
-            allRows.push(...(rows as unknown as T[]));
-            if (allRows.length >= total || rows.length < pageSize) break;
-            offset += rows.length;
-          }
-
-          return allRows;
-        };
-
-        // Unread badge accuracy needs every active chat, so fetch in bounded pages.
-        const chatRooms = await pageRows<Leank>(appwriteConfig.tables.leanks, [
-          Query.select([
-            "lastMessage.senderId",
-            "lastMessage.$createdAt",
-            "ownerId",
-            "participantIds",
-            "status",
-          ]),
-          Query.or([
-            Query.equal("ownerId", currentUserId),
-            Query.contains("participantIds", currentUserId),
-          ]),
-          Query.equal("status", LeankStatus.ACTIVE),
-        ]);
-
-        const chatMetas = await pageRows<UserChatMeta>(
-          appwriteConfig.tables.userChatMeta,
-          [
-            Query.select(["leankId", "userId", "readAt"]),
-            Query.equal("userId", currentUserId),
-          ]
-        );
-
-        const unread = chatRooms.filter((room) => {
-          const meta = chatMetas.find(
-            (m) => m.leankId === room.$id && m.userId === currentUserId
-          );
-          return (
-            room.lastMessage &&
-            new Date(room.lastMessage.$createdAt) >
-              new Date(meta?.readAt || 0) &&
-            room.lastMessage.senderId !== currentUserId
-          );
-        }).length;
+        // The facade computes unread accurately server-side so launch avoids table fan-out.
+        const { unreadCount } = await apiClient.getUnreadCount();
 
         if (isMounted) {
-          setUnreadCount(unread);
+          setUnreadCount(unreadCount);
         }
       } catch (e) {
         console.error(e);

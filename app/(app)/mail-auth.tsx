@@ -1,13 +1,11 @@
 import CustomButton from "@/components/Button";
-import OTPVerification from "@/components/Otp-verification";
 import { Colors } from "@/constants/common";
 import { Screens, ToastType } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
-import { usePushNotification } from "@/lib/PushNotificationContext";
-import { useSignIn, useSignUp, useUser } from "@clerk/clerk-expo";
+import { useAuthSession } from "@/lib/auth/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -27,58 +25,38 @@ import {
 const SignInMailScreen = () => {
   const insets = useSafeAreaInsets();
   const {
-    isLoaded: isSignUpLoaded,
-    signUp,
-    setActive: setSignUpActive,
-  } = useSignUp();
-  const {
-    isLoaded: isSignInLoaded,
-    signIn,
-    setActive: setSignInActive,
-  } = useSignIn();
+    loginWithEmail,
+    signUpWithEmail,
+    requestPasswordRecovery,
+  } = useAuthSession();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentScreen, setCurrentScreen] = useState(Screens.LOGIN_1);
-  const [previousScreen, setPreviousScreen] = useState(Screens.LOGIN_1);
-  const [isPasswordHidden, setIsPasswordHidden] = useState(true);
-  const [isConfirmPasswordHidden, setIsConfirmPasswordHidden] = useState(true);
   const tint = Colors.primary;
   const color = Colors.primary;
   const secColor = Colors.primaryLight;
   const borderColor = Colors.primary;
 
   const { displayToast } = useGlobalContext();
-  const { isLoaded, isSignedIn, user } = useUser();
-  const { expoPushToken } = usePushNotification();
 
-  useEffect(
-    function () {
-      setIsLoading(false);
-      if (
-        currentScreen === Screens.LOGIN_1 ||
-        currentScreen === Screens.SIGNUP_1 ||
-        currentScreen === Screens.FORGOT_PASSWORD
-      ) {
-        setEmail("");
-        setName("");
-        setPassword("");
-        setConfirmPassword("");
-        setIsPasswordHidden(true);
-        setIsConfirmPasswordHidden(true);
-      }
-    },
-    [currentScreen]
-  );
+  const showScreen = (screen: Screens) => {
+    setIsLoading(false);
+    setEmail("");
+    setName("");
+    setPassword("");
+    setConfirmPassword("");
+    setCurrentScreen(screen);
+  };
 
   if (!insets) {
     return null; // Prevents glitching by waiting for insets
   }
 
   //function to run when button is clicked
-  function onButtonClick(otp?: string) {
+  function onButtonClick() {
     setIsLoading(true);
 
     switch (currentScreen) {
@@ -88,14 +66,8 @@ const SignInMailScreen = () => {
       case Screens.SIGNUP_1:
         onHandleSignup();
         break;
-      case Screens.OTP:
-        if (otp) onVerifyOtp(otp);
-        break;
       case Screens.FORGOT_PASSWORD:
-        onVerifyEmail(Screens.RESET_PASSWORD);
-        break;
-      case Screens.RESET_PASSWORD:
-        onHandleResetPassword();
+        onRequestRecovery();
         break;
       default:
         return;
@@ -107,7 +79,6 @@ const SignInMailScreen = () => {
   };
 
   async function onHandleLogin() {
-    if (!isSignInLoaded) return;
     if (email === "" || password === "") {
       setIsLoading(false);
       return displayToast({
@@ -116,109 +87,20 @@ const SignInMailScreen = () => {
       });
     }
     try {
-      const signInAttempt = await signIn.create({
-        identifier: email,
-        password,
-      });
-
-      // If sign-in process is complete, set the created session as active
-      // and redirect the user
-      if (signInAttempt.status === "complete") {
-        await setSignInActive({ session: signInAttempt.createdSessionId });
-        router.replace("/");
-      } else {
-        // If the status isn't complete, check why. User might need to
-        // complete further steps.
-        console.error(JSON.stringify(signInAttempt, null, 2));
-      }
+      await loginWithEmail({ email, password });
+      router.replace("/");
     } catch (err: any) {
       return displayToast({
         type: ToastType.ERROR,
-        description: err.message,
+        description: err?.message || "Unable to sign in",
       });
     } finally {
       onSettled();
     }
   }
 
-  async function onVerifyEmail(source: Screens) {
-    if (source === Screens.SIGNUP_1) {
-      try {
-        // const response: ApiResponse = await verifyUserByEmail(email);
-        // if (response.code === HttpStatusCode.NotFound) {
-        //   setCurrentScreen(Screens.OTP);
-        //   setPreviousScreen(Screens.SIGNUP_1);
-        // } else {
-        //   return displayToast({
-        //     type: ToastType.ERROR,
-        //     description: response.message,
-        //   });
-        // }
-      } catch (error: any) {
-        return displayToast({
-          type: ToastType.ERROR,
-          description: error.message,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      try {
-        // const response: ApiResponse = await verifyUserByEmail(email);
-        // if (response.code === HttpStatusCode.Ok) {
-        //   setCurrentScreen(Screens.OTP);
-        //   setPreviousScreen(Screens.LOGIN_1);
-        // } else {
-        //   return displayToast({
-        //     type: ToastType.ERROR,
-        //     description: "User with email does not exist",
-        //   });
-        // }
-      } catch (error: any) {
-        return displayToast({
-          type: ToastType.ERROR,
-          description: error.message,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }
-
-  async function onVerifyOtp(otp: string) {
-    if (!isSignUpLoaded) return;
-    setIsLoading(true);
-
-    try {
-      // Use the code the user provided to attempt verification
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code: otp,
-      });
-
-      // If verification was completed, set the session to active
-      // and redirect the user
-      if (signUpAttempt.status === "complete") {
-        await setSignUpActive({ session: signUpAttempt.createdSessionId });
-        router.replace("/expo-auth-session");
-      } else {
-        // If the status is not complete, check why. User may need to
-        // complete further steps.
-        console.error(JSON.stringify(signUpAttempt, null, 2));
-      }
-    } catch (error: any) {
-      setIsLoading(false);
-
-      return displayToast({
-        type: ToastType.ERROR,
-        description: error.message,
-      });
-    }
-  }
-
   async function onHandleSignup() {
-    if (!isSignUpLoaded) return;
-
-    if (email === "" || password === "" || confirmPassword === "") {
+    if (name === "" || email === "" || password === "" || confirmPassword === "") {
       setIsLoading(false);
       return displayToast({
         type: ToastType.ERROR,
@@ -233,38 +115,48 @@ const SignInMailScreen = () => {
       });
     }
     try {
-      // Start sign-up process using email and password provided
-      await signUp.create({
-        emailAddress: email,
+      await signUpWithEmail({
+        email,
         password,
+        name,
       });
-
-      // Send user an email with verification code
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-
-      setCurrentScreen(Screens.OTP);
-      setPreviousScreen(Screens.SIGNUP_1);
+      displayToast({
+        type: ToastType.SUCCESS,
+        description: "Check your email to verify your account.",
+      });
+      showScreen(Screens.LOGIN_1);
     } catch (err: any) {
-      console.log("Error: ", JSON.stringify(err, null, 2));
       return displayToast({
         type: ToastType.ERROR,
-        description: err.errors[0].message,
+        description: err?.message || "Unable to create account",
       });
     } finally {
       onSettled();
     }
   }
 
-  async function onHandleResetPassword() {
+  async function onRequestRecovery() {
+    if (email === "") {
+      setIsLoading(false);
+      return displayToast({
+        type: ToastType.ERROR,
+        description: "Please enter your email",
+      });
+    }
+
     try {
-      // await resetPassword({ email, password });
+      await requestPasswordRecovery(email);
+      displayToast({
+        type: ToastType.SUCCESS,
+        description: "Password reset link sent to your email.",
+      });
+      showScreen(Screens.LOGIN_1);
     } catch (error: any) {
       return displayToast({
         type: ToastType.ERROR,
-        description: error.message,
+        description: error?.message || "Unable to send reset link",
       });
     } finally {
-      setCurrentScreen(Screens.LOGIN_1);
       setIsLoading(false);
     }
   }
@@ -351,7 +243,7 @@ const SignInMailScreen = () => {
               </View>
               <TouchableOpacity
                 onPress={function () {
-                  setCurrentScreen(Screens.FORGOT_PASSWORD);
+                  showScreen(Screens.FORGOT_PASSWORD);
                 }}
               >
                 <Text
@@ -392,11 +284,11 @@ const SignInMailScreen = () => {
                 }}
                 className="font-plus-jakarta-regular"
               >
-                Don't have an account?
+                Don&apos;t have an account?
               </Text>
               <TouchableOpacity
                 onPress={function () {
-                  setCurrentScreen(Screens.SIGNUP_1);
+                  showScreen(Screens.SIGNUP_1);
                 }}
               >
                 <Text
@@ -451,8 +343,26 @@ const SignInMailScreen = () => {
                   style={styles.subheading}
                   className="font-plus-jakarta-semibold"
                 >
-                  Enter your email
+                  Enter your details
                 </Text>
+                <View className="mb-4">
+                  <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-semibold">
+                    Name
+                  </Text>
+                  <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
+                    <Ionicons name="person-outline" size={20} color={secColor} />
+                    <TextInput
+                      key={`${currentScreen}-name`}
+                      value={name}
+                      autoCapitalize="words"
+                      placeholder="Enter your name"
+                      placeholderTextColor="#9CA3AF"
+                      onChangeText={setName}
+                      className="p-0  flex-1 ml-3 text-gray-900"
+                      editable={!isLoading}
+                    />
+                  </View>
+                </View>
                 <View className="mb-4">
                   <Text className="text-sm font-medium text-gray-700 mb-2 font-plus-jakarta-semibold">
                     Email
@@ -529,7 +439,10 @@ const SignInMailScreen = () => {
                       onButtonClick();
                     }}
                     isDisabled={
-                      email === "" || password === "" || confirmPassword === ""
+                      name === "" ||
+                      email === "" ||
+                      password === "" ||
+                      confirmPassword === ""
                     }
                   />
                 </View>
@@ -577,7 +490,7 @@ const SignInMailScreen = () => {
               </Text>
               <TouchableOpacity
                 onPress={function () {
-                  setCurrentScreen(Screens.LOGIN_1);
+                  showScreen(Screens.LOGIN_1);
                 }}
               >
                 <Text
@@ -592,29 +505,6 @@ const SignInMailScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
-        </Animated.View>
-      )}
-
-      {/*------------------VERIFY EMAIL OTP PAGE-------------------------*/}
-      {currentScreen === Screens.OTP && (
-        <Animated.View
-          layout={LinearTransition}
-          entering={FadeIn.duration(500)}
-          className="flex-1"
-        >
-          <SafeAreaView>
-            <OTPVerification
-              email={email}
-              isLoading={isLoading}
-              onBackBtn={function () {
-                setCurrentScreen(previousScreen);
-              }}
-              onVerifyBtn={function (otp: string) {
-                onButtonClick(otp);
-              }}
-              isCurrentScreen={currentScreen === Screens.OTP}
-            />
           </SafeAreaView>
         </Animated.View>
       )}
@@ -635,7 +525,7 @@ const SignInMailScreen = () => {
             >
               <Pressable
                 onPress={function () {
-                  setCurrentScreen(Screens.LOGIN_1);
+                  showScreen(Screens.LOGIN_1);
                 }}
               >
                 <View style={[styles.backBtnBorder, { borderColor }]}>
@@ -655,7 +545,7 @@ const SignInMailScreen = () => {
                   className="font-plus-jakarta-regular"
                   style={{ color: "darkgrey", marginTop: 10 }}
                 >
-                  Don't worry! It happens. Please enter the email associated
+                  Don&apos;t worry! It happens. Please enter the email associated
                   with this account
                 </Text>
               </View>
@@ -683,7 +573,7 @@ const SignInMailScreen = () => {
             <View style={styles.container2}>
               <View style={templateStyles.buttonSize}>
                 <CustomButton
-                  label="Verify"
+                  label="Send link"
                   isLoading={isLoading}
                   onPress={function () {
                     onButtonClick();
@@ -691,137 +581,6 @@ const SignInMailScreen = () => {
                   isDisabled={email === ""}
                 />
               </View>
-            </View>
-          </SafeAreaView>
-        </Animated.View>
-      )}
-      {/*--------------------------RESET PASSWORD-------------------------------*/}
-      {currentScreen === Screens.RESET_PASSWORD && (
-        <Animated.View
-          layout={LinearTransition}
-          entering={FadeIn.duration(500)}
-          className="flex-1"
-        >
-          <SafeAreaView style={styles.container4}>
-            <View
-              style={[
-                styles.container3,
-                { justifyContent: "flex-start", flexDirection: "row" },
-              ]}
-            >
-              <Pressable
-                onPress={function () {
-                  setCurrentScreen(Screens.SIGNUP_1);
-                }}
-              >
-                <View style={[styles.backBtnBorder, { borderColor }]}>
-                  <Ionicons
-                    name="chevron-back"
-                    style={{ color, fontSize: 25 }}
-                  />
-                </View>
-              </Pressable>
-            </View>
-            <View style={styles.container2}>
-              <Text className="font-plus-jakarta-bold" style={styles.heading}>
-                Reset Password
-              </Text>
-              <Text
-                className="font-plus-jakarta-regular"
-                style={styles.subheading}
-              >
-                Your new password should be different from your previous
-                password.
-              </Text>
-              <View style={{ marginBottom: 10 }}>
-                <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={20}
-                    color={secColor}
-                  />
-                  <TextInput
-                    key={currentScreen}
-                    placeholder="Enter your password"
-                    secureTextEntry={true}
-                    value={password}
-                    autoCapitalize="none"
-                    placeholderTextColor="#9CA3AF"
-                    onChangeText={setPassword}
-                    className="p-0 flex-1 ml-3 text-gray-900"
-                    editable={!isLoading}
-                  />
-                </View>
-              </View>
-              <View style={{ marginBottom: 10 }}>
-                <View className="flex-row items-center bg-gray-50 rounded-xl px-4 py-4 border border-gray-200">
-                  <Ionicons
-                    name="lock-closed-outline"
-                    size={20}
-                    color={secColor}
-                  />
-                  <TextInput
-                    key={currentScreen}
-                    placeholder="Enter password again"
-                    secureTextEntry={true}
-                    value={confirmPassword}
-                    autoCapitalize="none"
-                    placeholderTextColor="#9CA3AF"
-                    onChangeText={setConfirmPassword}
-                    className="p-0 flex-1 ml-3 text-gray-900"
-                    editable={!isLoading}
-                  />
-                </View>
-              </View>
-            </View>
-            <View style={[templateStyles.buttonSize, { marginVertical: 30 }]}>
-              <CustomButton
-                label="Continue"
-                onPress={onButtonClick}
-                isLoading={isLoading}
-                isDisabled={
-                  (password === "" || confirmPassword === "") &&
-                  password !== confirmPassword
-                }
-              />
-            </View>
-            <View
-              style={[
-                styles.container2,
-                {
-                  marginBottom: 20,
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "flex-end",
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  lineHeight: 20,
-                  color: "darkgrey",
-                  fontSize: 15,
-                }}
-                className="font-plus-jakarta-regular"
-              >
-                Have an account already?{" "}
-              </Text>
-              <TouchableOpacity
-                onPress={function () {
-                  setCurrentScreen(Screens.LOGIN_1);
-                }}
-              >
-                <Text
-                  style={{
-                    lineHeight: 20,
-                    color: tint,
-                    fontSize: 15,
-                  }}
-                  className="font-plus-jakarta-regular"
-                >
-                  Log in
-                </Text>
-              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </Animated.View>

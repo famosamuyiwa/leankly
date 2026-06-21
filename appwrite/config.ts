@@ -1,5 +1,11 @@
 import { PushNotificationRequest } from "@/interfaces";
-import { Client, Functions, Storage, TablesDB } from "react-native-appwrite";
+import {
+  Account,
+  Client,
+  Functions,
+  Storage,
+  TablesDB,
+} from "react-native-appwrite";
 
 if (!process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_PROJECT_ID is not set");
@@ -17,14 +23,6 @@ if (!process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID) {
   throw new Error("EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID is not set");
 }
 
-if (!process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID) {
-  throw new Error("EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID is not set");
-}
-
-if (!process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-  throw new Error("EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY is not set");
-}
-
 const classifyFunctionId =
   process.env.EXPO_PUBLIC_APPWRITE_CLASSIFY_FUNCTION_ID ||
   process.env.EXPO_PUBLIC_APPWRITE_CLASSIFY_LEANK_FUNCTION_ID ||
@@ -35,7 +33,8 @@ const appwriteConfig = {
   projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID,
   platform: "com.barrakudadev.leankly",
   db: process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID,
-  sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID,
+  apiBaseUrl: process.env.EXPO_PUBLIC_APPWRITE_API_BASE_URL || "",
+  sendPushFunctionId: process.env.EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID || "",
   storage: process.env.EXPO_PUBLIC_APPWRITE_STORAGE_BUCKET_ID,
   classifyLeankFunctionId: classifyFunctionId,
   tables: {
@@ -59,9 +58,14 @@ const client = new Client()
 const db = new TablesDB(client);
 const functions = new Functions(client);
 const storage = new Storage(client);
+const account = new Account(client);
 
 async function sendPushNotification(body: PushNotificationRequest) {
   try {
+    if (!appwriteConfig.sendPushFunctionId) {
+      throw new Error("EXPO_PUBLIC_APPWRITE_SEND_PUSH_FUNCTION_ID is not set");
+    }
+
     const { type, data } = body;
     const payload = JSON.stringify({ type, data });
 
@@ -74,4 +78,12 @@ async function sendPushNotification(body: PushNotificationRequest) {
   }
 }
 
-export { appwriteConfig, client, db, functions, sendPushNotification, storage };
+export {
+  account,
+  appwriteConfig,
+  client,
+  db,
+  functions,
+  sendPushNotification,
+  storage,
+};

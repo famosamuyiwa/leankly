@@ -3,14 +3,12 @@ import {
   recordLeankAction,
 } from "@/appwrite/actions/leank.actions";
 import { consumeBonusInterest } from "@/appwrite/actions/user.actions";
-import { sendPushNotification } from "@/appwrite/config";
 import { LeankCardBig } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import Filters from "@/components/Filters";
-import { PushNotificationTypes, Screens } from "@/constants/enums";
+import { Screens } from "@/constants/enums";
 import images from "@/constants/images";
 import { useLeanksFeed } from "@/hooks/useLeanksFeed";
-import { PNAlert } from "@/interfaces";
 import { useFiltersContext } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
@@ -181,20 +179,6 @@ export default function HomeScreen() {
           ],
         };
       });
-
-      if (isLiked) {
-        const pn = {
-          token: reactedLeank.owner?.pushToken,
-          title: "New leank request",
-          content: `${currentUser.name} wants to join ${reactedLeank.title}`,
-        };
-
-        // alert leank owner
-        sendPushNotification({
-          type: PushNotificationTypes.ALERT,
-          data: pn as PNAlert,
-        });
-      }
 
       // count only after a successful LIKE for free users
       if (isLiked && !isPro) await increment(currentUser.$id, "interest");

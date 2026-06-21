@@ -4,9 +4,7 @@ import "./global.css";
 import GlobalProvider from "@/lib/GlobalContext";
 import PremiumProvider from "@/lib/PremiumContext";
 import { currentScreenRef } from "@/lib/ScreenTracker";
-import { ClerkProvider } from "@clerk/clerk-expo";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
-import Constants from "expo-constants";
+import { AuthProvider } from "@/lib/auth/AuthContext";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
@@ -81,16 +79,15 @@ export default function Layout() {
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
-  const key = Constants.expoConfig?.extra?.clerkPublishableKey;
   return (
-    <ClerkProvider tokenCache={tokenCache} publishableKey={key}>
-      <PushNotificationProvider>
-        <GlobalProvider>
+    <PushNotificationProvider>
+      <GlobalProvider>
+        <AuthProvider>
           <PremiumProvider>
             <Slot />
           </PremiumProvider>
-        </GlobalProvider>
-      </PushNotificationProvider>
-    </ClerkProvider>
+        </AuthProvider>
+      </GlobalProvider>
+    </PushNotificationProvider>
   );
 }

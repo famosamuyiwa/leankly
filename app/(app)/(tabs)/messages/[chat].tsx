@@ -1,25 +1,24 @@
-import {
-  appwriteConfig,
-  client,
-  db,
-  sendPushNotification,
-} from "@/appwrite/config";
 import { Colors } from "@/constants/common";
-import { PushNotificationTypes } from "@/constants/enums";
-import { BasicUser, Leank, Message, UserChatMeta } from "@/interfaces";
-import { useGlobalContext } from "@/lib/GlobalContext";
-import { useMessagesContext } from "@/lib/MessagesContext";
+import { BasicUser, Message } from "@/interfaces";
+import {
+  ChatListItem,
+  ReplySwipeHandle,
+  getUserColor,
+  isRealMessage,
+  isSameChatSender,
+  isSystemMessage,
+} from "@/lib/features/messages/chatItems";
+import { useChatScreen } from "@/lib/features/messages/useChatScreen";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { LegendList } from "@legendapp/list";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
-  Keyboard,
   KeyboardAvoidingView,
   Pressable,
   Text,
@@ -27,7 +26,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { ID, Query } from "react-native-appwrite";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
   Extrapolation,
@@ -46,331 +44,25 @@ cssInterop(Image, {
   className: { target: "style" },
 });
 
-type ReplySwipeHandle = {
-  close: () => void;
-};
-
-type DateSeparatorItem = {
-  $id: string;
-  content: string;
-  senderId: "system";
-  senderName: "System";
-  senderPhoto: "";
-  leankId: string;
-  type: "system-date";
-};
-
-type ChatListItem = Message | DateSeparatorItem;
-
 export default function Chat() {
   const insets = useSafeAreaInsets();
-  const { currentLeank, setCurrentLeank } = useMessagesContext();
-  const { currentUser, openUserPreview } = useGlobalContext();
-  const currentUserId = currentUser?.$id;
-
-  const params = useLocalSearchParams<{ chat?: string }>();
-  const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
-
-  const [messages, setMessages] = useState<ChatListItem[]>([]);
-  const [messageContent, setMessageContent] = useState("");
-  const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const headerHeight = useHeaderHeight();
-  const listRef = useRef<any>(null);
-  const openSwipeRef = useRef<ReplySwipeHandle | null>(null);
-  const readWriteInFlightRef = useRef(false);
-  const lastReadAtRef = useRef(0);
-
-  const applyMessages = useCallback((rawNext: Message[]) => {
-    const decorated = injectDateSeparators(rawNext);
-    setMessages((prev) => {
-      if (!Array.isArray(prev) || prev.length === 0) return decorated;
-      if (!Array.isArray(decorated)) return prev;
-      const prevLast = prev[prev.length - 1]?.$id;
-      const nextLast = decorated[decorated.length - 1]?.$id;
-      const sameLength = prev.length === decorated.length;
-      const sameLast = prevLast && nextLast && prevLast === nextLast;
-      if (sameLength && sameLast) return prev;
-      return decorated;
-    });
-  }, []);
-
-  const getLeank = useCallback(async () => {
-    if (!chatId) return;
-    try {
-      const data = await db.getRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        rowId: chatId,
-        queries: [
-          Query.select(["*", "owner.$id", "owner.avatar", "owner.name"]),
-        ],
-      });
-
-      setCurrentLeank(data as unknown as Leank);
-    } catch (e) {
-      console.log(e);
-    }
-  }, [chatId, setCurrentLeank]);
-
-  const markAsRead = useCallback(
-    async (latestMessage?: Message) => {
-      if (!currentUserId || !chatId || !latestMessage?.$createdAt) return;
-      if (latestMessage.senderId === currentUserId) return;
-
-      const latestMessageTs = new Date(latestMessage.$createdAt).getTime();
-      if (!Number.isFinite(latestMessageTs)) return;
-
-      // Realtime and focus refreshes can overlap; this keeps read receipts idempotent.
-      if (
-        readWriteInFlightRef.current ||
-        latestMessageTs <= lastReadAtRef.current
-      ) {
-        return;
-      }
-
-      readWriteInFlightRef.current = true;
-      try {
-        const { rows, total } = await db.listRows({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.userChatMeta,
-          queries: [
-            Query.equal("leankId", chatId),
-            Query.equal("userId", currentUserId),
-          ],
-        });
-        const existingMeta = rows[0] as unknown as UserChatMeta | undefined;
-        const existingReadAtTs = existingMeta?.readAt
-          ? new Date(existingMeta.readAt).getTime()
-          : 0;
-
-        if (latestMessageTs <= existingReadAtTs) {
-          lastReadAtRef.current = Math.max(
-            lastReadAtRef.current,
-            existingReadAtTs
-          );
-          return;
-        }
-
-        const readAt = new Date().toISOString();
-        if (total > 0 && existingMeta?.$id) {
-          await db.updateRow({
-            databaseId: appwriteConfig.db,
-            tableId: appwriteConfig.tables.userChatMeta,
-            rowId: existingMeta.$id,
-            data: {
-              leankId: chatId,
-              userId: currentUserId,
-              readAt,
-              $updatedAt: readAt,
-            },
-          });
-        } else {
-          await db.createRow({
-            databaseId: appwriteConfig.db,
-            tableId: appwriteConfig.tables.userChatMeta,
-            rowId: ID.unique(),
-            data: {
-              leankId: chatId,
-              userId: currentUserId,
-              readAt,
-            },
-          });
-        }
-
-        lastReadAtRef.current = new Date(readAt).getTime();
-      } catch (e) {
-        console.log(e);
-      } finally {
-        readWriteInFlightRef.current = false;
-      }
-    },
-    [chatId, currentUserId]
-  );
-
-  const getMessages = useCallback(async () => {
-    if (!chatId) return;
-    try {
-      const { rows } = await db.listRows({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.messages,
-        queries: [
-          Query.equal("leankId", chatId),
-          Query.limit(50),
-          Query.orderDesc("$createdAt"),
-        ],
-      });
-
-      const incoming = Array.isArray(rows)
-        ? (rows as unknown as Message[])
-        : [];
-      const latestMessage = incoming[0];
-      applyMessages([...incoming].reverse());
-
-      // Messages are queried newest-first, so rows[0] is the only row read state cares about.
-      await markAsRead(latestMessage);
-    } catch (e) {
-      console.log(e);
-    }
-  }, [applyMessages, chatId, markAsRead]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadInitialChat = async () => {
-      try {
-        await Promise.all([getMessages(), getLeank()]);
-      } catch (e) {
-        console.log(e);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadInitialChat();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [getLeank, getMessages]);
-
-  useEffect(() => {
-    if (!chatId) return;
-
-    const hasMutationEvent = (events: string[] = []) =>
-      events.some((event) =>
-        ["create", "update", "delete"].some((action) =>
-          event.endsWith(action) || event.includes(`.${action}`)
-        )
-      );
-
-    const leankChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.leanks}.rows.${chatId}`;
-    const messageChannel = `databases.${appwriteConfig.db}.tables.${appwriteConfig.tables.messages}.rows`;
-
-    const unsubscribeLeank = client.subscribe(leankChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      getLeank();
-    });
-
-    const unsubscribeMessages = client.subscribe(messageChannel, (event) => {
-      if (!hasMutationEvent(event.events)) return;
-      const payload = event.payload as Partial<Message>;
-
-      // Message row events are global, so filter before fetching to avoid noisy realtime reads.
-      if (payload?.leankId === chatId) {
-        getMessages();
-      }
-    });
-
-    const KeyboardDidShowlistener = Keyboard.addListener(
-      "keyboardDidShow",
-      () =>
-        setTimeout(() => {
-          listRef.current?.scrollToEnd({ animate: true });
-        }, 100)
-    );
-
-    return () => {
-      unsubscribeLeank();
-      unsubscribeMessages();
-      KeyboardDidShowlistener.remove();
-    };
-  }, [chatId, getLeank, getMessages]);
-
-  const sendMessage = async () => {
-    if (messageContent.trim() === "" || !currentUser) return;
-
-    try {
-      if (!chatId) return;
-
-      const baseMessage = {
-        content: messageContent,
-        senderId: currentUser.$id,
-        senderName: currentUser.name,
-        senderPhoto: currentUser.avatar,
-        leankId: chatId,
-      } as any;
-
-      if (replyTo) {
-        baseMessage.replyToMessageId = replyTo.$id;
-        baseMessage.replyToSenderId = replyTo.senderId;
-        baseMessage.replyToSenderName = replyTo.senderName;
-        baseMessage.replyToContent = replyTo.content;
-      }
-
-      let msg;
-      try {
-        msg = await db.createRow({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.messages,
-          rowId: ID.unique(),
-          data: baseMessage,
-        });
-      } catch (e) {
-        // If backend rejects replyTo, retry without it
-        if (replyTo) {
-          msg = await db.createRow({
-            databaseId: appwriteConfig.db,
-            tableId: appwriteConfig.tables.messages,
-            rowId: ID.unique(),
-            data: {
-              ...baseMessage,
-              replyToMessageId: undefined,
-              replyToSenderId: undefined,
-              replyToSenderName: undefined,
-              replyToContent: undefined,
-            },
-          });
-        } else {
-          throw e;
-        }
-      }
-
-      const createdAt = (msg as any)?.$createdAt || new Date().toISOString();
-      const messageToUse = {
-        ...(msg as any),
-        $createdAt: createdAt,
-        replyToMessageId: baseMessage.replyToMessageId,
-        replyToSenderId: baseMessage.replyToSenderId,
-        replyToSenderName: baseMessage.replyToSenderName,
-        replyToContent: baseMessage.replyToContent,
-      } as Message;
-
-      setMessages((prev) => {
-        const safePrev = Array.isArray(prev)
-          ? prev.filter(isRealMessage)
-          : [];
-        return injectDateSeparators([...safePrev, messageToUse]);
-      });
-
-      setMessageContent("");
-      setReplyTo(null);
-      openSwipeRef.current?.close();
-
-      await db.updateRow({
-        databaseId: appwriteConfig.db,
-        tableId: appwriteConfig.tables.leanks,
-        rowId: chatId,
-        data: {
-          lastMessage: messageToUse,
-          $updatedAt: new Date().toISOString(),
-        },
-      });
-
-      await sendPushNotification({
-        type: PushNotificationTypes.CHAT,
-        data: (msg as unknown as Message) || baseMessage,
-      });
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animate: true });
-      }, 100);
-    }
-  };
+  const {
+    chatId,
+    currentLeank,
+    currentUser,
+    isLoading,
+    listRef,
+    messageContent,
+    messages,
+    openSettings,
+    openSwipeRef,
+    openUserPreview,
+    replyTo,
+    sendMessage,
+    setMessageContent,
+    setReplyTo,
+  } = useChatScreen();
 
   const memoizedCover = useMemo(
     () => (
@@ -440,13 +132,7 @@ export default function Chat() {
           <Ionicons name="chevron-back" size={30} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => {
-            if (!chatId) return;
-            router.push({
-              pathname: "/messages/settings/[chat]",
-              params: { chat: chatId },
-            });
-          }}
+          onPress={openSettings}
           className="flex-row gap-5 items-center flex-1"
         >
           {memoizedCover}
@@ -548,103 +234,6 @@ export default function Chat() {
       </KeyboardAvoidingView>
     </Reanimated.View>
   );
-}
-
-const colorPalette = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#eab308", // amber-500
-  "#22c55e", // green-500
-  "#06b6d4", // cyan-500
-  "#3b82f6", // blue-500
-  "#a855f7", // purple-500
-  "#ec4899", // pink-500
-];
-
-const getUserColor = (id?: string | null) => {
-  if (!id) return Colors.primary;
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash << 5) - hash + id.charCodeAt(i);
-    hash |= 0;
-  }
-  const index = Math.abs(hash) % colorPalette.length;
-  return colorPalette[index];
-};
-
-const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
-  if (!Array.isArray(raw)) return [];
-  const result: ChatListItem[] = [];
-  let lastKey = "";
-
-  raw.forEach((msg, idx) => {
-    const createdAt =
-      msg.$createdAt || msg.$updatedAt || new Date().toISOString();
-    const dateObj = new Date(createdAt);
-    const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
-
-    if (dateKey !== lastKey) {
-      // Date separators are local UI rows only; Appwrite should only store real messages.
-      result.push({
-        $id: `date-${dateKey}-${idx}`,
-        content: formatDateLabel(dateObj),
-        senderId: "system",
-        senderName: "System",
-        senderPhoto: "",
-        leankId: msg.leankId,
-        type: "system-date",
-      });
-      lastKey = dateKey;
-    }
-
-    result.push(msg);
-  });
-
-  return result;
-};
-
-const formatDateLabel = (date: Date) => {
-  const now = new Date();
-  const startOfDay = (d: Date) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.floor(
-    (startOfDay(now) - startOfDay(date)) / (1000 * 60 * 60 * 24)
-  );
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-};
-
-function isDateSeparator(message?: ChatListItem): message is DateSeparatorItem {
-  return message?.type === "system-date";
-}
-
-function isRealMessage(message: ChatListItem): message is Message {
-  return !isDateSeparator(message);
-}
-
-function isSystemMessage(message?: ChatListItem) {
-  return (
-    !message ||
-    message.senderId === "system" ||
-    message.type === "system" ||
-    message.type === "system-date"
-  );
-}
-
-function isSameChatSender(
-  previousOrNext: ChatListItem | undefined,
-  item: ChatListItem
-) {
-  if (!previousOrNext) return false;
-  if (isSystemMessage(previousOrNext) || isSystemMessage(item)) return false;
-  return previousOrNext.senderId === item.senderId;
 }
 
 type MessageBubbleProps = {

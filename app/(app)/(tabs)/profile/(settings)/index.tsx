@@ -1,7 +1,7 @@
 import { Links, Screens } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useProfileContext } from "@/lib/ProfileContext";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuthSession } from "@/lib/auth/AuthContext";
 import {
   Feather,
   FontAwesome6,
@@ -23,8 +23,8 @@ cssInterop(Image, {
 });
 
 export default function Settings() {
-  const { signOut } = useAuth();
-  const { alertComingSoon, setCurrentUser } = useGlobalContext();
+  const { logout } = useAuthSession();
+  const { alertComingSoon } = useGlobalContext();
   const { avatar, name } = useProfileContext();
 
   const handleSignOut = () => {
@@ -36,9 +36,8 @@ export default function Settings() {
       {
         text: "Sign Out",
         style: "destructive",
-        onPress: () => {
-          setCurrentUser(undefined);
-          signOut();
+        onPress: async () => {
+          await logout();
           router.replace("/(app)/sign-in");
         },
       },

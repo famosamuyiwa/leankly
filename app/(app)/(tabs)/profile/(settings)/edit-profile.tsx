@@ -3,7 +3,7 @@ import { ProfileBottomSheet } from "@/components/BottomSheet";
 import useImagePicker from "@/hooks/useImagePicker";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useProfileContext } from "@/lib/ProfileContext";
-import { useUser } from "@clerk/clerk-expo";
+import { useAuthSession } from "@/lib/auth/AuthContext";
 import { Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
 import { Image } from "expo-image";
@@ -28,7 +28,7 @@ function EditProfileContent() {
   const { pickMultimedia } = useImagePicker();
   const { currentUser, showLoader, hideLoader, displayToast } =
     useGlobalContext();
-  const { user } = useUser();
+  const { deactivateAccount } = useAuthSession();
 
   const bottomSheetRef = useRef<any>({});
 
@@ -155,11 +155,8 @@ function EditProfileContent() {
             try {
               showLoader("Deleting account...", true);
               await deleteUserData();
-              try {
-                await user?.delete();
-              } catch (e) {
-                console.log("Failed deleting Clerk user", e);
-              }
+              // Client SDK can only block the current Appwrite account; hard delete belongs in the server facade.
+              await deactivateAccount();
               displayToast({ type: "success", description: "Account deleted" });
               router.replace("/sign-in");
             } catch (e) {

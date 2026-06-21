@@ -1,62 +1,24 @@
-import { appwriteConfig, db } from "@/appwrite/config";
 import { Colors } from "@/constants/common";
-import { User } from "@/interfaces";
 import { FiltersProvider } from "@/lib/FiltersContext";
 import { useGlobalContext } from "@/lib/GlobalContext";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuthSession } from "@/lib/auth/AuthContext";
 import { Stack, usePathname, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
-  const { isLoaded, isSignedIn, userId } = useAuth();
-  const { setCurrentUser, currentUser } = useGlobalContext();
-  const [isCurrentUserReady, setIsCurrentUserReady] = useState(false);
+  const { isLoading, isAuthenticated, isEmailVerified } = useAuthSession();
+  const { currentUser } = useGlobalContext();
   const router = useRouter();
   const pathname = usePathname();
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn || !userId) return;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    const checkUser = async () => {
-      try {
-        const user = await db.getRow({
-          databaseId: appwriteConfig.db,
-          tableId: appwriteConfig.tables.user,
-          rowId: userId,
-        });
-
-        if (user) {
-          console.log("✅ Appwrite user found:", user.name);
-          setCurrentUser(user as unknown as User);
-          setIsCurrentUserReady(true);
-          return;
-        }
-      } catch (err) {
-        console.warn("⚠️ User not found in Appwrite yet. Retrying...");
-      }
-
-      // Retry after delay (max 5 times)
-      if (attempts < maxAttempts) {
-        attempts++;
-        setTimeout(checkUser, 500);
-      } else {
-        console.error(
-          "❌ Failed to find user in Appwrite after multiple attempts",
-        );
-      }
-    };
-
-    checkUser();
-  }, [isLoaded, isSignedIn, userId]);
+  const isCurrentUserReady = !!currentUser;
+  const canEnterApp = isAuthenticated && isEmailVerified && isCurrentUserReady;
 
   // Redirect new/incomplete users to onboarding
   useEffect(() => {
-    if (!isSignedIn || !isCurrentUserReady) return;
+    if (!canEnterApp) return;
     if (!currentUser) return;
 
     const hasName =
@@ -85,15 +47,16 @@ export default function RootLayout() {
       router.replace("/(app)/(tabs)");
     }
   }, [
-    isSignedIn,
-    isCurrentUserReady,
+    canEnterApp,
     currentUser?.name,
     currentUser?.age,
     currentUser?.location,
+    currentUser,
     pathname,
+    router,
   ]);
 
-  if (!isLoaded || (isSignedIn && !isCurrentUserReady)) {
+  if (isLoading || (isAuthenticated && !isCurrentUserReady)) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -106,7 +69,7 @@ export default function RootLayout() {
       <FiltersProvider>
         <SafeAreaProvider>
           <Stack>
-            <Stack.Protected guard={isSignedIn && isCurrentUserReady}>
+            <Stack.Protected guard={canEnterApp}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="paywall" options={{ headerShown: false }} />
               <Stack.Screen
@@ -117,7 +80,7 @@ export default function RootLayout() {
                 }}
               />
             </Stack.Protected>
-            <Stack.Protected guard={!isSignedIn}>
+            <Stack.Protected guard={!canEnterApp}>
               <Stack.Screen name="sign-in" options={{ headerShown: false }} />
               <Stack.Screen name="mail-auth" options={{ headerShown: false }} />
             </Stack.Protected>

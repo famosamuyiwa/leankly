@@ -287,6 +287,13 @@ export const ChatCard = ({
   const readAtTs = meta?.readAt ? new Date(meta.readAt).getTime() : 0;
   const isUnread =
     !!lastMessageTs && !isUserLastMessage && lastMessageTs > readAtTs;
+  const lastMessagePreview = item.lastMessage
+    ? item.lastMessage.type === "SYSTEM"
+      ? item.lastMessage.content
+      : isUserLastMessage
+        ? `You: ${item.lastMessage.content}`
+        : `${item.lastMessage.senderName}: ${item.lastMessage.content}`
+    : "Start planning to leank...⛓️‍💥";
 
   return (
     <TouchableOpacity
@@ -319,11 +326,7 @@ export const ChatCard = ({
         <Text
           className={` ${isUnread && !isUserLastMessage && item.lastMessage ? "font-plus-jakarta-semibold color-black" : "font-plus-jakarta-regular color-gray-400"} line-clamp-1 `}
         >
-          {item.lastMessage
-            ? isUserLastMessage
-              ? `You:  ${item.lastMessage.content}`
-              : `${item.lastMessage.senderName}: ${item.lastMessage.content}`
-            : `Start planning to leank...⛓️‍💥`}
+          {lastMessagePreview}
         </Text>
       </View>
     </TouchableOpacity>

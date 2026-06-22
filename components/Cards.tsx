@@ -159,16 +159,14 @@ export const LeankCardBig = ({
       </View>
 
       <View className="flex-1 justify-between px-4 py-4">
-        <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
-          <View className="items-center justify-center rounded-full bg-secondary-200 size-9">
-            <AntDesign name="notification" size={16} color={Colors.accent} />
-          </View>
-          <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
-            {description}
-          </Text>
-        </View>
-
         <View className="gap-3">
+          <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
+            <AntDesign name="notification" size={16} color={Colors.accent} />
+            <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
+              {description}
+            </Text>
+          </View>
+
           <View className="flex-row gap-3">
             <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-3">
               <View className="mb-2 flex-row items-center gap-2">
@@ -203,7 +201,7 @@ export const LeankCardBig = ({
             </View>
           </View>
 
-          <View className="flex-row items-center gap-3 rounded-2xl  py-3">
+          <View className="flex-row items-center gap-3 rounded-2xl  ">
             <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
               <Entypo name="location" size={16} color={Colors.accent} />
             </View>

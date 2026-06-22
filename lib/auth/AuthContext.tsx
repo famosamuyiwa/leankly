@@ -1,9 +1,13 @@
 import { account } from "@/appwrite/config";
 import { ToastType } from "@/constants/enums";
+import { apiClient, clearApiJwt } from "@/lib/api/client";
+import { realtime } from "@/lib/api/realtime";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePushNotification } from "@/lib/PushNotificationContext";
+import { deletePushTarget, syncPushTarget } from "@/lib/pushTarget";
+import { queryClient } from "@/lib/queryClient";
 import * as WebBrowser from "expo-web-browser";
-import React, {
+import {
   ReactNode,
   createContext,
   useCallback,
@@ -14,6 +18,7 @@ import React, {
   useState,
 } from "react";
 import { ID, Models, OAuthProvider } from "react-native-appwrite";
+import { syncBackendProfile } from "./profileSync";
 import { authRedirects, makeOAuthReturnUrl } from "./redirects";
 import {
   AuthCredentials,
@@ -21,11 +26,6 @@ import {
   EmailOtpChallenge,
   OAuthProviderName,
 } from "./types";
-import { syncBackendProfile } from "./profileSync";
-import { clearApiJwt, apiClient } from "@/lib/api/client";
-import { deletePushTarget, syncPushTarget } from "@/lib/pushTarget";
-import { realtime } from "@/lib/api/realtime";
-import { queryClient } from "@/lib/queryClient";
 
 type AuthContextValue = AuthSessionState & {
   refreshSession: () => Promise<void>;
@@ -67,16 +67,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accountUser: Models.User<Models.Preferences>,
       fallbackName?: string,
     ) => {
+      console.log(1);
       const profile = await syncBackendProfile({
         accountUser,
         fallbackName,
       });
+      console.log(2);
       if (expoPushToken) {
         await syncPushTarget(accountUser.$id, expoPushToken).catch((error) =>
           console.warn("Push target registration failed", error),
         );
       }
+      console.log(3);
       setCurrentUser(profile);
+      console.log(4);
       setState({
         status: "authenticated",
         isLoading: false,
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         error: null,
       });
+      console.log(5);
     },
     [expoPushToken, setCurrentUser],
   );
@@ -233,7 +238,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      if (state.accountUser) await deletePushTarget(state.accountUser.$id);
+      if (state.accountUser) {
+        await deletePushTarget(state.accountUser.$id).catch((error) =>
+          console.warn("Push target removal failed", error),
+        );
+      }
+
+      // Push cleanup is best-effort and must never prevent the active Appwrite
+      // session from being terminated before another sign-in is attempted.
       await account.deleteSession({ sessionId: "current" });
     } catch {
       // Appwrite throws when there is no current session; logout should still clear local state.

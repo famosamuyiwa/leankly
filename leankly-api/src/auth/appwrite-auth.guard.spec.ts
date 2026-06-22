@@ -1,5 +1,8 @@
-import { ForbiddenException, GoneException } from "@nestjs/common";
-import { ExecutionContext } from "@nestjs/common";
+import {
+  ExecutionContext,
+  ForbiddenException,
+  GoneException,
+} from "@nestjs/common";
 import { AppwriteAuthGuard } from "./appwrite-auth.guard";
 
 const identity = {
@@ -23,7 +26,9 @@ describe("AppwriteAuthGuard", () => {
   const config = {
     get: jest.fn(() => ""),
     getOrThrow: jest.fn((key: string) =>
-      key === "APPWRITE_ENDPOINT" ? "https://cloud.appwrite.io/v1" : "project",
+      key === "APPWRITE_ENDPOINT"
+        ? "https://nyc.cloud.appwrite.io/v1"
+        : "project",
     ),
   };
 

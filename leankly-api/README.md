@@ -13,7 +13,7 @@ docker compose up --build
 
 The API is available at `http://localhost:3000`; Swagger is at `/docs`. Docker runs database migrations before starting the API and runs the BullMQ worker as a separate process.
 
-For host development, start `postgres` and `redis` with Docker, then run `npm run start:dev` and `npm run start:worker:dev` in separate terminals.
+For host development, start `postgres` and `redis` with Docker, then run `npm run start:dev` and `npm run start:worker:dev` in separate terminals. PostgreSQL is published to the host on port `5433` by default to avoid conflicting with a locally installed server; override it with `POSTGRES_HOST_PORT` if needed.
 
 ## Manual provider setup
 

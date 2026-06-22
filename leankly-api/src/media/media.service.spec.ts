@@ -5,7 +5,7 @@ const user = { appwriteUserId: "appwrite-user" } as never;
 const config = {
   getOrThrow: jest.fn((key: string) => {
     const values: Record<string, string> = {
-      APPWRITE_ENDPOINT: "https://cloud.appwrite.io/v1",
+      APPWRITE_ENDPOINT: "https://nyc.cloud.appwrite.io/v1",
       APPWRITE_PROJECT_ID: "project",
       APPWRITE_API_KEY: "key",
       APPWRITE_AVATAR_BUCKET_ID: "avatars",

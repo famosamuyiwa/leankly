@@ -3,7 +3,12 @@ import images from "@/constants/images";
 import { BasicUser, Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { usePremium } from "@/lib/PremiumContext";
 import { formatDate, timeElapsed } from "@/lib/utils";
-import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  AntDesign,
+  Entypo,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
@@ -82,6 +87,7 @@ export const LeankCardBig = ({
     ? { uri: item.owner.avatar }
     : images.avatarPlaceholder;
   const title = item.title?.trim() || "Untitled leank";
+  const description = item.description?.trim() || "";
   const location = item.location?.trim() || "Location TBD";
   const dateLabel = item.date ? formatDate(item.date) : "Date TBD";
   const timeLabel = item.time?.trim() || "Time TBD";
@@ -153,6 +159,15 @@ export const LeankCardBig = ({
       </View>
 
       <View className="flex-1 justify-between px-4 py-4">
+        <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
+          <View className="items-center justify-center rounded-full bg-secondary-200 size-9">
+            <AntDesign name="notification" size={16} color={Colors.accent} />
+          </View>
+          <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
+            {description}
+          </Text>
+        </View>
+
         <View className="gap-3">
           <View className="flex-row gap-3">
             <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-3">
@@ -188,8 +203,8 @@ export const LeankCardBig = ({
             </View>
           </View>
 
-          <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
-            <View className="items-center justify-center rounded-full bg-secondary-200 size-9">
+          <View className="flex-row items-center gap-3 rounded-2xl  py-3">
+            <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
               <Entypo name="location" size={16} color={Colors.accent} />
             </View>
             <Text className="flex-1 font-plus-jakarta-bold text-sm text-black-300 line-clamp-2">

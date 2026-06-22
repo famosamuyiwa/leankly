@@ -12,6 +12,7 @@ export default function TabLayout() {
     <ProfileProvider>
       <PortalProvider>
         <Tabs
+          detachInactiveScreens={false}
           screenOptions={{
             tabBarActiveTintColor: Colors.primary,
             tabBarInactiveTintColor: "#8B95A7",
@@ -41,7 +42,9 @@ export default function TabLayout() {
               justifyContent: "center",
             },
             tabBarShowLabel: false,
+            lazy: false,
             animation: "none",
+            sceneStyle: { backgroundColor: "white" },
           }}
         >
           <Tabs.Screen

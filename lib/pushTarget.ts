@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { ID } from "react-native-appwrite";
 
-const key = (identityId: string) => `push-target:${identityId}`;
+const key = (identityId: string) => `push-target.${identityId}`;
 
 export async function syncPushTarget(identityId: string, token: string) {
   if (Platform.OS !== "ios" && Platform.OS !== "android") return;

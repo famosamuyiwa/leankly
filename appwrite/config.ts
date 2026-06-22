@@ -1,9 +1,23 @@
 import { Account, Client, Storage } from "react-native-appwrite";
+import * as Device from "expo-device";
+import { Platform } from "react-native";
 
 const endpoint = process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT;
 const projectId = process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID;
 if (!endpoint || !projectId) {
   throw new Error("Appwrite endpoint and project ID must be configured");
+}
+
+const physicalDeviceBackendUrl =
+  "https://impish-pelican-blade.ngrok-free.dev";
+const usePhysicalDeviceBackend =
+  __DEV__ && Device.isDevice && Platform.OS !== "web";
+
+function backendUrl(value: string) {
+  return (usePhysicalDeviceBackend ? physicalDeviceBackendUrl : value).replace(
+    /\/+$/,
+    "",
+  );
 }
 
 export const appwriteConfig = {
@@ -14,12 +28,12 @@ export const appwriteConfig = {
   authWebUrl: (
     process.env.EXPO_PUBLIC_AUTH_WEB_URL || "https://leankly.com"
   ).replace(/\/+$/, ""),
-  apiBaseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/+$/, ""),
-  socketUrl: (
+  apiBaseUrl: backendUrl(process.env.EXPO_PUBLIC_API_BASE_URL || ""),
+  socketUrl: backendUrl(
     process.env.EXPO_PUBLIC_SOCKET_URL ||
-    process.env.EXPO_PUBLIC_API_BASE_URL ||
-    ""
-  ).replace(/\/+$/, ""),
+      process.env.EXPO_PUBLIC_API_BASE_URL ||
+      "",
+  ),
   avatarBucket: process.env.EXPO_PUBLIC_APPWRITE_AVATAR_BUCKET_ID || "",
   leankCoverBucket:
     process.env.EXPO_PUBLIC_APPWRITE_LEANK_COVER_BUCKET_ID || "",

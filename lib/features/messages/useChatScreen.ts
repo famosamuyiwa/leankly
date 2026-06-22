@@ -13,6 +13,12 @@ import {
   isRealMessage,
 } from "./chatItems";
 
+const dedupeMessages = (messages: Message[]) => {
+  const messagesById = new Map<string, Message>();
+  messages.forEach((message) => messagesById.set(message.id, message));
+  return Array.from(messagesById.values());
+};
+
 export function useChatScreen() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview, setUnreadCount } = useGlobalContext();
@@ -28,7 +34,7 @@ export function useChatScreen() {
   const readWriteInFlightRef = useRef(false);
 
   const applyMessages = useCallback((rawNext: Message[]) => {
-    const decorated = injectDateSeparators(rawNext);
+    const decorated = injectDateSeparators(dedupeMessages(rawNext));
     setMessages((prev) => {
       if (!Array.isArray(prev) || prev.length === 0) return decorated;
       const prevLast = prev[prev.length - 1]?.id;
@@ -133,7 +139,9 @@ export function useChatScreen() {
 
       setMessages((prev) => {
         const safePrev = Array.isArray(prev) ? prev.filter(isRealMessage) : [];
-        return injectDateSeparators([...safePrev, response.message]);
+        return injectDateSeparators(
+          dedupeMessages([...safePrev, response.message]),
+        );
       });
       setCurrentLeank(response.chat);
       setMessageContent("");

@@ -1,4 +1,4 @@
-import { LeankStatus, NavbarOptions } from "@/constants/enums";
+import { NavbarOptions } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
@@ -21,7 +21,6 @@ export function useMessagesTab() {
   const refreshTimersRef = useRef<{
     chats?: ReturnType<typeof setTimeout>;
     requests?: ReturnType<typeof setTimeout>;
-    unread?: ReturnType<typeof setTimeout>;
   }>({});
   const chatIdsRef = useRef(new Set<string>());
 
@@ -30,12 +29,6 @@ export function useMessagesTab() {
   useEffect(() => {
     chatIdsRef.current = new Set(chatRooms.map((chat) => chat.id));
   }, [chatRooms]);
-
-  const loadUnreadCount = useCallback(async () => {
-    if (!currentUserId) return;
-    const response = await apiClient.getUnreadCount();
-    setUnreadCount(response.unreadCount);
-  }, [currentUserId, setUnreadCount]);
 
   const loadChats = useCallback(async () => {
     if (!currentUserId) return;
@@ -52,35 +45,8 @@ export function useMessagesTab() {
     setRequestsLocked(Boolean(response.isLocked));
   }, [currentUserId]);
 
-  const refreshChat = useCallback(
-    async (chatId: string) => {
-      if (!currentUserId || !chatId) return;
-      try {
-        const { chat } = await apiClient.getChat(chatId);
-        const canSeeChat =
-          chat.status === LeankStatus.ACTIVE &&
-          (chat.ownerId === currentUserId ||
-            chat.participantIds.includes(currentUserId));
-
-        setChatRooms((prev) => {
-          if (!canSeeChat) return prev.filter((item) => item.id !== chatId);
-          const index = prev.findIndex((item) => item.id === chatId);
-          if (index === -1) return [chat, ...prev];
-          const next = [...prev];
-          next[index] = { ...prev[index], ...chat };
-          return next;
-        });
-      } catch {
-        setChatRooms((prev) => prev.filter((item) => item.id !== chatId));
-      } finally {
-        await loadUnreadCount().catch(() => {});
-      }
-    },
-    [currentUserId, loadUnreadCount],
-  );
-
   const schedule = useCallback(
-    (kind: "chats" | "requests" | "unread", callback: () => Promise<void>) => {
+    (kind: "chats" | "requests", callback: () => Promise<void>) => {
       const timers = refreshTimersRef.current;
       if (timers[kind]) clearTimeout(timers[kind]);
       // Realtime can deliver related row updates back-to-back; coalesce them to avoid flicker.
@@ -163,25 +129,27 @@ export function useMessagesTab() {
   useEffect(() => {
     if (!currentUserId) return;
     const unsubscribers = [
+      realtime.subscribe("connect", () => schedule("chats", loadChats)),
       realtime.subscribe("reaction.updated", () =>
         schedule("requests", loadRequests),
       ),
       realtime.subscribe("leank.updated", (payload) => {
         const chatId = payload?.leankId || payload?.id;
-        if (chatId) void refreshChat(chatId);
-        else schedule("chats", loadChats);
+        if (!chatId || chatIdsRef.current.has(chatId)) {
+          schedule("chats", loadChats);
+        }
       }),
       realtime.subscribe("message.created", (payload) => {
         const chatId = payload?.leankId;
         if (chatId && chatIdsRef.current.has(chatId)) {
-          void refreshChat(chatId);
+          schedule("chats", loadChats);
         }
       }),
       realtime.subscribe("chatMeta.updated", () =>
         schedule("chats", loadChats),
       ),
       realtime.subscribe("unread.changed", () =>
-        schedule("unread", loadUnreadCount),
+        schedule("chats", loadChats),
       ),
     ];
 
@@ -195,8 +163,6 @@ export function useMessagesTab() {
     currentUserId,
     loadChats,
     loadRequests,
-    loadUnreadCount,
-    refreshChat,
     schedule,
   ]);
 

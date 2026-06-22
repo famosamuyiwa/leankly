@@ -166,6 +166,14 @@ export class LeanksService {
   }
 
   async chats(user: User) {
+    const chatInclude = {
+      ...include,
+      lastMessage: true,
+      chatMetadata: {
+        where: { userId: user.id },
+        take: 1,
+      },
+    } satisfies Prisma.LeankInclude;
     const rows = await this.prisma.leank.findMany({
       where: {
         status: LeankStatus.ACTIVE,
@@ -174,11 +182,31 @@ export class LeanksService {
           { participants: { some: { userId: user.id } } },
         ],
       },
-      include,
+      include: chatInclude,
       orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
       take: 100,
     });
-    return { items: rows.map(presentLeank) };
+    const metas = rows.flatMap((row) => row.chatMetadata);
+    const unreadCount = rows.filter((row) => {
+      if (
+        !row.lastMessageAt ||
+        !row.lastMessage ||
+        row.lastMessage.senderId === user.id
+      ) {
+        return false;
+      }
+      const readAt = row.chatMetadata[0]?.readAt;
+      return !readAt || readAt < row.lastMessageAt;
+    }).length;
+
+    return {
+      items: rows.map((row) => ({
+        ...presentLeank(row),
+        lastMessage: row.lastMessage || undefined,
+      })),
+      metas,
+      unreadCount,
+    };
   }
 
   async update(user: User, id: string, input: UpdateLeankDto) {

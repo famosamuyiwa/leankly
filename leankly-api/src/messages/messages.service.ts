@@ -121,6 +121,7 @@ export class MessagesService {
   async unreadCount(user: User) {
     const chats = await this.prisma.leank.findMany({
       where: {
+        status: LeankStatus.ACTIVE,
         lastMessageAt: { not: null },
         OR: [
           { ownerId: user.id },

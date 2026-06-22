@@ -1,5 +1,11 @@
 import { account, appwriteConfig } from "@/appwrite/config";
-import { Leank, Message, Participants, User } from "@/interfaces";
+import {
+  Leank,
+  Message,
+  Participants,
+  User,
+  UserChatMeta,
+} from "@/interfaces";
 import { fetch as expoFetch } from "expo/fetch";
 import { createJwtProvider, requestWithJwt } from "./auth-token";
 import {
@@ -120,11 +126,16 @@ export const apiClient = {
   getHosted: () => apiFetch<{ items: Leank[] }>("/v1/leanks/hosted"),
   getAttended: () => apiFetch<{ items: Leank[] }>("/v1/leanks/attended"),
   async getChats(): Promise<ChatListResponse> {
-    const [result, unread] = await Promise.all([
-      apiFetch<{ items: Leank[] }>("/v1/leanks/chats"),
-      this.getUnreadCount(),
-    ]);
-    return { chats: result.items, metas: [], unreadCount: unread.unreadCount };
+    const result = await apiFetch<{
+      items: Leank[];
+      metas: UserChatMeta[];
+      unreadCount: number;
+    }>("/v1/leanks/chats");
+    return {
+      chats: result.items,
+      metas: result.metas,
+      unreadCount: result.unreadCount,
+    };
   },
   async getChat(chatId: string): Promise<ChatDetailResponse> {
     return { chat: await apiFetch<Leank>(`/v1/leanks/${chatId}`) };

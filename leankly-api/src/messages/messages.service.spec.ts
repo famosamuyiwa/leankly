@@ -137,5 +137,10 @@ describe("MessagesService", () => {
     );
 
     await expect(service.unreadCount(user)).resolves.toEqual({ count: 1 });
+    expect(prisma.leank.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ status: LeankStatus.ACTIVE }),
+      }),
+    );
   });
 });

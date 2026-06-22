@@ -7,7 +7,7 @@ import { useAppwriteUpload } from "./useBucket";
 
 const useImagePicker = () => {
   const [mediaResults, setMediaResults] = useState<MediaResult[]>([]);
-  const { uploadFiles, progress, isUploading } = useAppwriteUpload();
+  const { uploadFiles } = useAppwriteUpload();
 
   async function pickMultimedia(
     isUpload: boolean,

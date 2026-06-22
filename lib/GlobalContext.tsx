@@ -40,7 +40,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const [showPreview, setShowPreview] = useState(false);
   const toastRef = useRef<any>({});
   const loaderRef = useRef<any>({});
-  const currentUserId = currentUser?.$id;
+  const currentUserId = currentUser?.id;
 
   const displayToast = (toast: ToastProps) => {
     toastRef.current.show({
@@ -89,7 +89,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   }, [currentUserId]);
 
   const blockUser = async (userId: string) => {
-    if (!userId || userId === currentUser?.$id) return;
+    if (!userId || userId === currentUser?.id) return;
     try {
       await apiClient.blockUser(userId);
       const response = await apiClient.getBlocks();
@@ -114,13 +114,13 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const openUserPreview = (user: BasicUser) => {
-    if (!user?.$id || user.$id === currentUser?.$id) return;
+    if (!user?.id || user.id === currentUser?.id) return;
     setPreviewUser(user);
     setShowPreview(true);
   };
 
   const reportUser = async (userId: string, reason: string, notes?: string) => {
-    if (!currentUser?.$id || !userId || !reason) return;
+    if (!currentUser?.id || !userId || !reason) return;
     try {
       await apiClient.reportUser(userId, reason, notes);
       displayToast({
@@ -148,7 +148,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     const user = await apiClient.getMe();
 
     if (user) {
-      setCurrentUser(user as unknown as User);
+      setCurrentUser(user);
     }
   };
 
@@ -193,7 +193,7 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
         onClose={closeUserPreview}
         onBlock={(id) => blockUser(id)}
         isBlocked={(id) => isBlocked(id)}
-        disableBlock={previewUser?.$id === currentUser?.$id}
+        disableBlock={previewUser?.id === currentUser?.id}
         onReport={(id, reason, notes) => reportUser(id, reason, notes)}
       />
     </GlobalContext.Provider>

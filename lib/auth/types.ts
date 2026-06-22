@@ -1,5 +1,11 @@
 import { User } from "@/interfaces";
-import { Models } from "react-native-appwrite";
+
+export type AuthIdentity = {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+};
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -8,7 +14,7 @@ export type AuthSessionState = {
   isLoading: boolean;
   isAuthenticated: boolean;
   isEmailVerified: boolean;
-  accountUser: Models.User<Models.Preferences> | null;
+  identity: AuthIdentity | null;
   profile: User | null;
   error: string | null;
 };

@@ -36,17 +36,17 @@ export default function Profile() {
   const { currentUser } = useGlobalContext();
   const { isPro, openPaywall } = usePremium();
   const hostedQuery = useQuery({
-    queryKey: ["leanks", "hosted", currentUser?.$id],
+    queryKey: ["leanks", "hosted", currentUser?.id],
     queryFn: apiClient.getHosted,
     enabled: Boolean(currentUser),
   });
   const attendedQuery = useQuery({
-    queryKey: ["leanks", "attended", currentUser?.$id],
+    queryKey: ["leanks", "attended", currentUser?.id],
     queryFn: apiClient.getAttended,
     enabled: Boolean(currentUser),
   });
   const usageQuery = useQuery({
-    queryKey: ["usage", currentUser?.$id],
+    queryKey: ["usage", currentUser?.id],
     queryFn: apiClient.getUsage,
     enabled: Boolean(currentUser && !isPro),
   });
@@ -165,7 +165,7 @@ export default function Profile() {
       <LegendList<Leank>
         data={leanks}
         renderItem={renderItem}
-        keyExtractor={(i) => i.$id}
+        keyExtractor={(i) => i.id}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

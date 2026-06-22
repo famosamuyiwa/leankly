@@ -10,6 +10,7 @@ import {
   RequestListResponse,
   UnreadCountResponse,
 } from "./types";
+import { unwrapApiData } from "./response";
 
 export class ApiError extends Error {
   constructor(
@@ -32,32 +33,6 @@ export function clearApiJwt() {
 
 export async function getAppwriteJwt(force = false) {
   return jwtProvider.get(force);
-}
-
-function compatibilityAdapter(value: unknown): any {
-  if (Array.isArray(value)) return value.map(compatibilityAdapter);
-  if (!value || typeof value !== "object") return value;
-  const input = value as Record<string, unknown>;
-  const output: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(input)) {
-    output[key] =
-      key === "date" && typeof item === "string"
-        ? new Date(item)
-        : compatibilityAdapter(item);
-  }
-  if (typeof input.id === "string") output.$id = input.id;
-  if (input.createdAt) output.$createdAt = input.createdAt;
-  if (input.updatedAt) output.$updatedAt = input.updatedAt;
-  if ("avatarUrl" in input && !("avatar" in input)) {
-    output.avatar = input.avatarUrl || "";
-  }
-  if (input.type === "USER" || input.type === "SYSTEM") {
-    output.type = input.type.toLowerCase();
-  }
-  if ("replyToId" in input) output.replyToMessageId = input.replyToId;
-  if ("replyToSender" in input) output.replyToSenderName = input.replyToSender;
-  if ("senderId" in input && input.senderId === null) output.senderId = "";
-  return output;
 }
 
 async function apiFetch<T>(
@@ -91,7 +66,7 @@ async function apiFetch<T>(
       error?.code,
     );
   }
-  return compatibilityAdapter(body.data) as T;
+  return unwrapApiData(body);
 }
 
 function params(input: Record<string, unknown>) {
@@ -166,16 +141,13 @@ export const apiClient = {
   },
   async sendMessage(
     chatId: string,
-    body: { content: string; replyToMessageId?: string | null },
+    body: { content: string; replyToId?: string | null },
   ) {
     const result = await apiFetch<{ message: Message }>(
       `/v1/leanks/${chatId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({
-          content: body.content,
-          replyToId: body.replyToMessageId,
-        }),
+        body: JSON.stringify(body),
       },
     );
     const { chat } = await this.getChat(chatId);

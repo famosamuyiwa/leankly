@@ -1,4 +1,5 @@
 import { appwriteConfig, storage } from "@/appwrite/config";
+import { getAppwriteResourceId } from "@/appwrite/adapters";
 import { MediaResult } from "@/interfaces";
 import { apiClient } from "@/lib/api/client";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -50,12 +51,13 @@ export function useAppwriteUpload() {
             size: source.size || 0,
           },
         });
+        const fileId = getAppwriteResourceId(uploaded);
         const confirmed = await apiClient.confirmMedia({
-          fileId: uploaded.$id,
+          fileId,
           bucket: purpose === "avatar" ? "avatars" : "leank_covers",
           purpose,
         });
-        output[index] = { fileId: uploaded.$id, url: confirmed.viewUrl };
+        output[index] = { fileId, url: confirmed.viewUrl };
         completed += 1;
         setProgress(Math.round((completed / files.length) * 100));
       }

@@ -76,7 +76,7 @@ export const LeankCardBig = ({
   item,
   onAvatarPress,
 }: LeankProps & { onAvatarPress?: (user: BasicUser) => void }) => {
-  const ownerId = item.owner?.$id || item.ownerId;
+  const ownerId = item.owner?.id || item.ownerId;
   const coverSource = item.cover ? { uri: item.cover } : images.leankCover;
   const avatarSource = item.owner?.avatar
     ? { uri: item.owner.avatar }
@@ -125,12 +125,11 @@ export const LeankCardBig = ({
               onPress={() => {
                 if (!ownerId) return;
                 onAvatarPress?.({
-                  $id: ownerId,
+                  id: ownerId,
                   name: item.owner?.name,
                   age: item.owner?.age,
                   avatar: item.owner?.avatar,
-                  joinedAt: (item.owner as any)?.$createdAt,
-                } as BasicUser);
+                });
               }}
               className="rounded-full border-2 border-white"
             >
@@ -225,7 +224,7 @@ export const RequestCard = ({
               {item.user?.name}, {item.user?.age}
             </Text>
             <Text className="font-plus-jakarta-regular text-sm text-gray-400">
-              {timeElapsed(item.$createdAt || "")}
+              {timeElapsed(item.createdAt)}
             </Text>
           </View>
 
@@ -267,8 +266,8 @@ export const ChatCard = ({
   onPress: () => void;
 }) => {
   const isUserLastMessage = item.lastMessage?.senderId === userId;
-  const lastMessageTs = item.lastMessage?.$createdAt
-    ? new Date(item.lastMessage.$createdAt).getTime()
+  const lastMessageTs = item.lastMessage?.createdAt
+    ? new Date(item.lastMessage.createdAt).getTime()
     : 0;
   const readAtTs = meta?.readAt ? new Date(meta.readAt).getTime() : 0;
   const isUnread =
@@ -297,9 +296,7 @@ export const ChatCard = ({
           </Text>
           <Text className="font-plus-jakarta-regular text-sm text-gray-400">
             {timeElapsed(
-              item.lastMessage
-                ? item.lastMessage.$createdAt || ""
-                : item.$createdAt || "",
+              item.lastMessage ? item.lastMessage.createdAt : item.createdAt,
             )}
           </Text>
         </View>

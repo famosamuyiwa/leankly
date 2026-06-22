@@ -61,7 +61,7 @@ function EditProfileContent() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            if (!currentUser?.$id) return;
+            if (!currentUser?.id) return;
 
             try {
               showLoader("Deleting account...", true);

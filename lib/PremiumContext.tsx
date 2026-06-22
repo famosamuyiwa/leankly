@@ -41,7 +41,7 @@ export const PremiumProvider = ({
   children: React.ReactNode;
 }) => {
   const { currentUser } = useGlobalContext();
-  const { accountUser } = useAuthSession();
+  const { identity } = useAuthSession();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [currentOffering, setCurrentOffering] =
     useState<PurchasesOffering | null>(null);
@@ -110,7 +110,7 @@ export const PremiumProvider = ({
       if (!configured) return;
 
       try {
-        const appUserId = accountUser?.$id;
+        const appUserId = identity?.id;
         if (appUserId && lastAppUserIdRef.current !== appUserId) {
           if (isRevenueCatNativeAvailable()) {
             const { customerInfo: info } = await Purchases.logIn(appUserId);
@@ -131,7 +131,7 @@ export const PremiumProvider = ({
     return () => {
       cancelled = true;
     };
-  }, [accountUser?.$id, userResolved]);
+  }, [identity?.id, userResolved]);
 
   const upgradeToPro = useCallback(
     async (selectedPackage?: PurchasesPackage) => {

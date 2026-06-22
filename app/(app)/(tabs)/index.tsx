@@ -63,13 +63,13 @@ export default function HomeScreen() {
 
   // ✅ use the new hook version
   const { leanks, loading, hasMore, loadedFilterKey, loadMore } = useLeanksFeed(
-    currentUser?.$id,
+    currentUser?.id,
     filters,
   );
   const isFilterLoading = loadedFilterKey !== filterKey;
 
   const filteredLeanks = leanks.filter(
-    (l) => !blockedUserIds.includes(l.ownerId || (l.owner as any)?.$id || ""),
+    (l) => !blockedUserIds.includes(l.ownerId || l.owner?.id || ""),
   );
 
   const isCurrentFilterDeck = deckState.filterKey === filterKey;
@@ -110,11 +110,11 @@ export default function HomeScreen() {
     let didShowLoader = false;
 
     try {
-      if (!currentUser?.$id) {
+      if (!currentUser?.id) {
         Alert.alert("Please sign in to continue");
         return;
       }
-      if (!currentLeank?.$id) return;
+      if (!currentLeank?.id) return;
 
       setIsReacting(true);
 
@@ -128,7 +128,7 @@ export default function HomeScreen() {
 
       const reactedLeank = currentLeank;
       await Promise.all([
-        apiClient.react(reactedLeank.$id, isLiked ? "like" : "skip"),
+        apiClient.react(reactedLeank.id, isLiked ? "like" : "skip"),
         waitForActionLoader(),
       ]);
 
@@ -142,7 +142,7 @@ export default function HomeScreen() {
             ...history,
             {
               index: currentIndex,
-              leankId: reactedLeank.$id,
+              leankId: reactedLeank.id,
               isLiked,
             },
           ],
@@ -164,7 +164,7 @@ export default function HomeScreen() {
   // ———————————————————————————
   const handleUndo = async () => {
     if (reactionHistory.length === 0) return;
-    if (!currentUser?.$id) return;
+    if (!currentUser?.id) return;
     const lastAction = reactionHistory[reactionHistory.length - 1];
 
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -214,7 +214,7 @@ export default function HomeScreen() {
                 } absolute w-5/6 bottom-2`}
               />
               <Animated.View
-                key={currentLeank.$id}
+                key={currentLeank.id}
                 entering={FadeIn.duration(180)}
                 className="w-full flex-1"
               >

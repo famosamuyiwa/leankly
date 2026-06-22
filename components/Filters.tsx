@@ -81,10 +81,10 @@ const Filters = ({ screen }: { screen: Screens }) => {
   }, [isPro, screen, lockedKeys, filters, clearFilter]);
 
   useEffect(() => {
-    if (screen !== Screens.HOME || !currentUser?.$id) return;
-    if (defaultLocationUserRef.current === currentUser.$id) return;
+    if (screen !== Screens.HOME || !currentUser?.id) return;
+    if (defaultLocationUserRef.current === currentUser.id) return;
 
-    defaultLocationUserRef.current = currentUser.$id;
+    defaultLocationUserRef.current = currentUser.id;
     if (!filters[FilterOptions.LOCATION]) {
       setFilter(
         FilterOptions.LOCATION,

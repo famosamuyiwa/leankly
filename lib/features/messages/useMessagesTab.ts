@@ -7,18 +7,12 @@ import { realtime } from "@/lib/api/realtime";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const getParticipantIds = (value: any): string[] => {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.values)) return value.values;
-  return [];
-};
-
 export function useMessagesTab() {
   const params = useLocalSearchParams<{ nav?: string }>();
   const { unreadCount, setUnreadCount, currentUser, showLoader, hideLoader } =
     useGlobalContext();
   const { isPro } = usePremium();
-  const currentUserId = currentUser?.$id;
+  const currentUserId = currentUser?.id;
   const [refreshing, setRefreshing] = useState(false);
   const [chatRooms, setChatRooms] = useState<Leank[]>([]);
   const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
@@ -34,7 +28,7 @@ export function useMessagesTab() {
   const isChats = params.nav === NavbarOptions.CHATS;
 
   useEffect(() => {
-    chatIdsRef.current = new Set(chatRooms.map((chat) => chat.$id));
+    chatIdsRef.current = new Set(chatRooms.map((chat) => chat.id));
   }, [chatRooms]);
 
   const loadUnreadCount = useCallback(async () => {
@@ -63,22 +57,21 @@ export function useMessagesTab() {
       if (!currentUserId || !chatId) return;
       try {
         const { chat } = await apiClient.getChat(chatId);
-        const participantIds = getParticipantIds(chat.participantIds);
         const canSeeChat =
           chat.status === LeankStatus.ACTIVE &&
           (chat.ownerId === currentUserId ||
-            participantIds.includes(currentUserId));
+            chat.participantIds.includes(currentUserId));
 
         setChatRooms((prev) => {
-          if (!canSeeChat) return prev.filter((item) => item.$id !== chatId);
-          const index = prev.findIndex((item) => item.$id === chatId);
+          if (!canSeeChat) return prev.filter((item) => item.id !== chatId);
+          const index = prev.findIndex((item) => item.id === chatId);
           if (index === -1) return [chat, ...prev];
           const next = [...prev];
           next[index] = { ...prev[index], ...chat };
           return next;
         });
       } catch {
-        setChatRooms((prev) => prev.filter((item) => item.$id !== chatId));
+        setChatRooms((prev) => prev.filter((item) => item.id !== chatId));
       } finally {
         await loadUnreadCount().catch(() => {});
       }
@@ -102,7 +95,7 @@ export function useMessagesTab() {
     async (request: LeankRequest) => {
       showLoader();
       try {
-        const response = await apiClient.acceptRequest(request.$id);
+        const response = await apiClient.acceptRequest(request.id);
         setRequests(response.requests);
         setRequestsLocked(Boolean(response.isLocked));
         await loadChats();
@@ -117,7 +110,7 @@ export function useMessagesTab() {
     async (request: LeankRequest) => {
       showLoader();
       try {
-        const response = await apiClient.declineRequest(request.$id);
+        const response = await apiClient.declineRequest(request.id);
         setRequests(response.requests);
         setRequestsLocked(Boolean(response.isLocked));
       } finally {
@@ -131,17 +124,17 @@ export function useMessagesTab() {
     (chat: Leank) => {
       setChatMetas((prev) => {
         const index = prev.findIndex(
-          (meta) => meta.leankId === chat.$id && meta.userId === currentUserId,
+          (meta) => meta.leankId === chat.id && meta.userId === currentUserId,
         );
         if (index === -1) return prev;
         const next = [...prev];
-        next[index] = { ...next[index], readAt: new Date() };
+        next[index] = { ...next[index], readAt: new Date().toISOString() };
         return next;
       });
 
       router.push({
         pathname: "/messages/[chat]",
-        params: { chat: chat.$id },
+        params: { chat: chat.id },
       });
     },
     [currentUserId],
@@ -174,7 +167,7 @@ export function useMessagesTab() {
         schedule("requests", loadRequests),
       ),
       realtime.subscribe("leank.updated", (payload) => {
-        const chatId = payload?.leankId || payload?.id || payload?.$id;
+        const chatId = payload?.leankId || payload?.id;
         if (chatId) void refreshChat(chatId);
         else schedule("chats", loadChats);
       }),
@@ -209,7 +202,7 @@ export function useMessagesTab() {
 
   useEffect(() => {
     const unsubscribers = chatRooms.map((chat) =>
-      realtime.subscribeLeank(chat.$id),
+      realtime.subscribeLeank(chat.id),
     );
     return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
   }, [chatRooms]);

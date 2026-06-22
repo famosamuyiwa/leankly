@@ -10,7 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test:api": "node --import tsx --test test/api-auth-token.test.ts",
+    "test:api": "node --import tsx --test test/*.test.ts",
     "verify": "npm run test:api && npm run typecheck && npm run lint"
   },
   "dependencies": {

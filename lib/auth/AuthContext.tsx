@@ -1,4 +1,5 @@
 import { account } from "@/appwrite/config";
+import { toAuthIdentity } from "@/appwrite/adapters";
 import { ToastType } from "@/constants/enums";
 import { apiClient, clearApiJwt } from "@/lib/api/client";
 import { realtime } from "@/lib/api/realtime";
@@ -17,11 +18,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { ID, Models, OAuthProvider } from "react-native-appwrite";
+import { ID, OAuthProvider } from "react-native-appwrite";
 import { syncBackendProfile } from "./profileSync";
 import { authRedirects, makeOAuthReturnUrl } from "./redirects";
 import {
   AuthCredentials,
+  AuthIdentity,
   AuthSessionState,
   EmailOtpChallenge,
   OAuthProviderName,
@@ -56,49 +58,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
     isEmailVerified: false,
-    accountUser: null,
+    identity: null,
     profile: null,
     error: null,
   });
   const bootstrapRef = useRef(false);
 
-  const applyAccountUser = useCallback(
-    async (
-      accountUser: Models.User<Models.Preferences>,
-      fallbackName?: string,
-    ) => {
-      console.log(1);
+  const applyIdentity = useCallback(
+    async (identity: AuthIdentity, fallbackName?: string) => {
       const profile = await syncBackendProfile({
-        accountUser,
+        identity,
         fallbackName,
       });
-      console.log(2);
       if (expoPushToken) {
-        await syncPushTarget(accountUser.$id, expoPushToken).catch((error) =>
+        await syncPushTarget(identity.id, expoPushToken).catch((error) =>
           console.warn("Push target registration failed", error),
         );
       }
-      console.log(3);
       setCurrentUser(profile);
-      console.log(4);
       setState({
         status: "authenticated",
         isLoading: false,
         isAuthenticated: true,
-        isEmailVerified: accountUser.emailVerification,
-        accountUser,
+        isEmailVerified: identity.emailVerified,
+        identity,
         profile,
         error: null,
       });
-      console.log(5);
     },
     [expoPushToken, setCurrentUser],
   );
 
   const refreshSession = useCallback(async () => {
     try {
-      const accountUser = await account.get();
-      await applyAccountUser(accountUser);
+      const identity = toAuthIdentity(await account.get());
+      await applyIdentity(identity);
     } catch (error: any) {
       setCurrentUser(undefined);
       setState({
@@ -106,12 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         isAuthenticated: false,
         isEmailVerified: false,
-        accountUser: null,
+        identity: null,
         profile: null,
         error: error?.message || null,
       });
     }
-  }, [applyAccountUser, setCurrentUser]);
+  }, [applyIdentity, setCurrentUser]);
 
   useEffect(() => {
     if (bootstrapRef.current) return;
@@ -121,43 +115,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (!state.accountUser || !expoPushToken) return;
-    void applyAccountUser(state.accountUser);
-  }, [applyAccountUser, expoPushToken, state.accountUser]);
+    if (!state.identity || !expoPushToken) return;
+    void applyIdentity(state.identity);
+  }, [applyIdentity, expoPushToken, state.identity]);
 
   const loginWithEmail = useCallback(
     async ({ email, password }: AuthCredentials) => {
       await account.createEmailPasswordSession({ email, password });
-      const accountUser = await account.get();
+      const identity = toAuthIdentity(await account.get());
 
-      if (!accountUser.emailVerification) {
+      if (!identity.emailVerified) {
         // A token session cannot be created while this password session is active.
         await account.deleteSession({ sessionId: "current" });
         const token = await account.createEmailToken({
-          userId: accountUser.$id,
-          email: accountUser.email,
+          userId: identity.id,
+          email: identity.email,
         });
         return { userId: token.userId };
       }
 
-      await applyAccountUser(accountUser);
+      await applyIdentity(identity);
       return null;
     },
-    [applyAccountUser],
+    [applyIdentity],
   );
 
   const signUpWithEmail = useCallback(
     async ({ email, password, name }: AuthCredentials) => {
-      const accountUser = await account.create({
-        userId: ID.unique(),
-        email,
-        password,
-        name,
-      });
+      const identity = toAuthIdentity(
+        await account.create({
+          userId: ID.unique(),
+          email,
+          password,
+          name,
+        }),
+      );
 
       const token = await account.createEmailToken({
-        userId: accountUser.$id,
-        email: accountUser.email,
+        userId: identity.id,
+        email: identity.email,
       });
       return { userId: token.userId };
     },
@@ -176,10 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       await account.createSession({ userId, secret: otp });
-      const accountUser = await account.get();
-      await applyAccountUser(accountUser);
+      const identity = toAuthIdentity(await account.get());
+      await applyIdentity(identity);
     },
-    [applyAccountUser],
+    [applyIdentity],
   );
 
   const requestPasswordRecovery = useCallback(async (email: string) => {
@@ -223,8 +219,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         await account.createSession({ userId, secret });
-        const accountUser = await account.get();
-        await applyAccountUser(accountUser);
+        const identity = toAuthIdentity(await account.get());
+        await applyIdentity(identity);
         return;
       }
 
@@ -233,13 +229,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Sign in was cancelled",
       });
     },
-    [applyAccountUser, displayToast],
+    [applyIdentity, displayToast],
   );
 
   const logout = useCallback(async () => {
     try {
-      if (state.accountUser) {
-        await deletePushTarget(state.accountUser.$id).catch((error) =>
+      if (state.identity) {
+        await deletePushTarget(state.identity.id).catch((error) =>
           console.warn("Push target removal failed", error),
         );
       }
@@ -259,16 +255,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         isAuthenticated: false,
         isEmailVerified: false,
-        accountUser: null,
+        identity: null,
         profile: null,
         error: null,
       });
     }
-  }, [setCurrentUser, state.accountUser]);
+  }, [setCurrentUser, state.identity]);
 
   const deactivateAccount = useCallback(async () => {
     await apiClient.deleteMe();
-    if (state.accountUser) await deletePushTarget(state.accountUser.$id);
+    if (state.identity) await deletePushTarget(state.identity.id);
     await account.updateStatus();
     clearApiJwt();
     realtime.disconnect();
@@ -279,11 +275,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: false,
       isAuthenticated: false,
       isEmailVerified: false,
-      accountUser: null,
+      identity: null,
       profile: null,
       error: null,
     });
-  }, [setCurrentUser, state.accountUser]);
+  }, [setCurrentUser, state.identity]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

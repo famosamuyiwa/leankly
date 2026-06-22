@@ -1,5 +1,5 @@
 import { Colors } from "@/constants/common";
-import { BasicUser, Participants } from "@/interfaces";
+import { Participants } from "@/interfaces";
 import { useChatSettings } from "@/lib/features/messages/useChatSettings";
 import { formatDate } from "@/lib/utils";
 import { Entypo, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -43,7 +43,7 @@ export default function Settings() {
         className="aspect-square rounded-b-3xl"
       />
     ),
-    [activeLeank]
+    [activeLeank],
   );
 
   const leankerItem = (item: Participants, index: number) => (
@@ -53,11 +53,11 @@ export default function Settings() {
           activeOpacity={0.7}
           onPress={() =>
             openLeankerPreview({
-              $id: item.user.$id,
+              id: item.user.id,
               name: item.user.name,
-              age: item.user.age as any,
+              age: item.user.age,
               avatar: item.user.avatar,
-            } as BasicUser)
+            })
           }
         >
           <Image
@@ -66,13 +66,13 @@ export default function Settings() {
           />
         </TouchableOpacity>
         <Text className="font-plus-jakarta-semibold">
-          {item.user.$id === currentUserId ? "You" : item.user.name}
+          {item.user.id === currentUserId ? "You" : item.user.name}
         </Text>
       </View>
-      {item.user.$id === activeLeank?.owner?.$id ? (
+      {item.user.id === activeLeank?.owner?.id ? (
         <Text className="font-plus-jakarta-regular text-gray-400 ">Host</Text>
       ) : (
-        currentUserId === activeLeank?.owner?.$id && (
+        currentUserId === activeLeank?.owner?.id && (
           <TouchableOpacity
             activeOpacity={0.6}
             onPress={() => handleRemove(item)}
@@ -173,7 +173,10 @@ export default function Settings() {
 
           <View className="gap-5">
             {activeLeank?.owner &&
-              leankerItem({ user: activeLeank.owner } as Participants, 0)}
+              leankerItem(
+                { id: `host-${activeLeank.owner.id}`, user: activeLeank.owner },
+                0,
+              )}
             {leankers.map((item, index) => leankerItem(item, index))}
           </View>
         </View>
@@ -181,9 +184,7 @@ export default function Settings() {
         {/* Leave */}
         <TouchableOpacity
           onPress={
-            currentUserId === activeLeank?.owner?.$id
-              ? handleClose
-              : handleLeave
+            currentUserId === activeLeank?.owner?.id ? handleClose : handleLeave
           }
           className="bg-red-600 rounded-2xl p-4 shadow-sm"
           activeOpacity={0.6}
@@ -191,9 +192,7 @@ export default function Settings() {
           <View className="flex-row items-center justify-center">
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text className="text-white font-plus-jakarta-semibold text-lg ml-2">
-              {currentUserId === activeLeank?.owner?.$id
-                ? "Close"
-                : "Leave"}
+              {currentUserId === activeLeank?.owner?.id ? "Close" : "Leave"}
             </Text>
           </View>
         </TouchableOpacity>

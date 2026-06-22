@@ -16,7 +16,7 @@ import {
 export function useChatScreen() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview, setUnreadCount } = useGlobalContext();
-  const currentUserId = currentUser?.$id;
+  const currentUserId = currentUser?.id;
   const params = useLocalSearchParams<{ chat?: string }>();
   const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
   const [messages, setMessages] = useState<ChatListItem[]>([]);
@@ -31,8 +31,8 @@ export function useChatScreen() {
     const decorated = injectDateSeparators(rawNext);
     setMessages((prev) => {
       if (!Array.isArray(prev) || prev.length === 0) return decorated;
-      const prevLast = prev[prev.length - 1]?.$id;
-      const nextLast = decorated[decorated.length - 1]?.$id;
+      const prevLast = prev[prev.length - 1]?.id;
+      const nextLast = decorated[decorated.length - 1]?.id;
       if (prev.length === decorated.length && prevLast === nextLast)
         return prev;
       return decorated;
@@ -88,7 +88,7 @@ export function useChatScreen() {
 
     const unsubscribeRoom = realtime.subscribeLeank(chatId);
     const unsubscribeLeank = realtime.subscribe("leank.updated", (payload) => {
-      const updatedId = payload?.leankId || payload?.id || payload?.$id;
+      const updatedId = payload?.leankId || payload?.id;
       if (updatedId !== chatId) return;
       void loadLeank().catch(() => {});
     });
@@ -128,7 +128,7 @@ export function useChatScreen() {
     try {
       const response = await apiClient.sendMessage(chatId, {
         content: messageContent,
-        replyToMessageId: replyTo?.$id,
+        replyToId: replyTo?.id,
       });
 
       setMessages((prev) => {

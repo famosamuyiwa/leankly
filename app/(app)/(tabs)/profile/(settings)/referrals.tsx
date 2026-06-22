@@ -27,7 +27,7 @@ const ReferralsScreen = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!currentUser?.$id) return;
+      if (!currentUser?.id) return;
       try {
         const stats = await apiClient.getReferral();
         setCode(stats.referralCode);
@@ -36,7 +36,7 @@ const ReferralsScreen = () => {
       } catch {}
     };
     load();
-  }, [currentUser?.$id]);
+  }, [currentUser?.id]);
 
   const copyToClipboard = async () => {
     if (!code) return;

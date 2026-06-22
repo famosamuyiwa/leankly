@@ -97,7 +97,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setAvatar(currentUser.avatar);
     setName(currentUser.name);
     setEmail(currentUser.email);
-    setAge(currentUser.age);
+    setAge(currentUser.age ?? 0);
     setLocation(currentUser.location);
     setLocationCoords(
       typeof currentUser.locationLat === "number" &&
@@ -112,7 +112,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setAvatar(currentUser.avatar);
     setName(currentUser.name);
     setEmail(currentUser.email);
-    setAge(currentUser.age);
+    setAge(currentUser.age ?? 0);
     setLocation(currentUser.location);
     setLocationCoords(
       typeof currentUser.locationLat === "number" &&

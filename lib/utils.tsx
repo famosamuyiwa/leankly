@@ -1,4 +1,4 @@
-export const formatDate = (date: Date | "") => {
+export const formatDate = (date: Date | string | "") => {
   if (date === "") return;
   return new Date(date).toLocaleDateString("en-US", {
     weekday: "short", // Monday

@@ -71,7 +71,7 @@ export default function Chat() {
         className="size-14 rounded-full"
       />
     ),
-    [currentLeank]
+    [currentLeank],
   );
 
   const renderItem = ({
@@ -90,7 +90,7 @@ export default function Chat() {
     return (
       <MessageBubble
         item={item}
-        currentUserId={currentUser?.$id}
+        currentUserId={currentUser?.id}
         showSenderName={startsSenderGroup}
         showAvatar={endsSenderGroup}
         compactWithNext={compactWithNext}
@@ -98,7 +98,7 @@ export default function Chat() {
         openSwipeRef={openSwipeRef}
         onUserPress={(user) =>
           openUserPreview({
-            $id: user.$id,
+            id: user.id,
             name: user.name,
             avatar: user.avatar,
             age: user.age,
@@ -162,7 +162,7 @@ export default function Chat() {
                 : undefined
             }
             renderItem={renderItem}
-            keyExtractor={(item) => item?.$id ?? "unknown"}
+            keyExtractor={(item) => item?.id ?? "unknown"}
             recycleItems={true}
             estimatedItemSize={100}
             alignItemsAtEnd
@@ -187,7 +187,7 @@ export default function Chat() {
                 style={{ color: getUserColor(replyTo.senderId) }}
               >
                 Replying to{" "}
-                {replyTo.senderId === currentUser?.$id
+                {replyTo.senderId === currentUser?.id
                   ? "yourself"
                   : replyTo.senderName}
               </Text>
@@ -269,16 +269,16 @@ const MessageBubble = React.memo(
   }: MessageBubbleProps) => {
     const isSystem = isSystemMessage(item);
     const isSender = item.senderId === currentUserId;
-    const replyTarget = isRealMessage(item) && item.replyToMessageId
-      ? {
-          messageId: item.replyToMessageId,
-          senderId: item.replyToSenderId,
-          senderName: item.replyToSenderName,
-          content: item.replyToContent,
-        }
-      : null;
+    const replyTarget =
+      isRealMessage(item) && item.replyToId
+        ? {
+            messageId: item.replyToId,
+            senderName: item.replyToSender,
+            content: item.replyToContent,
+          }
+        : null;
     const senderColor = getUserColor(item.senderId);
-    const replyColor = getUserColor(replyTarget?.senderId);
+    const replyColor = getUserColor(replyTarget?.senderName);
     const translateX = useSharedValue(0);
 
     const closeSwipe = React.useCallback(() => {
@@ -290,7 +290,7 @@ const MessageBubble = React.memo(
       () => ({
         close: closeSwipe,
       }),
-      [closeSwipe]
+      [closeSwipe],
     );
 
     const handleReplySelect = React.useCallback(() => {
@@ -316,7 +316,7 @@ const MessageBubble = React.memo(
           .onUpdate((event) => {
             translateX.value = Math.min(
               Math.max(event.translationX, 0),
-              REPLY_SWIPE_MAX
+              REPLY_SWIPE_MAX,
             );
           })
           .onEnd(() => {
@@ -329,7 +329,7 @@ const MessageBubble = React.memo(
           .onFinalize(() => {
             translateX.value = withSpring(0, REPLY_SWIPE_SPRING);
           }),
-      [handleReplySelect, translateX]
+      [handleReplySelect, translateX],
     );
     /* eslint-enable react-hooks/immutability, react-hooks/refs */
 
@@ -342,13 +342,13 @@ const MessageBubble = React.memo(
         translateX.value,
         [0, REPLY_SWIPE_TRIGGER, REPLY_SWIPE_MAX],
         [0.55, 0.95, 1.08],
-        Extrapolation.CLAMP
+        Extrapolation.CLAMP,
       );
       const opacity = interpolate(
         translateX.value,
         [0, 14, REPLY_SWIPE_TRIGGER],
         [0, 0.65, 1],
-        Extrapolation.CLAMP
+        Extrapolation.CLAMP,
       );
 
       return {
@@ -366,7 +366,7 @@ const MessageBubble = React.memo(
         </View>
       );
     }
-    const messageCreatedAt = isRealMessage(item) ? item.$createdAt : undefined;
+    const messageCreatedAt = isRealMessage(item) ? item.createdAt : undefined;
 
     return (
       <View className="relative">
@@ -388,16 +388,17 @@ const MessageBubble = React.memo(
             {!isSender && showAvatar && (
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() =>
+                onPress={() => {
+                  if (!item.senderId) return;
                   onUserPress?.({
-                    $id: item.senderId,
+                    id: item.senderId,
                     name: item.senderName,
-                    avatar: item.senderPhoto,
-                  })
-                }
+                    avatar: item.senderPhoto || undefined,
+                  });
+                }}
               >
                 <Image
-                  source={{ uri: item.senderPhoto }}
+                  source={{ uri: item.senderPhoto || undefined }}
                   className="size-10 rounded-full"
                 />
               </TouchableOpacity>
@@ -463,7 +464,7 @@ const MessageBubble = React.memo(
         </GestureDetector>
       </View>
     );
-  }
+  },
 );
 
 MessageBubble.displayName = "MessageBubble";

@@ -4,21 +4,21 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { ID } from "react-native-appwrite";
 
-const key = (appwriteUserId: string) => `push-target:${appwriteUserId}`;
+const key = (identityId: string) => `push-target:${identityId}`;
 
-export async function syncPushTarget(appwriteUserId: string, token: string) {
+export async function syncPushTarget(identityId: string, token: string) {
   if (Platform.OS !== "ios" && Platform.OS !== "android") return;
   const providerId =
     Platform.OS === "ios"
       ? appwriteConfig.apnsProviderId
       : appwriteConfig.fcmProviderId;
   if (!providerId) return;
-  let targetId = await SecureStore.getItemAsync(key(appwriteUserId));
+  let targetId = await SecureStore.getItemAsync(key(identityId));
   if (targetId) {
     try {
       await account.updatePushTarget({ targetId, identifier: token });
     } catch {
-      await SecureStore.deleteItemAsync(key(appwriteUserId));
+      await SecureStore.deleteItemAsync(key(identityId));
       targetId = null;
     }
   }
@@ -29,7 +29,7 @@ export async function syncPushTarget(appwriteUserId: string, token: string) {
       identifier: token,
       providerId,
     });
-    await SecureStore.setItemAsync(key(appwriteUserId), targetId);
+    await SecureStore.setItemAsync(key(identityId), targetId);
   }
   await apiClient.updatePushTarget({
     targetId,
@@ -39,9 +39,9 @@ export async function syncPushTarget(appwriteUserId: string, token: string) {
   });
 }
 
-export async function deletePushTarget(appwriteUserId: string) {
-  const targetId = await SecureStore.getItemAsync(key(appwriteUserId));
+export async function deletePushTarget(identityId: string) {
+  const targetId = await SecureStore.getItemAsync(key(identityId));
   if (!targetId) return;
   await account.deletePushTarget({ targetId }).catch(() => undefined);
-  await SecureStore.deleteItemAsync(key(appwriteUserId));
+  await SecureStore.deleteItemAsync(key(identityId));
 }

@@ -1,18 +1,18 @@
 import { User } from "@/interfaces";
 import { apiClient } from "@/lib/api/client";
-import { Models } from "react-native-appwrite";
+import { AuthIdentity } from "./types";
 
 type SyncProfileInput = {
-  accountUser: Models.User<Models.Preferences>;
+  identity: AuthIdentity;
   fallbackName?: string;
 };
 
 export async function syncBackendProfile({
-  accountUser,
+  identity,
   fallbackName,
 }: SyncProfileInput): Promise<User> {
   const profile = await apiClient.getMe();
-  const desiredName = fallbackName?.trim() || accountUser.name?.trim();
+  const desiredName = fallbackName?.trim() || identity.name.trim();
   if (desiredName && desiredName !== profile.name) {
     return apiClient.updateMe({ name: desiredName });
   }

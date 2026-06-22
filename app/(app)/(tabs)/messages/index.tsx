@@ -75,14 +75,14 @@ export default function MessagesScreen() {
                 item={item}
                 meta={chatMetas.find(
                   (meta) =>
-                    meta.leankId === item.$id && meta.userId === currentUserId
+                    meta.leankId === item.id && meta.userId === currentUserId,
                 )}
                 userId={currentUserId}
                 onPress={() => handleChatPress(item)}
               />
             </View>
           )}
-          keyExtractor={(i) => i.$id}
+          keyExtractor={(i) => i.id}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
@@ -102,7 +102,7 @@ export default function MessagesScreen() {
               />
             </View>
           )}
-          keyExtractor={(i) => i.$id}
+          keyExtractor={(i) => i.id}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />

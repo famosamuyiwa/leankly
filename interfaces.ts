@@ -11,102 +11,106 @@ export interface ToastProps {
   duration?: number;
 }
 
-export interface BackendDocument {
-  $id: string;
-  $createdAt?: string;
-  $updatedAt?: string;
-  [key: string]: unknown;
+export interface BackendEntity {
+  id: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
-export interface User extends BackendDocument {
+export interface User extends BackendEntity {
   avatar: string;
+  avatarFileId?: string | null;
   name: string;
   email: string;
-  age: number;
+  emailVerified: boolean;
+  age: number | null;
   location: string;
-  locationLat?: number | null;
-  locationLng?: number | null;
-  pushToken?: string;
-  sex?: string;
-  referralCode?: string;
+  locationLat: number | null;
+  locationLng: number | null;
+  sex: string;
+  referralCode: string | null;
   bonusInterests: number;
-  referralCount?: number;
-}
-
-export interface Leank extends BackendDocument {
-  cover: string;
-  title: string;
-  description?: string;
-  status?: LeankStatus;
-  category?: LeankCategory;
-  peopleRequired?: number;
-  date: Date;
-  time: string;
-  location: string;
-  locationLat?: number | null;
-  locationLng?: number | null;
-  owner?: User;
-  ownerId: string;
-  participantIds?: string[];
-  lastMessage?: Message;
-}
-
-export interface Reactions extends BackendDocument {
-  userId: string;
-  leankId: string;
-  isLiked: boolean;
-  isDeclined: boolean;
-  status?: RequestAction;
-}
-
-export interface LeankRequest extends BackendDocument {
-  userId: string;
-  leankId: string;
-  user: User;
-  leank: Leank;
-}
-
-export interface Message extends BackendDocument {
-  content: string;
-  senderId: string;
-  senderName: string;
-  senderPhoto: string;
-  leankId: string;
-  type?: "system" | "user";
-  replyToMessageId?: string | null;
-  replyToSenderId?: string | null;
-  replyToSenderName?: string | null;
-  replyToContent?: string | null;
+  referralCount: number;
+  onboardingComplete: boolean;
 }
 
 export interface BasicUser {
-  $id: string;
+  id: string;
   name?: string;
-  age?: number;
+  age?: number | null;
   avatar?: string;
   joinedAt?: string;
 }
 
+export interface Leank extends BackendEntity {
+  cover: string;
+  coverFileId?: string | null;
+  title: string;
+  description: string;
+  status: LeankStatus;
+  category: LeankCategory;
+  peopleRequired: number;
+  date: string;
+  time: string;
+  location: string;
+  locationLat: number | null;
+  locationLng: number | null;
+  isOnline: boolean;
+  owner?: BasicUser;
+  ownerId: string;
+  participantIds: string[];
+  lastMessage?: Message;
+  lastMessageAt?: string | null;
+}
+
+export interface Reactions extends BackendEntity {
+  userId: string;
+  leankId: string;
+  isLiked: boolean;
+  status: RequestAction;
+}
+
+export interface LeankRequest {
+  id: string;
+  userId: string;
+  leankId: string;
+  user: BasicUser;
+  leank: Pick<Leank, "id" | "title" | "ownerId">;
+  createdAt: string;
+}
+
+export interface Message extends BackendEntity {
+  content: string;
+  senderId: string | null;
+  senderName: string;
+  senderPhoto: string | null;
+  leankId: string;
+  type: "SYSTEM" | "USER";
+  replyToId?: string | null;
+  replyToSender?: string | null;
+  replyToContent?: string | null;
+}
+
 export interface Block {
-  $id: string;
-  blockerId: string;
+  id: string;
+  blockerId?: string;
   blockedId: string;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface Report {
-  $id: string;
-  reporterId: string;
-  reportedId: string;
-  reason: string;
-  notes?: string;
-  $createdAt?: string;
+  id: string;
+  reporterId?: string;
+  reportedId?: string;
+  reason?: string;
+  notes?: string | null;
+  createdAt: string;
 }
 
-export interface UserChatMeta extends BackendDocument {
+export interface UserChatMeta extends BackendEntity {
   leankId: string;
   userId: string;
-  readAt: Date;
+  readAt: string | null;
 }
 
 export interface PNAlert {
@@ -123,10 +127,12 @@ export interface MediaResult {
   uri: string;
   name?: string;
   type?: string;
-  size?: any;
+  size?: number;
 }
 
-export interface Participants extends BackendDocument {
-  leank: Leank;
-  user: User;
+export interface Participants {
+  id: string;
+  joinedAt?: string;
+  leank?: Leank;
+  user: BasicUser;
 }

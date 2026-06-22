@@ -39,8 +39,8 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     const seen = new Set<string>();
     return (query.data?.pages.flatMap((page) => page.items) || []).filter(
       (item) => {
-        if (seen.has(item.$id)) return false;
-        seen.add(item.$id);
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
         return true;
       },
     );

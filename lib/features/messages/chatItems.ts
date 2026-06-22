@@ -2,13 +2,13 @@ import { Colors } from "@/constants/common";
 import { Message } from "@/interfaces";
 
 export type DateSeparatorItem = {
-  $id: string;
+  id: string;
   content: string;
-  senderId: "system";
+  senderId: null;
   senderName: "System";
-  senderPhoto: "";
+  senderPhoto: null;
   leankId: string;
-  type: "system-date";
+  type: "DATE_SEPARATOR";
 };
 
 export type ChatListItem = Message | DateSeparatorItem;
@@ -24,20 +24,20 @@ export const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
 
   raw.forEach((msg, idx) => {
     const createdAt =
-      msg.$createdAt || msg.$updatedAt || new Date().toISOString();
+      msg.createdAt || msg.updatedAt || new Date().toISOString();
     const dateObj = new Date(createdAt);
     const dateKey = `${dateObj.getFullYear()}-${dateObj.getMonth()}-${dateObj.getDate()}`;
 
     if (dateKey !== lastKey) {
       // Date separators are local UI rows only; the backend stores real messages.
       result.push({
-        $id: `date-${dateKey}-${idx}`,
+        id: `date-${dateKey}-${idx}`,
         content: formatDateLabel(dateObj),
-        senderId: "system",
+        senderId: null,
         senderName: "System",
-        senderPhoto: "",
+        senderPhoto: null,
         leankId: msg.leankId,
-        type: "system-date",
+        type: "DATE_SEPARATOR",
       });
       lastKey = dateKey;
     }
@@ -69,7 +69,7 @@ export const formatDateLabel = (date: Date) => {
 export function isDateSeparator(
   message?: ChatListItem,
 ): message is DateSeparatorItem {
-  return message?.type === "system-date";
+  return message?.type === "DATE_SEPARATOR";
 }
 
 export function isRealMessage(message: ChatListItem): message is Message {
@@ -77,12 +77,8 @@ export function isRealMessage(message: ChatListItem): message is Message {
 }
 
 export function isSystemMessage(message?: ChatListItem) {
-  return (
-    !message ||
-    message.senderId === "system" ||
-    message.type === "system" ||
-    message.type === "system-date"
-  );
+  if (!message || isDateSeparator(message)) return true;
+  return message.senderId === null || message.type === "SYSTEM";
 }
 
 export function isSameChatSender(

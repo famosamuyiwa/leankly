@@ -35,7 +35,7 @@ const UserPreviewModal = ({
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [otherReason, setOtherReason] = useState("");
-  const blocked = user ? isBlocked(user.$id) : false;
+  const blocked = user ? isBlocked(user.id) : false;
   const joined =
     user?.joinedAt &&
     new Date(user.joinedAt).toLocaleDateString("en-US", {
@@ -120,9 +120,9 @@ const UserPreviewModal = ({
                     {
                       text: "Block",
                       style: "destructive",
-                      onPress: () => onBlock(user.$id),
+                      onPress: () => onBlock(user.id),
                     },
-                  ]
+                  ],
                 );
               }}
               className={`w-full py-3 rounded-full ${
@@ -205,7 +205,7 @@ const UserPreviewModal = ({
                     Alert.alert("Select a reason");
                     return;
                   }
-                  onReport(user.$id, reason, otherReason.trim());
+                  onReport(user.id, reason, otherReason.trim());
                   setShowReportModal(false);
                 }}
                 className="flex-1 py-3 rounded-full bg-red-500"

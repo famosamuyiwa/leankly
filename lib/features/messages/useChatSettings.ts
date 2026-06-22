@@ -11,12 +11,12 @@ export function useChatSettings() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
   const { currentUser, openUserPreview, showLoader, hideLoader } =
     useGlobalContext();
-  const currentUserId = currentUser?.$id;
+  const currentUserId = currentUser?.id;
   const params = useLocalSearchParams<{ chat?: string }>();
   const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
   const [leankers, setLeankers] = useState<Participants[]>([]);
   const [isLeankLoading, setIsLeankLoading] = useState(true);
-  const activeLeank = currentLeank?.$id === chatId ? currentLeank : undefined;
+  const activeLeank = currentLeank?.id === chatId ? currentLeank : undefined;
 
   const loadLeank = useCallback(async () => {
     if (!chatId) return;
@@ -90,8 +90,8 @@ export function useChatSettings() {
     async (leanker: Participants) => {
       if (!chatId || !currentUser) return;
       try {
-        await apiClient.removeParticipant(chatId, leanker.user.$id);
-        setLeankers((prev) => prev.filter((item) => item.$id !== leanker.$id));
+        await apiClient.removeParticipant(chatId, leanker.user.id);
+        setLeankers((prev) => prev.filter((item) => item.id !== leanker.id));
       } catch (error) {
         console.error(error);
       }

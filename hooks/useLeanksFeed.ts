@@ -1,13 +1,18 @@
 import { FilterOptions } from "@/constants/enums";
 import { Leank } from "@/interfaces";
 import { apiClient } from "@/lib/api/client";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
 const PAGE_SIZE = 10;
 
 export const useLeanksFeed = (userId?: string, filters?: any) => {
+  const queryClient = useQueryClient();
   const filterKey = useMemo(() => JSON.stringify(filters ?? {}), [filters]);
+  const queryKey = useMemo(
+    () => ["leanks", "feed", userId, filterKey] as const,
+    [filterKey, userId],
+  );
   const queryInput = useMemo(() => {
     const location = filters?.[FilterOptions.LOCATION];
     const nearby = location?.nearby;
@@ -27,7 +32,7 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
   }, [filters]);
 
   const query = useInfiniteQuery({
-    queryKey: ["leanks", "feed", userId, filterKey],
+    queryKey,
     enabled: Boolean(userId),
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
@@ -52,13 +57,21 @@ export const useLeanksFeed = (userId?: string, filters?: any) => {
     }
   }, [query]);
 
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    await queryClient.resetQueries(
+      { queryKey, exact: true },
+      { throwOnError: true },
+    );
+  }, [queryClient, queryKey, userId]);
+
   return {
     leanks,
     loading: query.isLoading || query.isFetchingNextPage,
     hasMore: Boolean(query.hasNextPage),
     error: query.error,
     loadedFilterKey: query.isFetched ? filterKey : null,
-    refresh: query.refetch,
+    refresh,
     loadMore,
   };
 };

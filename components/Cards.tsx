@@ -160,12 +160,14 @@ export const LeankCardBig = ({
 
       <View className="flex-1 justify-between px-4 py-4">
         <View className="gap-3">
-          <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
-            <AntDesign name="notification" size={16} color={Colors.accent} />
-            <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
-              {description}
-            </Text>
-          </View>
+          {description && (
+            <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
+              <AntDesign name="notification" size={16} color={Colors.accent} />
+              <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
+                {description}
+              </Text>
+            </View>
+          )}
 
           <View className="flex-row gap-3">
             <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-3">

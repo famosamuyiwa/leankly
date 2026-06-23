@@ -14,6 +14,7 @@ import {
   UsageFeature,
   User,
 } from "@prisma/client";
+import { AttentionCountsService } from "../attention/attention-counts.service";
 import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
@@ -26,6 +27,7 @@ export class ReactionsService {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
     private readonly realtime: RealtimeGateway,
+    private readonly attention: AttentionCountsService,
   ) {}
 
   async react(user: User, input: CreateReactionDto) {
@@ -82,16 +84,21 @@ export class ReactionsService {
     );
 
     if (shouldNotify) {
+      const badge = await this.badgeForUser(result.leank.ownerId);
       await this.jobs
         .enqueuePush({
           recipients: [result.leank.owner.appwriteUserId],
           title: "New leank request",
           body: `${user.name} wants to join ${result.leank.title}`,
+          badge,
           data: { type: "Alert", leankId: result.leank.id },
         })
         .catch(() => undefined);
     }
     this.realtime.emitLeank(input.leankId, "reaction.updated", result.reaction);
+    this.realtime.emitUser(result.leank.ownerId, "attention.changed", {
+      leankId: input.leankId,
+    });
     return { reaction: result.reaction };
   }
 
@@ -223,11 +230,13 @@ export class ReactionsService {
     });
 
     if (!result.alreadyAccepted) {
+      const badge = await this.badgeForUser(result.reaction.user.id);
       await this.jobs
         .enqueuePush({
           recipients: [result.reaction.user.appwriteUserId],
           title: "Leank request accepted",
           body: result.reaction.leank.title,
+          badge,
           data: { type: "Alert", leankId: result.reaction.leankId },
         })
         .catch(() => undefined);
@@ -242,6 +251,9 @@ export class ReactionsService {
         "message.created",
         result.systemMessage,
       );
+      this.realtime.emitUser(result.reaction.user.id, "unread.changed", {
+        leankId: result.reaction.leankId,
+      });
     }
     return {
       participant: result.participant,
@@ -266,6 +278,9 @@ export class ReactionsService {
       });
     });
     this.realtime.emitLeank(updated.leankId, "reaction.updated", updated);
+    this.realtime.emitUser(user.id, "attention.changed", {
+      leankId: updated.leankId,
+    });
     return { reaction: updated };
   }
 
@@ -439,5 +454,13 @@ export class ReactionsService {
       data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
     });
     return message;
+  }
+
+  private async badgeForUser(userId: string) {
+    try {
+      return (await this.attention.getCounts(userId)).totalCount;
+    } catch {
+      return undefined;
+    }
   }
 }

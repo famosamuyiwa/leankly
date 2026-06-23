@@ -60,11 +60,22 @@ describe("ReactionsService", () => {
     };
     const realtime = {
       emitLeank: jest.fn(() => events.push("realtime-emitted")),
+      emitUser: jest.fn(() => events.push("user-event")),
+    };
+    const attention = {
+      getCounts: jest.fn(() =>
+        Promise.resolve({
+          unreadChatCount: 1,
+          pendingRequestCount: 4,
+          totalCount: 5,
+        }),
+      ),
     };
     const service = new ReactionsService(
       prisma as never,
       jobs as never,
       realtime as never,
+      attention as never,
     );
 
     await service.react(user, { leankId: "leank-1", action: "like" });
@@ -80,8 +91,81 @@ describe("ReactionsService", () => {
     expect(events.indexOf("committed")).toBeLessThan(
       events.indexOf("push-enqueued"),
     );
+    expect(jobs.enqueuePush).toHaveBeenCalledWith(
+      expect.objectContaining({ badge: 5 }),
+    );
     expect(events.indexOf("committed")).toBeLessThan(
       events.indexOf("realtime-emitted"),
+    );
+  });
+
+  it("includes the requester badge on accepted-request pushes", async () => {
+    const reaction = {
+      id: "reaction-1",
+      userId: "requester-1",
+      leankId: "leank-1",
+      isLiked: true,
+      status: ReactionStatus.PENDING,
+      leank: { id: "leank-1", ownerId: user.id, title: "Coffee" },
+      user: {
+        id: "requester-1",
+        appwriteUserId: "appwrite-requester",
+        name: "Requester",
+      },
+    };
+    const systemMessage = {
+      id: "message-1",
+      leankId: "leank-1",
+      content: "Requester joined the leank",
+      createdAt: new Date("2026-06-23T12:00:00.000Z"),
+    };
+    const tx = {
+      reaction: {
+        findUnique: jest.fn(() => Promise.resolve(reaction)),
+        update: jest.fn(() => Promise.resolve()),
+      },
+      participant: { upsert: jest.fn(() => Promise.resolve({ id: "p-1" })) },
+      message: { create: jest.fn(() => Promise.resolve(systemMessage)) },
+      leank: { update: jest.fn(() => Promise.resolve()) },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    };
+    const jobs = { enqueuePush: jest.fn(() => Promise.resolve()) };
+    const realtime = {
+      emitLeank: jest.fn(),
+      emitUser: jest.fn(),
+    };
+    const attention = {
+      getCounts: jest.fn(() =>
+        Promise.resolve({
+          unreadChatCount: 2,
+          pendingRequestCount: 3,
+          totalCount: 5,
+        }),
+      ),
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      jobs as never,
+      realtime as never,
+      attention as never,
+    );
+
+    await service.accept(user, "reaction-1");
+
+    expect(jobs.enqueuePush).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: ["appwrite-requester"],
+        badge: 5,
+      }),
+    );
+    expect(realtime.emitUser).toHaveBeenCalledWith(
+      "requester-1",
+      "unread.changed",
+      { leankId: "leank-1" },
     );
   });
 
@@ -115,6 +199,7 @@ describe("ReactionsService", () => {
       prisma as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await expect(service.requests(user)).resolves.toEqual(
@@ -142,6 +227,7 @@ describe("ReactionsService", () => {
       prisma as never,
       {} as never,
       {} as never,
+      {} as never,
     );
 
     await expect(service.leave(user, "leank-1")).rejects.toBeInstanceOf(
@@ -161,6 +247,7 @@ describe("ReactionsService", () => {
     );
     const service = new ReactionsService(
       prisma as never,
+      {} as never,
       {} as never,
       {} as never,
     );

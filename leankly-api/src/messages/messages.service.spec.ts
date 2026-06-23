@@ -27,6 +27,8 @@ describe("MessagesService", () => {
             id: "leank-1",
             title: "Coffee",
             status: LeankStatus.ACTIVE,
+            coverUrl: "https://example.com/cover.jpg",
+            coverFileId: "cover-file-1",
           }),
         ),
         update: jest.fn(() => Promise.resolve()),
@@ -60,10 +62,26 @@ describe("MessagesService", () => {
       emitLeank: jest.fn(() => events.push("leank-event")),
       emitUser: jest.fn(() => events.push("user-event")),
     };
+    const config = {
+      get: jest.fn((key: string) =>
+        key === "APPWRITE_LEANK_COVER_BUCKET_ID" ? "cover-bucket" : undefined,
+      ),
+    };
+    const attention = {
+      getCounts: jest.fn(() =>
+        Promise.resolve({
+          unreadChatCount: 1,
+          pendingRequestCount: 2,
+          totalCount: 3,
+        }),
+      ),
+    };
     const service = new MessagesService(
       prisma as never,
       jobs as never,
       realtime as never,
+      config as never,
+      attention as never,
     );
 
     await service.send(user, "leank-1", { content: " Hello " });
@@ -78,7 +96,16 @@ describe("MessagesService", () => {
       }),
     );
     expect(jobs.enqueuePush).toHaveBeenCalledWith(
-      expect.objectContaining({ recipients: ["appwrite-recipient"] }),
+      expect.objectContaining({
+        recipients: ["appwrite-recipient"],
+        badge: 3,
+        image: "cover-bucket:cover-file-1",
+        data: {
+          type: "Message",
+          leankId: "leank-1",
+          coverUrl: "https://example.com/cover.jpg",
+        },
+      }),
     );
     expect(events.indexOf("committed")).toBeLessThan(
       events.indexOf("leank-event"),
@@ -96,6 +123,8 @@ describe("MessagesService", () => {
       prisma as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
     );
 
     await expect(
@@ -106,41 +135,16 @@ describe("MessagesService", () => {
   });
 
   it("counts only unread messages sent by another member", async () => {
-    const now = new Date();
-    const prisma = {
-      leank: {
-        findMany: jest.fn(() =>
-          Promise.resolve([
-            {
-              lastMessageAt: now,
-              lastMessage: { senderId: "another-user" },
-              chatMetadata: [],
-            },
-            {
-              lastMessageAt: now,
-              lastMessage: { senderId: user.id },
-              chatMetadata: [],
-            },
-            {
-              lastMessageAt: now,
-              lastMessage: { senderId: "another-user" },
-              chatMetadata: [{ readAt: new Date(now.getTime() + 1000) }],
-            },
-          ]),
-        ),
-      },
-    };
+    const attention = { unreadChatCount: jest.fn(() => Promise.resolve(1)) };
     const service = new MessagesService(
-      prisma as never,
       {} as never,
       {} as never,
+      {} as never,
+      {} as never,
+      attention as never,
     );
 
     await expect(service.unreadCount(user)).resolves.toEqual({ count: 1 });
-    expect(prisma.leank.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ status: LeankStatus.ACTIVE }),
-      }),
-    );
+    expect(attention.unreadChatCount).toHaveBeenCalledWith(user.id);
   });
 });

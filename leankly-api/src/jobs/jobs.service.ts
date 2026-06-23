@@ -2,6 +2,7 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { CLASSIFICATION_QUEUE, PUSH_QUEUE } from "./jobs.constants";
+import { PushJobData } from "./push.types";
 
 @Injectable()
 export class JobsService {
@@ -23,7 +24,7 @@ export class JobsService {
     });
   }
 
-  enqueuePush(data: Record<string, unknown>) {
+  enqueuePush(data: PushJobData) {
     return this.push.add("push.send", data, {
       attempts: 3,
       backoff: { type: "exponential", delay: 1000 },

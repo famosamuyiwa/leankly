@@ -21,7 +21,8 @@ const dedupeMessages = (messages: Message[]) => {
 
 export function useChatScreen() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
-  const { currentUser, openUserPreview, setUnreadCount } = useGlobalContext();
+  const { currentUser, openUserPreview, setAttentionCounts } =
+    useGlobalContext();
   const currentUserId = currentUser?.id;
   const params = useLocalSearchParams<{ chat?: string }>();
   const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
@@ -56,11 +57,11 @@ export function useChatScreen() {
     readWriteInFlightRef.current = true;
     try {
       const response = await apiClient.markChatRead(chatId);
-      setUnreadCount(response.unreadCount);
+      setAttentionCounts(response);
     } finally {
       readWriteInFlightRef.current = false;
     }
-  }, [chatId, setUnreadCount]);
+  }, [chatId, setAttentionCounts]);
 
   const loadMessages = useCallback(async () => {
     if (!chatId) return;

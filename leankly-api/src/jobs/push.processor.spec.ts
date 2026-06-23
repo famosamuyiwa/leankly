@@ -9,6 +9,8 @@ describe("PushProcessor", () => {
       title: "Coffee",
       body: "A new message",
       data: { leankId: "leank-1" },
+      badge: 3,
+      image: "cover-bucket:cover-file-1",
     };
 
     await processor.process({ data } as never);

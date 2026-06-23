@@ -24,9 +24,10 @@ export default function MessagesScreen() {
     handleDeclineRequest,
     handleRefresh,
     isChats,
+    pendingRequestCount,
     refreshing,
     shouldShowRequestsPaywall,
-    unreadCount,
+    unreadChatCount,
     visibleRequests,
   } = useMessagesTab();
 
@@ -63,7 +64,10 @@ export default function MessagesScreen() {
       <View className="py-5">
         <NavBar
           screen={Screens.CHAT}
-          badgeCounts={{ [NavbarOptions.CHATS]: unreadCount }}
+          badgeCounts={{
+            [NavbarOptions.CHATS]: unreadChatCount,
+            [NavbarOptions.REQUESTS]: pendingRequestCount,
+          }}
         />
       </View>
       {isChats ? (

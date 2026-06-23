@@ -4,7 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { LeankStatus, Prisma, User } from "@prisma/client";
+import { AttentionCountsService } from "../attention/attention-counts.service";
 import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
@@ -17,6 +19,8 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
     private readonly realtime: RealtimeGateway,
+    private readonly config: ConfigService,
+    private readonly attention: AttentionCountsService,
   ) {}
 
   async list(user: User, leankId: string, query: MessagesQueryDto) {
@@ -94,14 +98,18 @@ export class MessagesService {
       this.realtime.emitUser(recipient.id, "unread.changed", { leankId });
     }
     if (result.recipients.length) {
-      await this.jobs
-        .enqueuePush({
-          recipients: result.recipients.map((item) => item.appwriteUserId),
-          title: result.leank.title,
-          body: `${user.name}: ${content}`,
-          data: { type: "Message", leankId },
-        })
-        .catch(() => undefined);
+      await Promise.all(
+        result.recipients.map((recipient) =>
+          this.enqueueMessagePush({
+            recipient,
+            title: result.leank.title,
+            body: `${user.name}: ${content}`,
+            leankId,
+            coverUrl: result.leank.coverUrl,
+            coverFileId: result.leank.coverFileId,
+          }),
+        ),
+      );
     }
     return { message: result.message };
   }
@@ -119,31 +127,7 @@ export class MessagesService {
   }
 
   async unreadCount(user: User) {
-    const chats = await this.prisma.leank.findMany({
-      where: {
-        status: LeankStatus.ACTIVE,
-        lastMessageAt: { not: null },
-        OR: [
-          { ownerId: user.id },
-          { participants: { some: { userId: user.id } } },
-        ],
-      },
-      select: {
-        lastMessageAt: true,
-        lastMessage: { select: { senderId: true } },
-        chatMetadata: {
-          where: { userId: user.id },
-          select: { readAt: true },
-          take: 1,
-        },
-      },
-    });
-    const count = chats.filter((chat) => {
-      if (!chat.lastMessageAt || chat.lastMessage?.senderId === user.id)
-        return false;
-      const readAt = chat.chatMetadata[0]?.readAt;
-      return !readAt || readAt < chat.lastMessageAt;
-    }).length;
+    const count = await this.attention.unreadChatCount(user.id);
     return { count };
   }
 
@@ -161,7 +145,13 @@ export class MessagesService {
         id: leankId,
         OR: [{ ownerId: userId }, { participants: { some: { userId } } }],
       },
-      select: { id: true, title: true, status: true },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        coverUrl: true,
+        coverFileId: true,
+      },
     });
     if (!leank) throw new NotFoundException("Chat not found");
     return leank;
@@ -184,6 +174,43 @@ export class MessagesService {
       },
       select: { id: true, appwriteUserId: true },
     });
+  }
+
+  private async enqueueMessagePush(input: {
+    recipient: { id: string; appwriteUserId: string };
+    title: string;
+    body: string;
+    leankId: string;
+    coverUrl: string;
+    coverFileId: string | null;
+  }) {
+    let badge: number | undefined;
+    try {
+      badge = (await this.attention.getCounts(input.recipient.id)).totalCount;
+    } catch {
+      badge = undefined;
+    }
+
+    await this.jobs
+      .enqueuePush({
+        recipients: [input.recipient.appwriteUserId],
+        title: input.title,
+        body: input.body,
+        badge,
+        image: this.coverPushImage(input.coverFileId),
+        data: {
+          type: "Message",
+          leankId: input.leankId,
+          coverUrl: input.coverUrl,
+        },
+      })
+      .catch(() => undefined);
+  }
+
+  private coverPushImage(coverFileId: string | null) {
+    if (!coverFileId) return undefined;
+    const bucketId = this.config.get<string>("APPWRITE_LEANK_COVER_BUCKET_ID");
+    return bucketId ? `${bucketId}:${coverFileId}` : undefined;
   }
 
   private encodeCursor(createdAt: Date, id: string) {

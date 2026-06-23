@@ -9,8 +9,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function useMessagesTab() {
   const params = useLocalSearchParams<{ nav?: string }>();
-  const { unreadCount, setUnreadCount, currentUser, showLoader, hideLoader } =
-    useGlobalContext();
+  const {
+    unreadChatCount,
+    pendingRequestCount,
+    setUnreadCount,
+    setPendingRequestCount,
+    currentUser,
+    showLoader,
+    hideLoader,
+  } = useGlobalContext();
   const { isPro } = usePremium();
   const currentUserId = currentUser?.id;
   const [refreshing, setRefreshing] = useState(false);
@@ -43,7 +50,8 @@ export function useMessagesTab() {
     const response = await apiClient.getRequests();
     setRequests(response.requests);
     setRequestsLocked(Boolean(response.isLocked));
-  }, [currentUserId]);
+    setPendingRequestCount(response.totalPending || 0);
+  }, [currentUserId, setPendingRequestCount]);
 
   const schedule = useCallback(
     (kind: "chats" | "requests", callback: () => Promise<void>) => {
@@ -64,12 +72,13 @@ export function useMessagesTab() {
         const response = await apiClient.acceptRequest(request.id);
         setRequests(response.requests);
         setRequestsLocked(Boolean(response.isLocked));
+        setPendingRequestCount(response.totalPending || 0);
         await loadChats();
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, loadChats, showLoader],
+    [hideLoader, loadChats, setPendingRequestCount, showLoader],
   );
 
   const handleDeclineRequest = useCallback(
@@ -79,11 +88,12 @@ export function useMessagesTab() {
         const response = await apiClient.declineRequest(request.id);
         setRequests(response.requests);
         setRequestsLocked(Boolean(response.isLocked));
+        setPendingRequestCount(response.totalPending || 0);
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, showLoader],
+    [hideLoader, setPendingRequestCount, showLoader],
   );
 
   const handleChatPress = useCallback(
@@ -133,6 +143,9 @@ export function useMessagesTab() {
       realtime.subscribe("reaction.updated", () =>
         schedule("requests", loadRequests),
       ),
+      realtime.subscribe("attention.changed", () =>
+        schedule("requests", loadRequests),
+      ),
       realtime.subscribe("leank.updated", (payload) => {
         const chatId = payload?.leankId || payload?.id;
         if (!chatId || chatIdsRef.current.has(chatId)) {
@@ -159,12 +172,7 @@ export function useMessagesTab() {
         if (timer) clearTimeout(timer);
       });
     };
-  }, [
-    currentUserId,
-    loadChats,
-    loadRequests,
-    schedule,
-  ]);
+  }, [currentUserId, loadChats, loadRequests, schedule]);
 
   useEffect(() => {
     const unsubscribers = chatRooms.map((chat) =>
@@ -194,7 +202,8 @@ export function useMessagesTab() {
     refreshing,
     requests,
     shouldShowRequestsPaywall,
-    unreadCount,
+    pendingRequestCount,
+    unreadChatCount,
     visibleRequests,
   };
 }

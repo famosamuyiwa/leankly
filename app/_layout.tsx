@@ -3,53 +3,18 @@ import "./global.css";
 
 import { GlobalProvider } from "@/lib/GlobalContext";
 import { PremiumProvider } from "@/lib/PremiumContext";
-import { currentScreenRef } from "@/lib/ScreenTracker";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import { SUPPRESS_FOREGROUND_NOTIFICATION } from "@/lib/notificationBehavior";
+import { queryClient } from "@/lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import * as Notifications from "expo-notifications";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-
-const getNotificationLeankId = (data?: Record<string, unknown>) => {
-  const directLeankId = data?.leankId;
-  if (typeof directLeankId === "string") return directLeankId;
-
-  const nestedData = data?.data;
-  if (nestedData && typeof nestedData === "object") {
-    const nestedLeankId = (nestedData as Record<string, unknown>).leankId;
-    if (typeof nestedLeankId === "string") return nestedLeankId;
-  }
-
-  return undefined;
-};
 
 Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const current = currentScreenRef.current;
-    const leankId = getNotificationLeankId(
-      notification.request.content.data as Record<string, unknown> | undefined,
-    );
-
-    // Suppress foreground chat notifications only when that chat is already open.
-    if (leankId && current?.includes(`/messages/${leankId}`)) {
-      return {
-        shouldShowBanner: false,
-        shouldPlaySound: false,
-        shouldSetBadge: false,
-        shouldShowList: false,
-      };
-    }
-
-    return {
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    };
-  },
+  handleNotification: async () => SUPPRESS_FOREGROUND_NOTIFICATION,
 });
 
 SplashScreen.preventAutoHideAsync();

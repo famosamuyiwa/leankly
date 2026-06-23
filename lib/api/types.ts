@@ -25,6 +25,12 @@ export type UnreadCountResponse = {
   unreadCount: number;
 };
 
+export type AttentionCountsResponse = {
+  unreadChatCount: number;
+  pendingRequestCount: number;
+  totalCount: number;
+};
+
 export type QuotaState = {
   interestsUsed: number;
   interestsLimit: number;

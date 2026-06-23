@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { getNotificationLeankId } from "./notificationBehavior";
 import { registerForPushNotificationsAsync } from "./registerForPushNotificationsAsync";
 
 interface NotificationContextType {
@@ -33,19 +34,6 @@ interface PushNotificationProviderProps {
   children: ReactNode;
 }
 
-const getNotificationLeankId = (data?: Record<string, unknown>) => {
-  const directLeankId = data?.leankId;
-  if (typeof directLeankId === "string") return directLeankId;
-
-  const nestedData = data?.data;
-  if (nestedData && typeof nestedData === "object") {
-    const nestedLeankId = (nestedData as Record<string, unknown>).leankId;
-    if (typeof nestedLeankId === "string") return nestedLeankId;
-  }
-
-  return undefined;
-};
-
 export const PushNotificationProvider: React.FC<
   PushNotificationProviderProps
 > = ({ children }) => {
@@ -64,23 +52,6 @@ export const PushNotificationProvider: React.FC<
       async (notification) => {
         // console.log("🔔 Notification Received: ", notification);
         setNotification(notification);
-
-        // Wait a brief moment to ensure the notification is displayed
-        // then dismiss it automatically
-        setTimeout(async () => {
-          try {
-            // If you want to dismiss just this specific notification
-            if (notification.request.identifier) {
-              await Notifications.dismissNotificationAsync(
-                notification.request.identifier
-              );
-            }
-            // Or if you want to dismiss all notifications
-            // await Notifications.dismissAllNotificationsAsync();
-          } catch (error) {
-            console.error("Error dismissing notification:", error);
-          }
-        }, 2000); // Adjust this delay as needed
       }
     );
 

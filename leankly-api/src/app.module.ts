@@ -17,11 +17,13 @@ import { MessagesModule } from "./messages/messages.module";
 import { EntitlementsModule } from "./entitlements/entitlements.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 import { AdminModule } from "./admin/admin.module";
+import { AttentionCountsModule } from "./attention/attention-counts.module";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
+    AttentionCountsModule,
     RedisModule,
     AuthModule,
     HealthModule,

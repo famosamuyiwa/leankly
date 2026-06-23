@@ -28,6 +28,11 @@ export class UsersController {
     return this.users.updatePushTarget(user, input);
   }
 
+  @Get("attention-counts")
+  attentionCounts(@CurrentUser() user: User) {
+    return this.users.attentionCounts(user);
+  }
+
   @Delete()
   deleteMe(@CurrentUser() user: User) {
     return this.users.deleteProfile(user);

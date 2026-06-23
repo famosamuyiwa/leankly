@@ -20,6 +20,7 @@ describe("RevenueCatService", () => {
 
     await expect(
       service.handle("Bearer webhook-secret", {
+        api_version: "1.0",
         event: { id: "event-1", type: "INITIAL_PURCHASE" },
       }),
     ).resolves.toEqual({ received: true, duplicate: true });
@@ -35,6 +36,7 @@ describe("RevenueCatService", () => {
 
     await expect(
       service.handle("Bearer wrong", {
+        api_version: "1.0",
         event: { id: "event-1", type: "INITIAL_PURCHASE" },
       }),
     ).rejects.toMatchObject({ status: 401 });

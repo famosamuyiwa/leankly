@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Client, ID, Messaging } from "node-appwrite";
+import { PushJobData } from "../jobs/push.types";
 
 @Injectable()
 export class AppwriteAdminService {
@@ -14,18 +15,15 @@ export class AppwriteAdminService {
     this.messaging = new Messaging(client);
   }
 
-  sendPush(input: {
-    recipients: string[];
-    title: string;
-    body: string;
-    data?: Record<string, unknown>;
-  }) {
+  sendPush(input: PushJobData) {
     return this.messaging.createPush({
       messageId: ID.unique(),
       users: input.recipients,
       title: input.title,
       body: input.body,
       data: input.data,
+      badge: input.badge,
+      image: input.image,
       sound: "default",
     });
   }

@@ -6,7 +6,7 @@ import { PortalProvider } from "@gorhom/portal";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const { unreadCount } = useGlobalContext();
+  const { attentionCount } = useGlobalContext();
 
   return (
     <ProfileProvider>
@@ -78,7 +78,7 @@ export default function TabLayout() {
               tabBarIcon: ({ color }) => (
                 <Entypo name="chat" color={color} size={28} />
               ),
-              tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+              tabBarBadge: attentionCount > 0 ? attentionCount : undefined,
               tabBarBadgeStyle: BadgeStyle,
             }}
           />

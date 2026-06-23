@@ -10,6 +10,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import { createJwtProvider, requestWithJwt } from "./auth-token";
 import {
   ApiResult,
+  AttentionCountsResponse,
   ChatDetailResponse,
   ChatListResponse,
   ChatMessagePage,
@@ -164,9 +165,9 @@ export const apiClient = {
     const { chat } = await this.getChat(chatId);
     return { message: result.message, chat };
   },
-  async markChatRead(chatId: string): Promise<UnreadCountResponse> {
+  async markChatRead(chatId: string): Promise<AttentionCountsResponse> {
     await apiFetch(`/v1/leanks/${chatId}/read`, { method: "PATCH" });
-    return this.getUnreadCount();
+    return this.getAttentionCounts();
   },
   async getUnreadCount(): Promise<UnreadCountResponse> {
     const { count } = await apiFetch<{ count: number }>(
@@ -174,6 +175,8 @@ export const apiClient = {
     );
     return { unreadCount: count };
   },
+  getAttentionCounts: () =>
+    apiFetch<AttentionCountsResponse>("/v1/users/me/attention-counts"),
   getRequests: () => apiFetch<RequestListResponse>("/v1/reactions/requests"),
   async acceptRequest(requestId: string) {
     await apiFetch(`/v1/reactions/${requestId}/accept`, { method: "POST" });

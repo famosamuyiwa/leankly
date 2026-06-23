@@ -4,12 +4,14 @@ import { PrismaService } from "../prisma/prisma.service";
 import { UpdatePushTargetDto } from "./dto/update-push-target.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { MediaService } from "../media/media.service";
+import { AttentionCountsService } from "../attention/attention-counts.service";
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
+    private readonly attention: AttentionCountsService,
   ) {}
 
   getProfile(user: User) {
@@ -51,6 +53,10 @@ export class UsersService {
       platform: updated.pushPlatform,
       enabled: updated.pushEnabled,
     };
+  }
+
+  attentionCounts(user: User) {
+    return this.attention.getCounts(user.id);
   }
 
   async deleteProfile(user: User) {

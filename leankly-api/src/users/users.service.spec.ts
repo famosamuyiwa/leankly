@@ -36,7 +36,7 @@ describe("UsersService", () => {
         callback(tx),
       ),
     };
-    const service = new UsersService(prisma as never, {} as never);
+    const service = new UsersService(prisma as never, {} as never, {} as never);
 
     const result = await service.deleteProfile(user);
 

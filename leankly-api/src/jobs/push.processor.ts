@@ -2,13 +2,7 @@ import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
 import { AppwriteAdminService } from "../appwrite/appwrite-admin.service";
 import { PUSH_QUEUE } from "./jobs.constants";
-
-export interface PushJobData {
-  recipients: string[];
-  title: string;
-  body: string;
-  data?: Record<string, unknown>;
-}
+import { PushJobData } from "./push.types";
 
 @Processor(PUSH_QUEUE, { concurrency: 10 })
 export class PushProcessor extends WorkerHost {

@@ -3,20 +3,31 @@ import Loader from "@/components/Loader";
 import UserPreviewModal from "@/components/UserPreviewModal";
 import { BasicUser, ToastProps, User } from "@/interfaces";
 import { apiClient } from "@/lib/api/client";
+import { AttentionCountsResponse } from "@/lib/api/types";
+import { realtime } from "@/lib/api/realtime";
+import * as Notifications from "expo-notifications";
 import React, {
   ReactNode,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { Platform } from "react-native";
 
 interface GlobalContextType {
   currentUser: User | undefined;
   unreadCount: number;
+  unreadChatCount: number;
+  pendingRequestCount: number;
+  attentionCount: number;
   refetchCurrentUser: () => void;
   setUnreadCount: (val: number) => void;
+  setPendingRequestCount: (val: number) => void;
+  setAttentionCounts: (counts: AttentionCountsResponse) => void;
+  refreshAttentionCounts: () => Promise<void>;
   setCurrentUser: (user: User | undefined) => void;
   displayToast: (toast: ToastProps) => void;
   showLoader: (label?: string, pulse?: boolean) => void;
@@ -33,7 +44,8 @@ interface GlobalContextType {
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export const GlobalProvider = ({ children }: { children: ReactNode }) => {
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const [currentUser, setCurrentUser] = useState<User | undefined>(undefined);
   const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
   const [previewUser, setPreviewUser] = useState<BasicUser | null>(null);
@@ -41,6 +53,22 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   const toastRef = useRef<any>({});
   const loaderRef = useRef<any>({});
   const currentUserId = currentUser?.id;
+  const attentionCount = unreadChatCount + pendingRequestCount;
+
+  const setUnreadCount = useCallback((value: number) => {
+    setUnreadChatCount(value);
+  }, []);
+
+  const setAttentionCounts = useCallback((counts: AttentionCountsResponse) => {
+    setUnreadChatCount(counts.unreadChatCount);
+    setPendingRequestCount(counts.pendingRequestCount);
+  }, []);
+
+  const refreshAttentionCounts = useCallback(async () => {
+    if (!currentUserId) return;
+    const counts = await apiClient.getAttentionCounts();
+    setAttentionCounts(counts);
+  }, [currentUserId, setAttentionCounts]);
 
   const displayToast = (toast: ToastProps) => {
     toastRef.current.show({
@@ -65,13 +93,12 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    const fetchUnread = async () => {
+    const fetchAttentionCounts = async () => {
       try {
-        // The facade computes unread accurately server-side so launch avoids table fan-out.
-        const { unreadCount } = await apiClient.getUnreadCount();
+        const counts = await apiClient.getAttentionCounts();
 
         if (isMounted) {
-          setUnreadCount(unreadCount);
+          setAttentionCounts(counts);
         }
       } catch (e) {
         console.error(e);
@@ -79,14 +106,39 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
     };
 
     void loadBlocked();
-    void fetchUnread();
+    void fetchAttentionCounts();
 
     // optional cleanup (if you want to cancel or reset state later)
     return () => {
       isMounted = false;
       setUnreadCount(0);
+      setPendingRequestCount(0);
     };
-  }, [currentUserId]);
+  }, [currentUserId, setAttentionCounts, setUnreadCount]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const unsubscribers = [
+      realtime.subscribe("attention.changed", () => {
+        void refreshAttentionCounts().catch(() => {});
+      }),
+      realtime.subscribe("chatMeta.updated", () => {
+        void refreshAttentionCounts().catch(() => {});
+      }),
+      realtime.subscribe("unread.changed", () => {
+        void refreshAttentionCounts().catch(() => {});
+      }),
+    ];
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
+  }, [currentUserId, refreshAttentionCounts]);
+
+  useEffect(() => {
+    if (Platform.OS !== "ios" && Platform.OS !== "android") return;
+    const count = currentUserId ? attentionCount : 0;
+    void Notifications.setBadgeCountAsync(count).catch((error) => {
+      console.warn("Failed to update app badge count", error);
+    });
+  }, [attentionCount, currentUserId]);
 
   const blockUser = async (userId: string) => {
     if (!userId || userId === currentUser?.id) return;
@@ -167,11 +219,17 @@ export const GlobalProvider = ({ children }: { children: ReactNode }) => {
   return (
     <GlobalContext.Provider
       value={{
-        unreadCount,
+        unreadCount: unreadChatCount,
+        unreadChatCount,
+        pendingRequestCount,
+        attentionCount,
         currentUser,
         refetchCurrentUser,
         setCurrentUser,
         setUnreadCount,
+        setPendingRequestCount,
+        setAttentionCounts,
+        refreshAttentionCounts,
         displayToast,
         showLoader,
         hideLoader,

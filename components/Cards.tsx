@@ -90,7 +90,7 @@ export const LeankCardBig = ({
   const description = item.description?.trim() || "";
   const location = item.location?.trim() || "Location TBD";
   const dateLabel = item.date ? formatDate(item.date) : "Date TBD";
-  const timeLabel = item.time?.trim() || "Time TBD";
+  const timeLabel = item.time?.trim() || "To Be Disclosed";
   const hostLabel = [item.owner?.name, item.owner?.age]
     .filter(Boolean)
     .join(", ");
@@ -170,7 +170,7 @@ export const LeankCardBig = ({
           )}
 
           <View className="flex-row gap-3">
-            <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-3">
+            <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-5">
               <View className="mb-2 flex-row items-center gap-2">
                 <Ionicons
                   name="calendar-clear"
@@ -178,37 +178,27 @@ export const LeankCardBig = ({
                   color={Colors.primary}
                 />
               </View>
-              <Text className="font-plus-jakarta-extrabold text-sm text-black-300 line-clamp-1">
+              <Text className="font-plus-jakarta-extrabold text-black-300 line-clamp-2">
                 {dateLabel}
-              </Text>
-              <Text className="font-plus-jakarta-semibold text-xs text-black-100 line-clamp-1">
-                {timeLabel}
               </Text>
             </View>
 
-            <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-3">
+            <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-5">
               <View className="mb-2 flex-row items-center gap-2">
-                <MaterialCommunityIcons
-                  name="account-group"
-                  size={16}
-                  color={Colors.accent}
-                />
+                <Entypo name="location" size={16} color={Colors.accent} />
               </View>
-              <Text className="font-plus-jakarta-extrabold text-sm text-black-300">
-                {item.peopleRequired || 1} needed
-              </Text>
-              <Text className="font-plus-jakarta-semibold text-xs text-black-100">
-                Small group
+              <Text className="font-plus-jakarta-extrabold  text-black-300 line-clamp-2">
+                {location}
               </Text>
             </View>
           </View>
 
           <View className="flex-row items-center gap-3 rounded-2xl  ">
             <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
-              <Entypo name="location" size={16} color={Colors.accent} />
+              <Entypo name="clock" size={16} color={Colors.accent} />
             </View>
-            <Text className="flex-1 font-plus-jakarta-bold text-sm text-black-300 line-clamp-2">
-              {location}
+            <Text className="flex-1 font-plus-jakarta-bold text-sm text-gray-500 line-clamp-2">
+              {timeLabel}
             </Text>
           </View>
         </View>

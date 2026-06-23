@@ -51,6 +51,7 @@ type DeckState = {
 const ACTION_LOADER_DELAY_MS = 1000;
 const PULL_REFRESH_THRESHOLD = 72;
 const PULL_LOGO_MAX_DISTANCE = 96;
+const PULL_DECK_MAX_TRANSLATE_Y = 56;
 const PULL_LOGO_RESET_DURATION_MS = 160;
 
 const waitForActionLoader = () =>
@@ -156,6 +157,19 @@ export default function HomeScreen() {
     return {
       opacity,
       transform: [{ translateY }, { scale }],
+    };
+  });
+
+  const deckPullAnimatedStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      pullDistance.value,
+      [0, PULL_LOGO_MAX_DISTANCE],
+      [0, PULL_DECK_MAX_TRANSLATE_Y],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      transform: [{ translateY }],
     };
   });
 
@@ -408,22 +422,22 @@ export default function HomeScreen() {
             <Animated.View
               pointerEvents="none"
               className="absolute left-0 right-0 z-10 items-center"
-              style={[{ top: -20 }, pullLogoAnimatedStyle]}
+              style={[{ top: -25 }, pullLogoAnimatedStyle]}
             >
               <View className="items-center justify-center">
                 <Image
                   source={images.whiteIcon}
-                  className="absolute size-10  z-10"
+                  className="absolute size-5  z-10"
                   contentFit="contain"
                 />
                 <Lottie
                   source={require("@/assets/animations/searching.json")}
-                  loop={false}
-                  autoPlay={false}
-                  progress={0}
+                  loop={true}
+                  autoPlay={true}
+                  progress={1}
                   style={{
-                    width: 120,
-                    height: 120,
+                    width: 60,
+                    height: 60,
                   }}
                 />
               </View>
@@ -444,91 +458,95 @@ export default function HomeScreen() {
             onTouchEnd={handleDeckTouchEnd}
             onTouchCancel={handleDeckTouchCancel}
           >
-            {isRefreshing ? (
-              <View className="flex-1 bg-white" />
-            ) : !shouldShowDeckLoader && currentLeank ? (
-              <View className="flex-1 px-5 pt-5">
-                <View className="h-5/6 items-center">
-                  <View
-                    className={`rounded-3xl h-5 bg-white shadow-md ${
-                      Platform.OS === "ios"
-                        ? "shadow-slate-200"
-                        : "shadow-gray-300"
-                    } absolute w-5/6 bottom-2`}
-                  />
-                  <Animated.View
-                    key={currentLeank.id}
-                    entering={FadeIn.duration(180)}
-                    className="w-full flex-1"
-                  >
-                    <LeankCardBig
-                      item={currentLeank}
-                      onAvatarPress={(user) => openUserPreview(user)}
+            <Animated.View className="flex-1" style={deckPullAnimatedStyle}>
+              {isRefreshing ? (
+                <View className="flex-1 bg-white" />
+              ) : !shouldShowDeckLoader && currentLeank ? (
+                <View className="flex-1 px-5 pt-5">
+                  <View className="h-5/6 items-center">
+                    <View
+                      className={`rounded-3xl h-5 bg-white shadow-md ${
+                        Platform.OS === "ios"
+                          ? "shadow-slate-200"
+                          : "shadow-gray-300"
+                      } absolute w-5/6 bottom-2`}
                     />
-                  </Animated.View>
-                </View>
-
-                {/* Reaction buttons */}
-                <View className="flex-row gap-16 items-center justify-center flex-1">
-                  <TouchableOpacity
-                    activeOpacity={0.6}
-                    onPress={handleUndo}
-                    className="absolute left-0 bottom-5 bg-white shadow-md rounded-full size-14 shadow-gray-300 items-center justify-center"
-                  >
-                    <Ionicons
-                      name="return-down-back"
-                      size={20}
-                      color={reactionHistory.length > 0 ? "black" : "lightgrey"}
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.6}
-                    onPress={() => handleReactionPress(false)}
-                    disabled={isReacting}
-                    className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
-                  >
-                    <Feather name="x" size={35} color="black" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.6}
-                    onPress={() => handleReactionPress(true)}
-                    disabled={isReacting}
-                    className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
-                  >
-                    <MaterialCommunityIcons
-                      name="heart"
-                      size={35}
-                      color="#dc2626"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View className="flex-1 items-center justify-center">
-                {shouldShowDeckLoader ? (
-                  <View className="items-center justify-center">
-                    <Image
-                      source={images.whiteIcon}
-                      className="absolute size-10  z-10"
-                      contentFit="contain"
-                    />
-                    <Lottie
-                      source={require("@/assets/animations/searching.json")}
-                      loop={true}
-                      autoPlay={true}
-                      style={{
-                        width: 120,
-                        height: 120,
-                      }}
-                    />
+                    <Animated.View
+                      key={currentLeank.id}
+                      entering={FadeIn.duration(180)}
+                      className="w-full flex-1"
+                    >
+                      <LeankCardBig
+                        item={currentLeank}
+                        onAvatarPress={(user) => openUserPreview(user)}
+                      />
+                    </Animated.View>
                   </View>
-                ) : (
-                  <EmptyLeanks isIconVisible />
-                )}
-              </View>
-            )}
+
+                  {/* Reaction buttons */}
+                  <View className="flex-row gap-16 items-center justify-center flex-1">
+                    <TouchableOpacity
+                      activeOpacity={0.6}
+                      onPress={handleUndo}
+                      className="absolute left-0 bottom-5 bg-white shadow-md rounded-full size-14 shadow-gray-300 items-center justify-center"
+                    >
+                      <Ionicons
+                        name="return-down-back"
+                        size={20}
+                        color={
+                          reactionHistory.length > 0 ? "black" : "lightgrey"
+                        }
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.6}
+                      onPress={() => handleReactionPress(false)}
+                      disabled={isReacting}
+                      className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
+                    >
+                      <Feather name="x" size={35} color="black" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.6}
+                      onPress={() => handleReactionPress(true)}
+                      disabled={isReacting}
+                      className="bg-white shadow-md rounded-full size-20 shadow-gray-300 items-center justify-center"
+                    >
+                      <MaterialCommunityIcons
+                        name="heart"
+                        size={35}
+                        color="#dc2626"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <View className="flex-1 items-center justify-center">
+                  {shouldShowDeckLoader ? (
+                    <View className="items-center justify-center">
+                      <Image
+                        source={images.whiteIcon}
+                        className="absolute size-10  z-10"
+                        contentFit="contain"
+                      />
+                      <Lottie
+                        source={require("@/assets/animations/searching.json")}
+                        loop={true}
+                        autoPlay={true}
+                        style={{
+                          width: 120,
+                          height: 120,
+                        }}
+                      />
+                    </View>
+                  ) : (
+                    <EmptyLeanks isIconVisible />
+                  )}
+                </View>
+              )}
+            </Animated.View>
           </Animated.ScrollView>
         </View>
       </View>

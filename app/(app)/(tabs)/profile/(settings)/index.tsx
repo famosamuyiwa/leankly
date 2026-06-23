@@ -13,7 +13,7 @@ import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
@@ -207,12 +207,12 @@ export default function Settings() {
       {/* Sign Out */}
       <TouchableOpacity
         onPress={handleSignOut}
-        className="bg-red-600 rounded-2xl p-4 shadow-sm my-10"
+        className="bg-white rounded-2xl p-4 shadow-sm my-10"
         activeOpacity={0.6}
       >
         <View className="flex-row items-center justify-center">
-          <Ionicons name="log-out-outline" size={20} color="white" />
-          <Text className="text-white font-plus-jakarta-semibold text-lg ml-2">
+          <Ionicons name="log-out-outline" size={20} color="red" />
+          <Text className="text-red-600 font-plus-jakarta-semibold text-lg ml-2">
             Sign Out
           </Text>
         </View>

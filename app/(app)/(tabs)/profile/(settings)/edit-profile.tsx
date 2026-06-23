@@ -218,13 +218,13 @@ function EditProfileContent() {
 
         {/* Delete Account */}
         <TouchableOpacity
-          className="bg-white selection:rounded-2xl p-4 shadow-sm"
+          className="bg-red-600 selection:rounded-2xl p-4 shadow-sm"
           onPress={handleDeleteAccount}
           activeOpacity={0.6}
         >
           <View className="flex-row items-center justify-center">
-            <Ionicons name="trash" size={20} color="#dc2626" />
-            <Text className="text-red-600 font-plus-jakarta-semibold text-lg ml-2">
+            <Ionicons name="trash" size={20} color="white" />
+            <Text className="text-white font-plus-jakarta-semibold text-lg ml-2">
               Delete Account
             </Text>
           </View>

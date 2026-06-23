@@ -1,11 +1,12 @@
 import { HeaderLeft } from "@/components/HeaderUI";
-import { HeaderStyles } from "@/constants/common";
+import { Colors, HeaderStyles } from "@/constants/common";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { Stack } from "expo-router";
-import React from "react";
 import { ActivityIndicator, Text, TouchableOpacity } from "react-native";
 
 function SettingsLayout() {
+  const { hasChanges } = useProfileContext();
+
   return (
     <Stack>
       <Stack.Screen
@@ -35,7 +36,7 @@ function SettingsLayout() {
             backgroundColor: "#f3f4f6",
           },
           headerLeft: () => <EditProfileHeaderLeft />,
-          headerRight: () => <EditProfileHeaderButton />,
+          headerRight: () => (hasChanges ? <EditProfileHeaderButton /> : null),
         }}
       />
     </Stack>
@@ -54,14 +55,12 @@ function EditProfileHeaderButton() {
       activeOpacity={0.6}
       onPress={handleSave}
       disabled={isSaving || !hasChanges}
-      className={`h-12 w-20 rounded-full items-center justify-center ${
-        isSaving || !hasChanges ? "bg-gray-400" : "bg-black"
-      }`}
+      className={`h-12 w-20 rounded-full items-center justify-center bg-white`}
     >
       {isSaving ? (
-        <ActivityIndicator color="white" size="small" />
+        <ActivityIndicator color={Colors.primary} size="small" />
       ) : (
-        <Text className="font-plus-jakarta-semibold color-white">Save</Text>
+        <Text className="font-plus-jakarta-semibold ">Save</Text>
       )}
     </TouchableOpacity>
   );

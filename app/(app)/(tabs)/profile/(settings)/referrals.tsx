@@ -1,13 +1,11 @@
 import { AppGradient } from "@/components/AppGradient";
 import { Colors } from "@/constants/common";
-import { mascotPoses } from "@/constants/data";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { apiClient } from "@/lib/api/client";
 import { Entypo, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import { Image } from "expo-image";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -75,7 +73,7 @@ const ReferralsScreen = () => {
     } catch {
       // Fallback to clipboard
       try {
-        // await Clipboard.setStringAsync(message);
+        await Clipboard.setStringAsync(message);
         Alert.alert("Link Copied", "Invite link copied to clipboard.");
       } catch (clipboardError) {
         console.error("Clipboard error:", clipboardError);
@@ -85,60 +83,62 @@ const ReferralsScreen = () => {
   };
 
   return (
-    <AppGradient colors={[tintColor, tintColor, "white"]}>
-      <View className="my-12">
+    <AppGradient colors={["white", tintColor, "white"]}>
+      <View className="my-20 shadow-black-100 shadow-md">
         <Pressable onPress={() => router.back()} style={styles.arrowBack}>
           <MaterialIcons name="keyboard-backspace" size={16} color="white" />
         </Pressable>
       </View>
-      <Image
+      {/* <Image
         source={{ uri: mascotPoses.REFER }}
         className="h-80 w-full"
         contentFit="cover"
-      />
-      <View className="justify-center items-center">
-        <Text className="text-2xl py-2 font-plus-jakarta-bold text-white">
-          Refer and Earn
-        </Text>
-        <Text className="text-xs text-center font-plus-jakarta-regular">
-          Invite a friend and earn 10 bonus interests for every new user
-          successfully registered using your referral code
-        </Text>
-      </View>
-      <View className="items-center pt-8">
-        <Text className="text-3xl font-plus-jakarta-bold text-white shadow-primary-100 shadow-md">
-          {bonusInterests}
-        </Text>
-      </View>
-      <View className="flex-row justify-between mt-8">
-        <Text className="text-sm text-white font-plus-jakarta-regular">
-          Referral count: {count}
-        </Text>
-      </View>
-      <View className="bg-accent-300 rounded-2xl flex-row justify-between items-center p-4 my-2">
-        <View className="gap-5">
-          <Text className="text-white font-plus-jakarta-regular">
-            Your referral code
+      /> */}
+      <View className="flex-1 justify-center">
+        <View className="justify-center items-center">
+          <Text className="text-2xl py-2 font-plus-jakarta-bold text-white">
+            Refer and Earn
           </Text>
-          <View className="flex-row gap-4">
-            <Text className="text-white font-plus-jakarta-bold">
-              {code || "..."}
-            </Text>
-            <Pressable onPress={copyToClipboard}>
-              <Ionicons name="copy" color={tintColor} size={24} />
-            </Pressable>
-          </View>
+          <Text className="text-xs text-center font-plus-jakarta-regular">
+            Invite a friend and earn 10 bonus interests for every new user
+            successfully registered using your referral code
+          </Text>
         </View>
-        <View>
-          <TouchableOpacity
-            onPress={shareInviteLink}
-            className="flex-row gap-2 items-center bg-white p-2 rounded-full"
-          >
-            <Entypo name="share" color={tintColor} size={18} />
-            <Text className="text-sm font-plus-jakarta-regular">
-              Share invite
+        <View className="items-center pt-8">
+          <Text className="text-3xl font-plus-jakarta-bold text-white ">
+            {bonusInterests}
+          </Text>
+        </View>
+        <View className="flex-row justify-between mt-8">
+          <Text className="text-sm text-white font-plus-jakarta-regular">
+            Referral count: {count}
+          </Text>
+        </View>
+        <View className="bg-accent-300 rounded-2xl flex-row justify-between items-center p-4 my-2">
+          <View className="gap-5">
+            <Text className="text-white font-plus-jakarta-regular">
+              Your referral code
             </Text>
-          </TouchableOpacity>
+            <View className="flex-row gap-4">
+              <Text className="text-white font-plus-jakarta-bold">
+                {code || "..."}
+              </Text>
+              <Pressable onPress={copyToClipboard}>
+                <Ionicons name="copy" color={tintColor} size={24} />
+              </Pressable>
+            </View>
+          </View>
+          <View>
+            <TouchableOpacity
+              onPress={shareInviteLink}
+              className="flex-row gap-2 items-center bg-white p-2 rounded-full"
+            >
+              <Entypo name="share" color={tintColor} size={18} />
+              <Text className="text-sm font-plus-jakarta-regular">
+                Share invite
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </AppGradient>

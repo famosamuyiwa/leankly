@@ -8,23 +8,48 @@ import {
   Entypo,
   Ionicons,
   MaterialCommunityIcons,
+  MaterialIcons,
 } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
+import { useState } from "react";
 import {
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  runOnUI,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import CustomButton from "./Button";
 
 interface LeankProps {
   item: Leank;
   onPress?: () => void;
 }
+
+const CARD_FLIP_DURATION_MS = 420;
+const CARD_FLIP_PERSPECTIVE = 1200;
+const DESCRIPTION_PREVIEW_MAX_LENGTH = 65;
+
+const animateCardFlipOnUI = (
+  sharedValue: SharedValue<number>,
+  targetValue: number,
+) => {
+  "worklet";
+
+  sharedValue.value = withTiming(targetValue, {
+    duration: CARD_FLIP_DURATION_MS,
+  });
+};
 
 // Interop the Image component to recognize the 'className' prop
 cssInterop(Image, {
@@ -94,115 +119,211 @@ export const LeankCardBig = ({
   const hostLabel = [item.owner?.name, item.owner?.age]
     .filter(Boolean)
     .join(", ");
+  const [isDescriptionFlipped, setIsDescriptionFlipped] = useState(false);
+  const flipProgress = useSharedValue(0);
+  const descriptionPreview =
+    description.length > DESCRIPTION_PREVIEW_MAX_LENGTH
+      ? `${description.slice(0, DESCRIPTION_PREVIEW_MAX_LENGTH).trimEnd()}…`
+      : description;
+
+  const frontFaceStyle = useAnimatedStyle(() => {
+    return {
+      backfaceVisibility: "hidden",
+      transform: [
+        { perspective: CARD_FLIP_PERSPECTIVE },
+        { rotateY: `${flipProgress.value}deg` },
+      ],
+    };
+  });
+
+  const backFaceStyle = useAnimatedStyle(() => {
+    return {
+      backfaceVisibility: "hidden",
+      transform: [
+        { perspective: CARD_FLIP_PERSPECTIVE },
+        { rotateY: `${flipProgress.value - 180}deg` },
+      ],
+    };
+  });
+
+  const flipToDescription = () => {
+    if (!description) return;
+    setIsDescriptionFlipped(true);
+    runOnUI(animateCardFlipOnUI)(flipProgress, 180);
+  };
+
+  const flipToFront = () => {
+    setIsDescriptionFlipped(false);
+    runOnUI(animateCardFlipOnUI)(flipProgress, 0);
+  };
 
   return (
     <View
       className={`rounded-3xl w-full bg-white mb-5 shadow-md ${Platform.OS === "ios" ? "shadow-slate-200" : "shadow-gray-300 "}  flex-1`}
     >
-      <View className="h-[58%] rounded-t-3xl overflow-hidden">
-        <Image
-          source={coverSource}
-          className="absolute h-full w-full"
-          contentFit="cover"
-          transition={250}
-          cachePolicy="memory-disk"
-        />
-        <LinearGradient
-          colors={["rgba(0,0,0,0.03)", "rgba(0,0,0,0.38)", "rgba(0,0,0,0.86)"]}
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+      <Animated.View
+        pointerEvents={isDescriptionFlipped ? "none" : "auto"}
+        className="absolute inset-0 rounded-3xl bg-white"
+        style={[StyleSheet.absoluteFill, frontFaceStyle]}
+      >
+        <View className="h-[58%] rounded-t-3xl overflow-hidden">
+          <Image
+            source={coverSource}
+            className="absolute h-full w-full"
+            contentFit="cover"
+            transition={250}
+            cachePolicy="memory-disk"
+          />
+          <LinearGradient
+            colors={[
+              "rgba(0,0,0,0.03)",
+              "rgba(0,0,0,0.38)",
+              "rgba(0,0,0,0.86)",
+            ]}
+            locations={[0, 0.5, 1]}
+            style={StyleSheet.absoluteFill}
+          />
 
-        <View className="absolute left-4 right-4 top-4 flex-row items-center justify-end">
-          {!!item.category && (
-            <View className="max-w-[70%] rounded-full bg-black/40 px-3 py-2">
-              <Text className="font-plus-jakarta-bold text-xs text-white line-clamp-1">
-                {item.category}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View className="absolute bottom-4 left-4 right-4 gap-4">
-          <View className="flex-row items-end gap-3">
-            <TouchableOpacity
-              activeOpacity={0.7}
-              disabled={!ownerId}
-              onPress={() => {
-                if (!ownerId) return;
-                onAvatarPress?.({
-                  id: ownerId,
-                  name: item.owner?.name,
-                  age: item.owner?.age,
-                  avatar: item.owner?.avatar,
-                });
-              }}
-              className="rounded-full border-2 border-white"
-            >
-              <Image
-                source={avatarSource}
-                className="size-14 rounded-full"
-                contentFit="cover"
-              />
-            </TouchableOpacity>
-
-            <View className="flex-1 pb-1">
-              <Text className="font-plus-jakarta-extrabold text-2xl leading-8 text-white line-clamp-2">
-                {title}
-              </Text>
-              <Text className="font-plus-jakarta-semibold text-sm text-white/80 line-clamp-1">
-                Hosted by {hostLabel || "a Leankly host"}
-              </Text>
-            </View>
+          <View className="absolute left-4 right-4 top-4 flex-row items-center justify-end">
+            {!!item.category && (
+              <View className="max-w-[70%] rounded-full bg-black/40 px-3 py-2">
+                <Text className="font-plus-jakarta-bold text-xs text-white line-clamp-1">
+                  {item.category}
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
-      </View>
 
-      <View className="flex-1 justify-between px-4 py-4">
-        <View className="gap-3">
-          {description && (
-            <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
-              <AntDesign name="notification" size={16} color={Colors.accent} />
-              <Text className="flex-1 font-plus-jakarta-regular text-black-300 line-clamp-2">
-                {description}
-              </Text>
-            </View>
-          )}
-
-          <View className="flex-row gap-3">
-            <View className="flex-1 rounded-2xl bg-primary-100 px-3 py-5">
-              <View className="mb-2 flex-row items-center gap-2">
-                <Ionicons
-                  name="calendar-clear"
-                  size={15}
-                  color={Colors.primary}
+          <View className="absolute bottom-4 left-4 right-4 gap-4">
+            <View className="flex-row items-end gap-3">
+              <TouchableOpacity
+                activeOpacity={0.7}
+                disabled={!ownerId}
+                onPress={() => {
+                  if (!ownerId) return;
+                  onAvatarPress?.({
+                    id: ownerId,
+                    name: item.owner?.name,
+                    age: item.owner?.age,
+                    avatar: item.owner?.avatar,
+                  });
+                }}
+                className="rounded-full border-2 border-white"
+              >
+                <Image
+                  source={avatarSource}
+                  className="size-14 rounded-full"
+                  contentFit="cover"
                 />
-              </View>
-              <Text className="font-plus-jakarta-extrabold text-black-300 line-clamp-2">
-                {dateLabel}
-              </Text>
-            </View>
+              </TouchableOpacity>
 
-            <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-5">
-              <View className="mb-2 flex-row items-center gap-2">
-                <Entypo name="location" size={16} color={Colors.accent} />
+              <View className="flex-1 pb-1">
+                <Text className="font-plus-jakarta-extrabold text-2xl leading-8 text-white line-clamp-2">
+                  {title}
+                </Text>
+                <Text className="font-plus-jakarta-semibold text-sm text-white/80 line-clamp-1">
+                  Hosted by {hostLabel || "a Leankly host"}
+                </Text>
               </View>
-              <Text className="font-plus-jakarta-extrabold  text-black-300 line-clamp-2">
-                {location}
-              </Text>
             </View>
-          </View>
-
-          <View className="flex-row items-center gap-3 rounded-2xl  ">
-            <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
-              <Entypo name="clock" size={16} color={Colors.accent} />
-            </View>
-            <Text className="flex-1 font-plus-jakarta-bold text-sm text-gray-500 line-clamp-2">
-              {timeLabel}
-            </Text>
           </View>
         </View>
-      </View>
+
+        <View className="flex-1 justify-between px-4 py-4">
+          <View className="gap-3">
+            {description && (
+              <View className="flex-row items-center gap-3 rounded-2xl bg-gray-50 px-3 py-3">
+                <AntDesign
+                  name="notification"
+                  size={16}
+                  color={Colors.accent}
+                />
+                <Text
+                  className="flex-1 font-plus-jakarta-regular text-black-300"
+                  numberOfLines={2}
+                >
+                  {descriptionPreview}{" "}
+                  <Text
+                    className="font-plus-jakarta-semibold"
+                    style={{ color: Colors.primary }}
+                    onPress={flipToDescription}
+                  >
+                    Read more...
+                  </Text>
+                </Text>
+              </View>
+            )}
+
+            <View className="flex-row gap-3">
+              <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-5">
+                <View className="mb-2 flex-row items-center gap-2">
+                  <Ionicons
+                    name="calendar-clear"
+                    size={15}
+                    color={Colors.accent}
+                  />
+                </View>
+                <Text className="font-plus-jakarta-semibold text-black-300 line-clamp-2">
+                  {dateLabel}
+                </Text>
+              </View>
+
+              <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-5">
+                <View className="mb-2 flex-row items-center gap-2">
+                  <Entypo name="location" size={16} color={Colors.accent} />
+                </View>
+                <Text className="font-plus-jakarta-semibold  text-black-300 line-clamp-2">
+                  {location}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-center gap-3 rounded-2xl  ">
+              <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
+                <Entypo name="clock" size={16} color={Colors.accent} />
+              </View>
+              <Text className="flex-1 font-plus-jakarta-bold text-sm text-gray-500 line-clamp-2">
+                {timeLabel}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents={isDescriptionFlipped ? "auto" : "none"}
+        className="absolute inset-0 rounded-3xl bg-white"
+        style={[StyleSheet.absoluteFill, backFaceStyle]}
+      >
+        <View className="flex-1 rounded-3xl bg-white px-4 py-4">
+          <View className="mt-4 flex-1 flex-row items-start gap-3 py-4">
+            <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
+              <AntDesign name="notification" size={16} color={Colors.accent} />
+            </View>
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ paddingBottom: 8 }}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
+              <Text className="font-plus-jakarta-regular leading-6 text-black-300">
+                {description || "No description provided."}
+              </Text>
+            </ScrollView>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={flipToFront}
+            className="size-10 items-center justify-center"
+          >
+            <MaterialIcons
+              name="keyboard-backspace"
+              size={25}
+              color={Colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
     </View>
   );
 };

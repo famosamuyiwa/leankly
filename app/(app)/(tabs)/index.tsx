@@ -432,8 +432,8 @@ export default function HomeScreen() {
                 />
                 <Lottie
                   source={require("@/assets/animations/searching.json")}
-                  loop={true}
-                  autoPlay={true}
+                  loop={false}
+                  autoPlay={false}
                   progress={1}
                   style={{
                     width: 60,

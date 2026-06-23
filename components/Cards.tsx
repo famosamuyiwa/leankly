@@ -121,10 +121,10 @@ export const LeankCardBig = ({
     .join(", ");
   const [isDescriptionFlipped, setIsDescriptionFlipped] = useState(false);
   const flipProgress = useSharedValue(0);
-  const descriptionPreview =
-    description.length > DESCRIPTION_PREVIEW_MAX_LENGTH
-      ? `${description.slice(0, DESCRIPTION_PREVIEW_MAX_LENGTH).trimEnd()}…`
-      : description;
+  const isLongDescription = description.length > DESCRIPTION_PREVIEW_MAX_LENGTH;
+  const descriptionPreview = isLongDescription
+    ? `${description.slice(0, DESCRIPTION_PREVIEW_MAX_LENGTH).trimEnd()}…`
+    : description;
 
   const frontFaceStyle = useAnimatedStyle(() => {
     return {
@@ -243,13 +243,15 @@ export const LeankCardBig = ({
                   numberOfLines={2}
                 >
                   {descriptionPreview}{" "}
-                  <Text
-                    className="font-plus-jakarta-semibold"
-                    style={{ color: Colors.primary }}
-                    onPress={flipToDescription}
-                  >
-                    Read more...
-                  </Text>
+                  {isLongDescription && (
+                    <Text
+                      className="font-plus-jakarta-semibold"
+                      style={{ color: Colors.primary }}
+                      onPress={flipToDescription}
+                    >
+                      Read more...
+                    </Text>
+                  )}
                 </Text>
               </View>
             )}

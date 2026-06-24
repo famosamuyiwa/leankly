@@ -244,17 +244,17 @@ export const LeankCardBig = ({
                 >
                   {descriptionPreview}{" "}
                   {isLongDescription && (
-                    <TouchableOpacity
+                    <Text
                       onPress={flipToDescription}
-                      className="flex-row justify-end items-end"
+                      suppressHighlighting
+                      className="font-plus-jakarta-semibold"
+                      style={{
+                        backgroundColor: "transparent",
+                        color: Colors.primary,
+                      }}
                     >
-                      <Text
-                        className="font-plus-jakarta-semibold self-end text-end"
-                        style={{ color: Colors.primary }}
-                      >
-                        Read more...
-                      </Text>
-                    </TouchableOpacity>
+                      Read more...
+                    </Text>
                   )}
                 </Text>
               </View>

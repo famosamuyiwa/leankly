@@ -95,6 +95,20 @@
         ]
       }
     },
+    "/v1/users/me/attention-counts": {
+      "get": {
+        "operationId": "UsersController_attentionCounts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/v1/media/confirm": {
       "post": {
         "operationId": "MediaController_confirm",
@@ -236,7 +250,24 @@
     "/v1/leanks/hosted": {
       "get": {
         "operationId": "LeanksController_hosted",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -250,6 +281,37 @@
     "/v1/leanks/attended": {
       "get": {
         "operationId": "LeanksController_attended",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Leanks"
+        ]
+      }
+    },
+    "/v1/leanks/profile-counts": {
+      "get": {
+        "operationId": "LeanksController_profileCounts",
         "parameters": [],
         "responses": {
           "200": {

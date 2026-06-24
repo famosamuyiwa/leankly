@@ -5,7 +5,7 @@ import { apiClient } from "@/lib/api/client";
 import { Entypo, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -22,22 +22,40 @@ const ReferralsScreen = () => {
   const [code, setCode] = useState<string>("");
   const [bonusInterests, setBonusInterests] = useState<number>(0);
   const [count, setCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!currentUser?.id) return;
-      try {
-        const stats = await apiClient.getReferral();
-        setCode(stats.referralCode);
-        setCount(stats.referralCount);
-        setBonusInterests(stats.bonusInterests || 0);
-      } catch {}
-    };
-    load();
+  const loadReferral = useCallback(async () => {
+    if (!currentUser?.id) return;
+
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const stats = await apiClient.getReferral();
+      setCode(stats.referralCode);
+      setCount(stats.referralCount);
+      setBonusInterests(stats.bonusInterests || 0);
+    } catch (error) {
+      console.error("Failed to load referral stats", error);
+      setLoadError("Couldn't load referral stats. Tap to retry.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentUser?.id]);
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      void loadReferral();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadReferral]);
+
   const copyToClipboard = async () => {
-    if (!code) return;
+    if (!code) {
+      Alert.alert("Unavailable", "Referral code is not available yet.");
+      return;
+    }
     await Clipboard.setStringAsync(code);
     Alert.alert("Copied", "Referral code copied to clipboard.");
   };
@@ -74,7 +92,7 @@ const ReferralsScreen = () => {
       // Fallback to clipboard
       try {
         await Clipboard.setStringAsync(message);
-        Alert.alert("Link Copied", "Invite link copied to clipboard.");
+        Alert.alert("Invite Copied", "Invite message copied to clipboard.");
       } catch (clipboardError) {
         console.error("Clipboard error:", clipboardError);
         Alert.alert("Error", "Something went wrong while sharing.");
@@ -103,10 +121,21 @@ const ReferralsScreen = () => {
             Invite a friend and earn 10 bonus interests for every new user
             successfully registered using your referral code
           </Text>
+          {loadError && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={loadReferral}
+              className="mt-4 rounded-full bg-white/90 px-4 py-2"
+            >
+              <Text className="text-xs text-center font-plus-jakarta-semibold">
+                {loadError}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View className="items-center pt-8">
           <Text className="text-3xl font-plus-jakarta-bold text-white ">
-            {bonusInterests}
+            {isLoading ? "..." : bonusInterests}
           </Text>
         </View>
         <View className="flex-row justify-between mt-8">
@@ -121,7 +150,7 @@ const ReferralsScreen = () => {
             </Text>
             <View className="flex-row gap-4">
               <Text className="text-white font-plus-jakarta-bold">
-                {code || "..."}
+                {isLoading ? "..." : code || "Unavailable"}
               </Text>
               <Pressable onPress={copyToClipboard}>
                 <Ionicons name="copy" color={tintColor} size={24} />

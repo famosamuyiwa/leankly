@@ -28,7 +28,7 @@ interface EditProfileContextType {
   location: string;
   locationCoords: { lat: number; lng: number } | null;
   setAvatar: (avatar: any) => void;
-  setAvatarMediaResult: (media: MediaResult) => void;
+  setAvatarMediaResult: (media: MediaResult | undefined) => void;
   setName: (name: string) => void;
   setEmail: (email: string) => void;
   setAge: (age: number) => void;
@@ -99,6 +99,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     setEmail(currentUser.email);
     setAge(currentUser.age ?? 0);
     setLocation(currentUser.location);
+    setAvatarMediaResult(undefined);
     setLocationCoords(
       typeof currentUser.locationLat === "number" &&
         typeof currentUser.locationLng === "number"
@@ -108,6 +109,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [currentUser]);
 
   const resetUserData = () => {
+    setAvatarMediaResult(undefined);
     if (!currentUser) return;
     setAvatar(currentUser.avatar);
     setName(currentUser.name);
@@ -158,6 +160,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       });
 
       refetchCurrentUser();
+      setAvatarMediaResult(undefined);
       setIsEditing(false);
       setHasChanges(false);
     } catch (err: any) {
@@ -170,6 +173,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const handleCancel = () => {
     if (isSaving) return;
     if (isEditing) resetUserData();
+    setAvatarMediaResult(undefined);
     setIsEditing(false);
     setHasChanges(false);
   };

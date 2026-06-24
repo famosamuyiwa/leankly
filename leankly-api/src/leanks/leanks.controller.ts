@@ -7,10 +7,12 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
+import { ApiQuery } from "@nestjs/swagger";
 import { User } from "@prisma/client";
 import { CurrentUser } from "../auth/auth.decorators";
 import { CreateLeankDto, UpdateLeankDto } from "./dto/create-leank.dto";
 import { FeedQueryDto } from "./dto/feed-query.dto";
+import { PaginationQueryDto } from "./dto/pagination-query.dto";
 import { LeanksService } from "./leanks.service";
 
 @Controller("v1/leanks")
@@ -28,13 +30,22 @@ export class LeanksController {
   }
 
   @Get("hosted")
-  hosted(@CurrentUser() user: User) {
-    return this.leanks.hosted(user);
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  hosted(@CurrentUser() user: User, @Query() query: PaginationQueryDto) {
+    return this.leanks.hosted(user, query);
   }
 
   @Get("attended")
-  attended(@CurrentUser() user: User) {
-    return this.leanks.attended(user);
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  attended(@CurrentUser() user: User, @Query() query: PaginationQueryDto) {
+    return this.leanks.attended(user, query);
+  }
+
+  @Get("profile-counts")
+  profileCounts(@CurrentUser() user: User) {
+    return this.leanks.profileCounts(user);
   }
 
   @Get("chats")

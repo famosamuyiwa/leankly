@@ -22,8 +22,10 @@ export default function MessagesScreen() {
     handleAcceptRequest,
     handleChatPress,
     handleDeclineRequest,
+    handleNavChange,
     handleRefresh,
     isChats,
+    nav,
     pendingRequestCount,
     refreshing,
     shouldShowRequestsPaywall,
@@ -64,6 +66,8 @@ export default function MessagesScreen() {
       <View className="py-5">
         <NavBar
           screen={Screens.CHAT}
+          value={nav}
+          onChange={handleNavChange}
           badgeCounts={{
             [NavbarOptions.CHATS]: unreadChatCount,
             [NavbarOptions.REQUESTS]: pendingRequestCount,

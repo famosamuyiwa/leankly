@@ -1,9 +1,39 @@
-import { ForbiddenException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { LeankCategory, LeankStatus, User } from "@prisma/client";
 import { LeanksService } from "./leanks.service";
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const user = { id: userId } as User;
+const otherUserId = "00000000-0000-4000-8000-000000000002";
+
+const cursorFor = (createdAt: Date, id: string) =>
+  Buffer.from(
+    JSON.stringify({ createdAt: createdAt.toISOString(), id }),
+  ).toString("base64url");
+
+const leankRow = (id: string, createdAt: Date, ownerId = userId) => ({
+  id,
+  coverUrl: "https://example.com/cover.jpg",
+  coverFileId: null,
+  title: `Leank ${id}`,
+  description: "Catch up",
+  status: LeankStatus.ACTIVE,
+  category: LeankCategory.SOCIAL,
+  peopleRequired: 1,
+  eventDate: new Date("2026-06-30T00:00:00.000Z"),
+  time: "12:00 PM",
+  location: "Cafe",
+  locationLat: null,
+  locationLng: null,
+  isOnline: false,
+  ownerId,
+  owner: { id: ownerId, name: "Owner", age: 25, avatarUrl: null },
+  participants: ownerId === userId ? [] : [{ userId }],
+  lastMessageId: null,
+  lastMessageAt: null,
+  createdAt,
+  updatedAt: createdAt,
+});
 
 describe("LeanksService", () => {
   it("rejects Pro-only filters when the entitlement cache is inactive", async () => {
@@ -172,5 +202,120 @@ describe("LeanksService", () => {
       ...rows[2].chatMetadata,
     ]);
     expect(result.unreadCount).toBe(1);
+  });
+
+  it("returns a hosted page with a next cursor when more rows exist", async () => {
+    const first = leankRow(
+      "00000000-0000-4000-8000-000000000010",
+      new Date("2026-06-24T12:00:00.000Z"),
+    );
+    const second = leankRow(
+      "00000000-0000-4000-8000-000000000009",
+      new Date("2026-06-23T12:00:00.000Z"),
+    );
+    const extra = leankRow(
+      "00000000-0000-4000-8000-000000000008",
+      new Date("2026-06-22T12:00:00.000Z"),
+    );
+    const findMany = jest.fn(() => Promise.resolve([first, second, extra]));
+    const service = new LeanksService(
+      { leank: { findMany } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.hosted(user, { limit: 2 });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ownerId: userId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 3,
+      }),
+    );
+    expect(result.items.map((item) => item.id)).toEqual([first.id, second.id]);
+    expect(result.hasMore).toBe(true);
+    expect(result.nextCursor).toBe(cursorFor(second.createdAt, second.id));
+  });
+
+  it("applies the attended cursor predicate and returns only the requested page", async () => {
+    const cursorCreatedAt = new Date("2026-06-23T12:00:00.000Z");
+    const cursorId = "00000000-0000-4000-8000-000000000009";
+    const row = leankRow(
+      "00000000-0000-4000-8000-000000000008",
+      new Date("2026-06-22T12:00:00.000Z"),
+      otherUserId,
+    );
+    const findMany = jest.fn(() => Promise.resolve([row]));
+    const service = new LeanksService(
+      { leank: { findMany } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.attended(user, {
+      limit: 2,
+      cursor: cursorFor(cursorCreatedAt, cursorId),
+    });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          participants: { some: { userId } },
+          OR: [
+            { createdAt: { lt: cursorCreatedAt } },
+            { createdAt: cursorCreatedAt, id: { lt: cursorId } },
+          ],
+        }),
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 3,
+      }),
+    );
+    expect(result.items.map((item) => item.id)).toEqual([row.id]);
+    expect(result.hasMore).toBe(false);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it("rejects an invalid profile pagination cursor", async () => {
+    const service = new LeanksService(
+      { leank: { findMany: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.hosted(user, { limit: 2, cursor: "not-a-cursor" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("returns exact hosted and attended profile counts", async () => {
+    const prisma = {
+      leank: { count: jest.fn(() => Promise.resolve(7)) },
+      participant: { count: jest.fn(() => Promise.resolve(4)) },
+    };
+    const service = new LeanksService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(service.profileCounts(user)).resolves.toEqual({
+      hosted: 7,
+      attended: 4,
+    });
+    expect(prisma.leank.count).toHaveBeenCalledWith({
+      where: { ownerId: userId },
+    });
+    expect(prisma.participant.count).toHaveBeenCalledWith({
+      where: { userId },
+    });
   });
 });

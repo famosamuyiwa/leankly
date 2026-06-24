@@ -1,20 +1,31 @@
 import { LeankCard } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import NavBar from "@/components/NavBar";
+import { Colors } from "@/constants/common";
 import { NavbarOptions, Screens } from "@/constants/enums";
+import images from "@/constants/images";
 import { Leank } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
-import { useProfileContext } from "@/lib/ProfileContext";
 import { apiClient } from "@/lib/api/client";
 import { Fontisto } from "@expo/vector-icons";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { LegendList } from "@legendapp/list";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Interop the Image component to recognize the 'className' prop
@@ -22,48 +33,100 @@ cssInterop(Image, {
   className: { target: "style" },
 });
 
+const PROFILE_PAGE_SIZE = 20;
+
 export default function Profile() {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
 
   const params = useLocalSearchParams<{
     nav?: string;
   }>();
-  const nav = params.nav ?? NavbarOptions.HOSTED;
+  const nav =
+    params.nav === NavbarOptions.JOINED || params.nav === NavbarOptions.HOSTED
+      ? params.nav
+      : NavbarOptions.HOSTED;
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const { avatar, name } = useProfileContext();
   const { currentUser } = useGlobalContext();
   const { isPro, openPaywall } = usePremium();
-  const hostedQuery = useQuery({
-    queryKey: ["leanks", "hosted", currentUser?.id],
-    queryFn: apiClient.getHosted,
-    enabled: Boolean(currentUser),
+  const currentUserId = currentUser?.id;
+  const profileAvatar = currentUser?.avatar ?? "";
+  const profileName = currentUser?.name ?? "";
+  const isHosted = nav === NavbarOptions.HOSTED;
+  const hostedQueryKey = useMemo(
+    () => ["leanks", "profile", "hosted", currentUserId] as const,
+    [currentUserId],
+  );
+  const attendedQueryKey = useMemo(
+    () => ["leanks", "profile", "attended", currentUserId] as const,
+    [currentUserId],
+  );
+  const selectedQueryKey = isHosted ? hostedQueryKey : attendedQueryKey;
+  const countsQuery = useQuery({
+    queryKey: ["leanks", "profile", "counts", currentUserId],
+    queryFn: apiClient.getProfileLeankCounts,
+    enabled: Boolean(currentUserId),
   });
-  const attendedQuery = useQuery({
-    queryKey: ["leanks", "attended", currentUser?.id],
-    queryFn: apiClient.getAttended,
-    enabled: Boolean(currentUser),
+  const hostedQuery = useInfiniteQuery({
+    queryKey: hostedQueryKey,
+    enabled: Boolean(currentUserId && isHosted),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getHosted({
+        limit: PROFILE_PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+  const attendedQuery = useInfiniteQuery({
+    queryKey: attendedQueryKey,
+    enabled: Boolean(currentUserId && !isHosted),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getAttended({
+        limit: PROFILE_PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
   });
   const usageQuery = useQuery({
-    queryKey: ["usage", currentUser?.id],
+    queryKey: ["usage", currentUserId],
     queryFn: apiClient.getUsage,
-    enabled: Boolean(currentUser && !isPro),
+    enabled: Boolean(currentUserId && !isPro),
   });
-  const leanks =
-    nav === NavbarOptions.HOSTED
-      ? hostedQuery.data?.items || []
-      : attendedQuery.data?.items || [];
+  const selectedQuery = isHosted ? hostedQuery : attendedQuery;
+  const leanks = useMemo<Leank[]>(() => {
+    const seen = new Set<string>();
+    return (selectedQuery.data?.pages.flatMap((page) => page.items) || []).filter(
+      (item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      },
+    );
+  }, [selectedQuery.data]);
   const leankCounts = {
-    hosted: hostedQuery.data?.items.length || 0,
-    attended: attendedQuery.data?.items.length || 0,
+    hosted: countsQuery.data ? countsQuery.data.hosted : "...",
+    attended: countsQuery.data ? countsQuery.data.attended : "...",
   };
+  const bonusInterests =
+    usageQuery.data?.bonusInterests ?? currentUser?.bonusInterests ?? 0;
   const interestsLeft = usageQuery.data
     ? Math.max(
         0,
         usageQuery.data.limits.interests - usageQuery.data.interestsUsedToday,
       )
     : null;
+
+  const handleNavChange = useCallback(
+    (nextNav: NavbarOptions) => {
+      if (nextNav === nav) return;
+      router.setParams({ nav: nextNav });
+    },
+    [nav],
+  );
 
   const renderItem = ({ item }: { item: Leank }) => (
     <View className="mx-5 mb-5">
@@ -72,13 +135,44 @@ export default function Profile() {
   );
 
   const listEmptyComponent = () => {
+    if (selectedQuery.isPending) {
+      return (
+        <View className="h-3/4 items-center justify-center">
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      );
+    }
+
+    if (selectedQuery.isError) {
+      return (
+        <View className="h-3/4 items-center justify-center">
+          <EmptyLeanks
+            onPrimaryAction={() => {
+              void selectedQuery.refetch();
+            }}
+            title="Couldn't load leanks"
+            subtitle="Pull to refresh or try again."
+            primaryLabel="Retry"
+          />
+        </View>
+      );
+    }
+
     return (
       <View className="h-3/4 items-center justify-center">
         <EmptyLeanks
-          onPrimaryAction={() => router.push("/create")}
-          title="No leanks yet"
-          subtitle=""
-          primaryLabel="Create a Leank"
+          onPrimaryAction={() => {
+            if (isHosted) {
+              router.push("/create");
+              return;
+            }
+            router.push("/(app)/(tabs)");
+          }}
+          title={isHosted ? "No hosted leanks yet" : "No attended leanks yet"}
+          subtitle={
+            isHosted ? "" : "When you join a leank, it will show up here."
+          }
+          primaryLabel={isHosted ? "Create a Leank" : "Explore Leanks"}
         />
       </View>
     );
@@ -87,16 +181,59 @@ export default function Profile() {
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
-      await Promise.all([
-        hostedQuery.refetch(),
-        attendedQuery.refetch(),
-        usageQuery.refetch(),
-      ]);
+      const refreshTasks: Promise<unknown>[] = [
+        queryClient.resetQueries(
+          { queryKey: selectedQueryKey, exact: true },
+          { throwOnError: true },
+        ),
+        countsQuery.refetch(),
+      ];
+
+      if (!isPro) {
+        refreshTasks.push(usageQuery.refetch());
+      }
+
+      await Promise.all(refreshTasks);
     } catch (e) {
       console.log(e);
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleEndReached = useCallback(() => {
+    if (!selectedQuery.hasNextPage || selectedQuery.isFetchingNextPage) return;
+    void selectedQuery.fetchNextPage();
+  }, [selectedQuery]);
+
+  const listFooterComponent = () => {
+    if (selectedQuery.isFetchingNextPage) {
+      return (
+        <View className="items-center justify-center py-6">
+          <ActivityIndicator color={Colors.primary} size="small" />
+        </View>
+      );
+    }
+
+    if (selectedQuery.isFetchNextPageError) {
+      return (
+        <View className="items-center justify-center py-6">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              void selectedQuery.fetchNextPage();
+            }}
+            className="rounded-full bg-gray-100 px-5 py-3"
+          >
+            <Text className="font-plus-jakarta-semibold text-gray-700">
+              Retry loading more
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null;
   };
 
   const listHeaderComponent = (
@@ -109,19 +246,19 @@ export default function Profile() {
         <Fontisto name="player-settings" size={30} />
       </TouchableOpacity>
       <Image
-        source={{ uri: avatar }}
+        source={profileAvatar ? { uri: profileAvatar } : images.avatarPlaceholder}
         className="w-20 h-20 rounded-full"
         contentFit="cover"
       />
-      <Text className="font-plus-jakarta-extrabold text-2xl">{name}</Text>
+      <Text className="font-plus-jakarta-extrabold text-2xl">
+        {profileName}
+      </Text>
       {!isPro && (
         <View className="flex-row items-center gap-3 flex-wrap">
           {interestsLeft !== null && (
             <Text className="text-secondary-300 font-plus-jakarta-regular">
               {interestsLeft} interests left today
-              {currentUser?.bonusInterests && currentUser.bonusInterests > 0
-                ? ` (+${currentUser.bonusInterests} bonus)`
-                : ""}
+              {bonusInterests > 0 ? ` (+${bonusInterests} bonus)` : ""}
             </Text>
           )}
           <TouchableOpacity
@@ -151,7 +288,11 @@ export default function Profile() {
       </View>
 
       <View className="px-5">
-        <NavBar screen={Screens.PROFILE} />
+        <NavBar
+          screen={Screens.PROFILE}
+          value={nav}
+          onChange={handleNavChange}
+        />
       </View>
     </View>
   );
@@ -171,7 +312,10 @@ export default function Profile() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={listEmptyComponent}
+        ListFooterComponent={listFooterComponent}
         ListHeaderComponent={listHeaderComponent}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
       />
     </View>
   );

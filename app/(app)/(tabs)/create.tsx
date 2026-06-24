@@ -18,6 +18,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { Portal } from "@gorhom/portal";
+import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { cssInterop } from "nativewind";
 import { useMemo, useRef, useState } from "react";
@@ -60,6 +61,7 @@ export default function Create() {
   const didCommitDateRef = useRef(false);
   const didCommitTimeRef = useRef(false);
   const { currentUser, displayToast } = useGlobalContext();
+  const queryClient = useQueryClient();
 
   const { uploadFiles } = useAppwriteUpload();
 
@@ -145,6 +147,9 @@ export default function Create() {
 
     try {
       await apiClient.createLeank(data);
+      await queryClient.invalidateQueries({
+        queryKey: ["leanks", "profile"],
+      });
 
       displayToast({
         type: ToastType.SUCCESS,

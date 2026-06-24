@@ -9,15 +9,12 @@ import {
   Max,
   Min,
 } from "class-validator";
+import { PaginationQueryDto } from "./pagination-query.dto";
 
 const toBoolean = ({ value }: { value: unknown }) =>
   value === true || value === "true";
 
-export class FeedQueryDto {
-  @IsOptional()
-  @IsString()
-  cursor?: string;
-
+export class FeedQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

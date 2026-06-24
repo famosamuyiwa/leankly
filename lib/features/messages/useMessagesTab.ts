@@ -31,7 +31,19 @@ export function useMessagesTab() {
   }>({});
   const chatIdsRef = useRef(new Set<string>());
 
-  const isChats = params.nav === NavbarOptions.CHATS;
+  const nav =
+    params.nav === NavbarOptions.CHATS || params.nav === NavbarOptions.REQUESTS
+      ? params.nav
+      : NavbarOptions.REQUESTS;
+  const isChats = nav === NavbarOptions.CHATS;
+
+  const handleNavChange = useCallback(
+    (nextNav: NavbarOptions) => {
+      if (nextNav === nav) return;
+      router.setParams({ nav: nextNav });
+    },
+    [nav],
+  );
 
   useEffect(() => {
     chatIdsRef.current = new Set(chatRooms.map((chat) => chat.id));
@@ -196,9 +208,11 @@ export function useMessagesTab() {
     currentUserId,
     handleAcceptRequest,
     handleChatPress,
+    handleNavChange,
     handleDeclineRequest,
     handleRefresh,
     isChats,
+    nav,
     refreshing,
     requests,
     shouldShowRequestsPaywall,

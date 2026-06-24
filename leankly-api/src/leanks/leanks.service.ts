@@ -13,6 +13,7 @@ import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { categoryFromValue } from "./leank.constants";
 import { CreateLeankDto, UpdateLeankDto } from "./dto/create-leank.dto";
 import { FeedQueryDto } from "./dto/feed-query.dto";
+import { PaginationQueryDto } from "./dto/pagination-query.dto";
 import { presentLeank } from "./leank.presenter";
 
 const include = {
@@ -145,24 +146,23 @@ export class LeanksService {
     return presentLeank(leank);
   }
 
-  async hosted(user: User) {
-    const rows = await this.prisma.leank.findMany({
-      where: { ownerId: user.id },
-      include,
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    return { items: rows.map(presentLeank) };
+  async hosted(user: User, query: PaginationQueryDto) {
+    return this.paginateProfileLeanks({ ownerId: user.id }, query);
   }
 
-  async attended(user: User) {
-    const rows = await this.prisma.leank.findMany({
-      where: { participants: { some: { userId: user.id } } },
-      include,
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    return { items: rows.map(presentLeank) };
+  async attended(user: User, query: PaginationQueryDto) {
+    return this.paginateProfileLeanks(
+      { participants: { some: { userId: user.id } } },
+      query,
+    );
+  }
+
+  async profileCounts(user: User) {
+    const [hosted, attended] = await Promise.all([
+      this.prisma.leank.count({ where: { ownerId: user.id } }),
+      this.prisma.participant.count({ where: { userId: user.id } }),
+    ]);
+    return { hosted, attended };
   }
 
   async chats(user: User) {
@@ -383,5 +383,39 @@ export class LeanksService {
     } catch {
       throw new BadRequestException("Invalid feed cursor");
     }
+  }
+
+  private async paginateProfileLeanks(
+    baseWhere: Prisma.LeankWhereInput,
+    query: PaginationQueryDto,
+  ) {
+    const cursor = query.cursor ? this.decodeCursor(query.cursor) : null;
+    const rows = await this.prisma.leank.findMany({
+      where: {
+        ...baseWhere,
+        ...(cursor ? this.cursorWhere(cursor) : {}),
+      },
+      include,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: query.limit + 1,
+    });
+    const hasMore = rows.length > query.limit;
+    const items = rows.slice(0, query.limit);
+    const last = items.at(-1);
+    return {
+      items: items.map(presentLeank),
+      nextCursor:
+        hasMore && last ? this.encodeCursor(last.createdAt, last.id) : null,
+      hasMore,
+    };
+  }
+
+  private cursorWhere(cursor: { createdAt: Date; id: string }) {
+    return {
+      OR: [
+        { createdAt: { lt: cursor.createdAt } },
+        { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+      ],
+    } satisfies Prisma.LeankWhereInput;
   }
 }

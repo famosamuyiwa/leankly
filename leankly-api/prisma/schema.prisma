@@ -210,7 +210,7 @@ model Leank {
   chatMetadata UserChatMeta[]
 
   @@index([status, createdAt, id])
-  @@index([ownerId, createdAt])
+  @@index([ownerId, createdAt, id])
   @@index([eventDate, status])
   @@index([category, status])
   @@index([locationLat, locationLng])
@@ -228,6 +228,7 @@ model Participant {
 
   @@unique([leankId, userId])
   @@index([userId, joinedAt])
+  @@index([userId, leankId])
   @@map("participants")
 }
 

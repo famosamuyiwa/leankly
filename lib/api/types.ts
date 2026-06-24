@@ -10,6 +10,17 @@ export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: { code: string; message: string; status: number } };
 
+export type PaginatedLeanksResponse = {
+  items: Leank[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+export type ProfileLeankCountsResponse = {
+  hosted: number;
+  attended: number;
+};
+
 export type ChatSummary = Leank;
 
 export type ChatMessage = Message;
@@ -36,6 +47,17 @@ export type QuotaState = {
   interestsLimit: number;
   bonusInterests: number;
   isPro: boolean;
+};
+
+export type UsageResponse = {
+  interestsUsedToday: number;
+  undosUsedToday: number;
+  bonusInterests: number;
+  isPro: boolean;
+  limits: {
+    interests: number;
+    undos: number;
+  };
 };
 
 export type ChatListResponse = {

@@ -14,8 +14,11 @@ import {
   ChatDetailResponse,
   ChatListResponse,
   ChatMessagePage,
+  PaginatedLeanksResponse,
+  ProfileLeankCountsResponse,
   RequestListResponse,
   UnreadCountResponse,
+  UsageResponse,
 } from "./types";
 import { unwrapApiData } from "./response";
 
@@ -121,11 +124,13 @@ export const apiClient = {
       body: JSON.stringify(body),
     }),
   getFeed: (query: Record<string, unknown>) =>
-    apiFetch<{ items: Leank[]; nextCursor: string | null; hasMore: boolean }>(
-      `/v1/leanks/feed?${params(query)}`,
-    ),
-  getHosted: () => apiFetch<{ items: Leank[] }>("/v1/leanks/hosted"),
-  getAttended: () => apiFetch<{ items: Leank[] }>("/v1/leanks/attended"),
+    apiFetch<PaginatedLeanksResponse>(`/v1/leanks/feed?${params(query)}`),
+  getHosted: (query: Record<string, unknown> = {}) =>
+    apiFetch<PaginatedLeanksResponse>(`/v1/leanks/hosted?${params(query)}`),
+  getAttended: (query: Record<string, unknown> = {}) =>
+    apiFetch<PaginatedLeanksResponse>(`/v1/leanks/attended?${params(query)}`),
+  getProfileLeankCounts: () =>
+    apiFetch<ProfileLeankCountsResponse>("/v1/leanks/profile-counts"),
   async getChats(): Promise<ChatListResponse> {
     const result = await apiFetch<{
       items: Leank[];
@@ -228,7 +233,7 @@ export const apiClient = {
         body: JSON.stringify({ code }),
       },
     ),
-  getUsage: () => apiFetch<any>("/v1/users/me/usage"),
+  getUsage: () => apiFetch<UsageResponse>("/v1/users/me/usage"),
   getEntitlements: () =>
     apiFetch<{ isPro: boolean; expiresAt: string | null }>(
       "/v1/entitlements/me",

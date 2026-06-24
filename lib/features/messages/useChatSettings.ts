@@ -3,12 +3,14 @@ import { BasicUser, Participants } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { apiClient } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
 export function useChatSettings() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
+  const queryClient = useQueryClient();
   const { currentUser, openUserPreview, showLoader, hideLoader } =
     useGlobalContext();
   const currentUserId = currentUser?.id;
@@ -65,13 +67,16 @@ export function useChatSettings() {
     showLoader();
     try {
       await apiClient.leaveChat(chatId);
+      await queryClient.invalidateQueries({
+        queryKey: ["leanks", "profile"],
+      });
       goBackToChats();
     } catch (error) {
       console.error(error);
     } finally {
       hideLoader();
     }
-  }, [chatId, currentUser, goBackToChats, hideLoader, showLoader]);
+  }, [chatId, currentUser, goBackToChats, hideLoader, queryClient, showLoader]);
 
   const closeLeank = useCallback(async () => {
     if (!chatId || !currentUser) return;

@@ -1,4 +1,5 @@
 import { Colors } from "@/constants/common";
+import images from "@/constants/images";
 import { BasicUser, Message } from "@/interfaces";
 import {
   ChatListItem,
@@ -70,10 +71,17 @@ export default function Chat() {
     setReplyTo,
   } = useChatScreen();
 
+  const chatTitle = currentLeank?.title || "Chat";
+  const participantCount =
+    currentLeank?.participantIds && currentLeank.participantIds.length >= 0
+      ? currentLeank.participantIds.length + 1
+      : null;
   const memoizedCover = useMemo(
     () => (
       <Image
-        source={{ uri: currentLeank?.cover }}
+        source={
+          currentLeank?.cover ? { uri: currentLeank.cover } : images.leankCover
+        }
         className="size-14 rounded-full"
       />
     ),
@@ -181,10 +189,12 @@ export default function Chat() {
           {memoizedCover}
           <View className="w-4/6">
             <Text className="font-plus-jakarta-bold text-lg line-clamp-2">
-              {currentLeank?.title}
+              {chatTitle}
             </Text>
             <Text className="font-plus-jakarta-regular color-gray-400 text-sm">
-              {Number(currentLeank?.participantIds?.length) + 1} leankers
+              {participantCount === null
+                ? "Chat details"
+                : `${participantCount} leankers`}
             </Text>
           </View>
         </TouchableOpacity>

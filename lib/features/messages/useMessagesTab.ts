@@ -1,9 +1,10 @@
 import { NavbarOptions } from "@/constants/enums";
 import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { useMessagesContext } from "@/lib/MessagesContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { apiClient } from "@/lib/api/client";
-import { ChatListResponse } from "@/lib/api/types";
+import { ChatDetailResponse, ChatListResponse } from "@/lib/api/types";
 import { realtime } from "@/lib/api/realtime";
 import {
   InfiniteData,
@@ -12,6 +13,7 @@ import {
 } from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { chatDetailQueryKey } from "./queryKeys";
 
 const MESSAGES_TAB_PAGE_SIZE = 20;
 
@@ -37,6 +39,7 @@ function dedupeMetas(items: UserChatMeta[]) {
 export function useMessagesTab() {
   const params = useLocalSearchParams<{ nav?: string }>();
   const queryClient = useQueryClient();
+  const { setCurrentLeank } = useMessagesContext();
   const {
     unreadChatCount,
     pendingRequestCount,
@@ -194,6 +197,12 @@ export function useMessagesTab() {
 
   const handleChatPress = useCallback(
     (chat: Leank) => {
+      setCurrentLeank(chat);
+      queryClient.setQueryData<ChatDetailResponse>(
+        chatDetailQueryKey(chat.id),
+        { chat },
+      );
+
       queryClient.setQueryData<
         InfiniteData<ChatListResponse, string | undefined>
       >(chatsQueryKey, (prev) => {
@@ -216,7 +225,7 @@ export function useMessagesTab() {
         params: { chat: chat.id },
       });
     },
-    [chatsQueryKey, currentUserId, queryClient],
+    [chatsQueryKey, currentUserId, queryClient, setCurrentLeank],
   );
 
   const handleRefresh = useCallback(async () => {

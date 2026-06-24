@@ -1,12 +1,13 @@
-import { Leank, Message } from "@/interfaces";
+import { Message } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { apiClient } from "@/lib/api/client";
-import { ChatMessagePage } from "@/lib/api/types";
+import { ChatDetailResponse, ChatMessagePage } from "@/lib/api/types";
 import { realtime } from "@/lib/api/realtime";
 import {
   InfiniteData,
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
@@ -17,6 +18,7 @@ import {
   ReplySwipeHandle,
   injectDateSeparators,
 } from "./chatItems";
+import { chatDetailQueryKey } from "./queryKeys";
 
 const CHAT_MESSAGES_PAGE_SIZE = 50;
 
@@ -69,12 +71,23 @@ export function useChatScreen() {
     () => ["messages", "chat", chatId] as const,
     [chatId],
   );
+  const detailQueryKey = useMemo(() => chatDetailQueryKey(chatId), [chatId]);
+  const activeContextLeank =
+    currentLeank?.id === chatId ? currentLeank : undefined;
   const [messageContent, setMessageContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [isLeankLoading, setIsLeankLoading] = useState(true);
   const listRef = useRef<any>(null);
   const openSwipeRef = useRef<ReplySwipeHandle | null>(null);
   const readWriteInFlightRef = useRef(false);
+
+  const chatDetailQuery = useQuery({
+    queryKey: detailQueryKey,
+    enabled: Boolean(chatId),
+    initialData: activeContextLeank ? { chat: activeContextLeank } : undefined,
+    queryFn: () => apiClient.getChat(chatId!),
+  });
+
+  const activeLeank = chatDetailQuery.data?.chat || activeContextLeank;
 
   const messagesQuery = useInfiniteQuery({
     queryKey: messagesQueryKey,
@@ -95,12 +108,6 @@ export function useChatScreen() {
   const messages = useMemo<ChatListItem[]>(() => {
     return injectDateSeparators(rawMessages);
   }, [rawMessages]);
-
-  const loadLeank = useCallback(async () => {
-    if (!chatId) return;
-    const { chat } = await apiClient.getChat(chatId);
-    setCurrentLeank(chat as Leank);
-  }, [chatId, setCurrentLeank]);
 
   const markAsRead = useCallback(async () => {
     if (!chatId || readWriteInFlightRef.current) return;
@@ -124,19 +131,10 @@ export function useChatScreen() {
   );
 
   useEffect(() => {
-    let isMounted = true;
-    setIsLeankLoading(true);
-
-    void loadLeank()
-      .catch((error) => console.log(error))
-      .finally(() => {
-        if (isMounted) setIsLeankLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [loadLeank]);
+    const chat = chatDetailQuery.data?.chat;
+    if (!chat || chat.id !== chatId) return;
+    setCurrentLeank(chat);
+  }, [chatDetailQuery.data, chatId, setCurrentLeank]);
 
   useEffect(() => {
     if (!messagesQuery.isSuccess) return;
@@ -150,7 +148,10 @@ export function useChatScreen() {
     const unsubscribeLeank = realtime.subscribe("leank.updated", (payload) => {
       const updatedId = payload?.leankId || payload?.id;
       if (updatedId !== chatId) return;
-      void loadLeank().catch(() => {});
+      void queryClient.invalidateQueries({
+        queryKey: detailQueryKey,
+        exact: true,
+      });
     });
     const unsubscribeMessages = realtime.subscribe(
       "message.created",
@@ -166,7 +167,7 @@ export function useChatScreen() {
       unsubscribeMessages();
       unsubscribeRoom();
     };
-  }, [appendMessageToCache, chatId, loadLeank, markAsRead]);
+  }, [appendMessageToCache, chatId, detailQueryKey, markAsRead, queryClient]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -193,6 +194,9 @@ export function useChatScreen() {
 
       appendMessageToCache(response.message);
       setCurrentLeank(response.chat);
+      queryClient.setQueryData<ChatDetailResponse>(detailQueryKey, {
+        chat: response.chat,
+      });
       setMessageContent("");
       setReplyTo(null);
       openSwipeRef.current?.close();
@@ -208,7 +212,9 @@ export function useChatScreen() {
     chatId,
     currentUser,
     messageContent,
+    queryClient,
     replyTo,
+    detailQueryKey,
     setCurrentLeank,
   ]);
 
@@ -235,13 +241,13 @@ export function useChatScreen() {
 
   return {
     chatId,
-    currentLeank,
+    currentLeank: activeLeank,
     currentUser,
     currentUserId,
     fetchOlderMessages,
     isFetchingOlderMessages: messagesQuery.isFetchingNextPage,
-    isLoading: isLeankLoading || messagesQuery.isPending,
-    isMessagesError: messagesQuery.isError,
+    isLoading: messagesQuery.isPending && !messagesQuery.data,
+    isMessagesError: messagesQuery.isError && !messagesQuery.data,
     isOlderMessagesError: messagesQuery.isFetchNextPageError,
     listRef,
     messageContent,

@@ -244,13 +244,17 @@ export const LeankCardBig = ({
                 >
                   {descriptionPreview}{" "}
                   {isLongDescription && (
-                    <Text
-                      className="font-plus-jakarta-semibold"
-                      style={{ color: Colors.primary }}
+                    <TouchableOpacity
                       onPress={flipToDescription}
+                      className="flex-row justify-end items-end"
                     >
-                      Read more...
-                    </Text>
+                      <Text
+                        className="font-plus-jakarta-semibold self-end text-end"
+                        style={{ color: Colors.primary }}
+                      >
+                        Read more...
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </Text>
               </View>
@@ -314,7 +318,6 @@ export const LeankCardBig = ({
             </ScrollView>
           </View>
           <TouchableOpacity
-            activeOpacity={0.7}
             onPress={flipToFront}
             className="size-10 items-center justify-center"
           >

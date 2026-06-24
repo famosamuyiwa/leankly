@@ -1,6 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from "@nestjs/common";
+import { ApiQuery } from "@nestjs/swagger";
 import { User } from "@prisma/client";
 import { CurrentUser } from "../auth/auth.decorators";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 import { CreateReactionDto } from "./dto/create-reaction.dto";
 import { ReactionsService } from "./reactions.service";
 
@@ -19,8 +29,10 @@ export class ReactionsController {
   }
 
   @Get("reactions/requests")
-  requests(@CurrentUser() user: User) {
-    return this.reactions.requests(user);
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  requests(@CurrentUser() user: User, @Query() query: PaginationQueryDto) {
+    return this.reactions.requests(user, query);
   }
 
   @Post("reactions/:id/accept")

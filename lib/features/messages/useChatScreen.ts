@@ -2,21 +2,59 @@ import { Leank, Message } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { apiClient } from "@/lib/api/client";
+import { ChatMessagePage } from "@/lib/api/types";
 import { realtime } from "@/lib/api/realtime";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard } from "react-native";
 import {
   ChatListItem,
   ReplySwipeHandle,
   injectDateSeparators,
-  isRealMessage,
 } from "./chatItems";
+
+const CHAT_MESSAGES_PAGE_SIZE = 50;
+
+type ChatMessagesInfiniteData = InfiniteData<
+  ChatMessagePage,
+  string | undefined
+>;
 
 const dedupeMessages = (messages: Message[]) => {
   const messagesById = new Map<string, Message>();
   messages.forEach((message) => messagesById.set(message.id, message));
   return Array.from(messagesById.values());
+};
+
+const appendMessageToPages = (
+  data: ChatMessagesInfiniteData | undefined,
+  message: Message,
+): ChatMessagesInfiniteData => {
+  if (!data) {
+    return {
+      pages: [{ messages: [message], nextCursor: null, hasMore: false }],
+      pageParams: [undefined],
+    };
+  }
+
+  const exists = data.pages.some((page) =>
+    page.messages.some((item) => item.id === message.id),
+  );
+  if (exists) return data;
+
+  return {
+    ...data,
+    pages: data.pages.map((page, index) =>
+      index === 0
+        ? { ...page, messages: [...page.messages, message] }
+        : page,
+    ),
+  };
 };
 
 export function useChatScreen() {
@@ -26,25 +64,37 @@ export function useChatScreen() {
   const currentUserId = currentUser?.id;
   const params = useLocalSearchParams<{ chat?: string }>();
   const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
-  const [messages, setMessages] = useState<ChatListItem[]>([]);
+  const queryClient = useQueryClient();
+  const messagesQueryKey = useMemo(
+    () => ["messages", "chat", chatId] as const,
+    [chatId],
+  );
   const [messageContent, setMessageContent] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLeankLoading, setIsLeankLoading] = useState(true);
   const listRef = useRef<any>(null);
   const openSwipeRef = useRef<ReplySwipeHandle | null>(null);
   const readWriteInFlightRef = useRef(false);
 
-  const applyMessages = useCallback((rawNext: Message[]) => {
-    const decorated = injectDateSeparators(dedupeMessages(rawNext));
-    setMessages((prev) => {
-      if (!Array.isArray(prev) || prev.length === 0) return decorated;
-      const prevLast = prev[prev.length - 1]?.id;
-      const nextLast = decorated[decorated.length - 1]?.id;
-      if (prev.length === decorated.length && prevLast === nextLast)
-        return prev;
-      return decorated;
-    });
-  }, []);
+  const messagesQuery = useInfiniteQuery({
+    queryKey: messagesQueryKey,
+    enabled: Boolean(chatId),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getMessages(chatId!, pageParam, CHAT_MESSAGES_PAGE_SIZE),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+  const rawMessages = useMemo<Message[]>(() => {
+    const pages = messagesQuery.data?.pages || [];
+    return dedupeMessages(
+      [...pages].reverse().flatMap((page) => page.messages),
+    );
+  }, [messagesQuery.data]);
+
+  const messages = useMemo<ChatListItem[]>(() => {
+    return injectDateSeparators(rawMessages);
+  }, [rawMessages]);
 
   const loadLeank = useCallback(async () => {
     if (!chatId) return;
@@ -63,32 +113,35 @@ export function useChatScreen() {
     }
   }, [chatId, setAttentionCounts]);
 
-  const loadMessages = useCallback(async () => {
-    if (!chatId) return;
-    const page = await apiClient.getMessages(chatId);
-    applyMessages(page.messages);
-    // Read receipt writes are centralized in the facade and guarded locally against overlap.
-    await markAsRead();
-  }, [applyMessages, chatId, markAsRead]);
+  const appendMessageToCache = useCallback(
+    (message: Message) => {
+      queryClient.setQueryData<ChatMessagesInfiniteData>(
+        messagesQueryKey,
+        (prev) => appendMessageToPages(prev, message),
+      );
+    },
+    [messagesQueryKey, queryClient],
+  );
 
   useEffect(() => {
     let isMounted = true;
+    setIsLeankLoading(true);
 
-    const loadInitialChat = async () => {
-      try {
-        await Promise.all([loadMessages(), loadLeank()]);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
+    void loadLeank()
+      .catch((error) => console.log(error))
+      .finally(() => {
+        if (isMounted) setIsLeankLoading(false);
+      });
 
-    void loadInitialChat();
     return () => {
       isMounted = false;
     };
-  }, [loadLeank, loadMessages]);
+  }, [loadLeank]);
+
+  useEffect(() => {
+    if (!messagesQuery.isSuccess) return;
+    void markAsRead().catch((error) => console.log(error));
+  }, [markAsRead, messagesQuery.dataUpdatedAt, messagesQuery.isSuccess]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -102,9 +155,9 @@ export function useChatScreen() {
     const unsubscribeMessages = realtime.subscribe(
       "message.created",
       (payload) => {
-        if (payload?.leankId === chatId) {
-          void loadMessages().catch(() => {});
-        }
+        if (payload?.leankId !== chatId || !payload?.id) return;
+        appendMessageToCache(payload as Message);
+        void markAsRead().catch(() => {});
       },
     );
 
@@ -113,7 +166,7 @@ export function useChatScreen() {
       unsubscribeMessages();
       unsubscribeRoom();
     };
-  }, [chatId, loadLeank, loadMessages]);
+  }, [appendMessageToCache, chatId, loadLeank, markAsRead]);
 
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
@@ -138,12 +191,7 @@ export function useChatScreen() {
         replyToId: replyTo?.id,
       });
 
-      setMessages((prev) => {
-        const safePrev = Array.isArray(prev) ? prev.filter(isRealMessage) : [];
-        return injectDateSeparators(
-          dedupeMessages([...safePrev, response.message]),
-        );
-      });
+      appendMessageToCache(response.message);
       setCurrentLeank(response.chat);
       setMessageContent("");
       setReplyTo(null);
@@ -155,7 +203,27 @@ export function useChatScreen() {
         listRef.current?.scrollToEnd({ animate: true });
       }, 100);
     }
-  }, [chatId, currentUser, messageContent, replyTo, setCurrentLeank]);
+  }, [
+    appendMessageToCache,
+    chatId,
+    currentUser,
+    messageContent,
+    replyTo,
+    setCurrentLeank,
+  ]);
+
+  const fetchOlderMessages = useCallback(() => {
+    if (!messagesQuery.hasNextPage || messagesQuery.isFetchingNextPage) return;
+    void messagesQuery.fetchNextPage();
+  }, [messagesQuery]);
+
+  const retryOlderMessages = useCallback(() => {
+    void messagesQuery.fetchNextPage();
+  }, [messagesQuery]);
+
+  const retryMessages = useCallback(() => {
+    void messagesQuery.refetch();
+  }, [messagesQuery]);
 
   const openSettings = useCallback(() => {
     if (!chatId) return;
@@ -170,7 +238,11 @@ export function useChatScreen() {
     currentLeank,
     currentUser,
     currentUserId,
-    isLoading,
+    fetchOlderMessages,
+    isFetchingOlderMessages: messagesQuery.isFetchingNextPage,
+    isLoading: isLeankLoading || messagesQuery.isPending,
+    isMessagesError: messagesQuery.isError,
+    isOlderMessagesError: messagesQuery.isFetchNextPageError,
     listRef,
     messageContent,
     messages,
@@ -178,6 +250,8 @@ export function useChatScreen() {
     openSwipeRef,
     openUserPreview,
     replyTo,
+    retryMessages,
+    retryOlderMessages,
     sendMessage,
     setMessageContent,
     setReplyTo,

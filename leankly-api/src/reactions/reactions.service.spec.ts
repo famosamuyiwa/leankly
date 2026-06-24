@@ -7,6 +7,11 @@ const user = {
   name: "Tester",
 } as User;
 
+const cursorFor = (createdAt: Date, id: string) =>
+  Buffer.from(
+    JSON.stringify({ createdAt: createdAt.toISOString(), id }),
+  ).toString("base64url");
+
 describe("ReactionsService", () => {
   it("locks quota state in a serializable transaction before post-commit effects", async () => {
     const events: string[] = [];
@@ -202,15 +207,173 @@ describe("ReactionsService", () => {
       {} as never,
     );
 
-    await expect(service.requests(user)).resolves.toEqual(
+    await expect(service.requests(user, { limit: 20 })).resolves.toEqual(
       expect.objectContaining({
         totalPending: 2,
         visibleCount: 1,
         isPro: false,
         isLocked: true,
+        hasMore: false,
+        nextCursor: null,
         requests: [expect.objectContaining({ id: "request-1" })],
       }),
     );
+  });
+
+  it("returns paginated requests for a Pro host", async () => {
+    const firstCreatedAt = new Date("2026-06-24T12:00:00.000Z");
+    const secondCreatedAt = new Date("2026-06-24T11:00:00.000Z");
+    const requests = [
+      {
+        id: "request-3",
+        userId: "user-3",
+        leankId: "leank-1",
+        user: { id: "user-3", name: "C", age: 25, avatarUrl: null },
+        leank: { id: "leank-1", title: "Coffee", ownerId: user.id },
+        createdAt: firstCreatedAt,
+      },
+      {
+        id: "request-2",
+        userId: "user-2",
+        leankId: "leank-1",
+        user: { id: "user-2", name: "B", age: 26, avatarUrl: null },
+        leank: { id: "leank-1", title: "Coffee", ownerId: user.id },
+        createdAt: secondCreatedAt,
+      },
+      {
+        id: "request-1",
+        userId: "user-1",
+        leankId: "leank-1",
+        user: { id: "user-1", name: "A", age: 27, avatarUrl: null },
+        leank: { id: "leank-1", title: "Coffee", ownerId: user.id },
+        createdAt: new Date("2026-06-24T10:00:00.000Z"),
+      },
+    ];
+    const prisma = {
+      userEntitlement: {
+        findUnique: jest.fn(() =>
+          Promise.resolve({ isPro: true, expiresAt: null }),
+        ),
+      },
+      reaction: {
+        count: jest.fn(() => Promise.resolve(3)),
+        findMany: jest.fn(() => Promise.resolve(requests)),
+      },
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.requests(user, { limit: 2 });
+
+    expect(prisma.reaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 3,
+      }),
+    );
+    expect(result.requests.map((request) => request.id)).toEqual([
+      "request-3",
+      "request-2",
+    ]);
+    expect(result.hasMore).toBe(true);
+    expect(result.nextCursor).toBe(cursorFor(secondCreatedAt, "request-2"));
+  });
+
+  it("does not apply request cursors for a free host", async () => {
+    const requests = [
+      {
+        id: "request-1",
+        userId: "user-1",
+        leankId: "leank-1",
+        user: { id: "user-1", name: "A", age: 25, avatarUrl: null },
+        leank: { id: "leank-1", title: "Coffee", ownerId: user.id },
+        createdAt: new Date("2026-06-24T12:00:00.000Z"),
+      },
+    ];
+    const prisma = {
+      userEntitlement: { findUnique: jest.fn(() => Promise.resolve(null)) },
+      reaction: {
+        count: jest.fn(() => Promise.resolve(3)),
+        findMany: jest.fn(() => Promise.resolve(requests)),
+      },
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.requests(user, {
+      limit: 20,
+      cursor: cursorFor(new Date("2026-06-24T11:00:00.000Z"), "request-2"),
+    });
+
+    const findManyInput = (prisma.reaction.findMany as jest.Mock).mock
+      .calls[0][0] as { where: { OR?: unknown } };
+    expect(findManyInput.where.OR).toBeUndefined();
+    expect(result.requests.map((request) => request.id)).toEqual(["request-1"]);
+    expect(result.isLocked).toBe(true);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it("applies the request cursor predicate", async () => {
+    const cursorCreatedAt = new Date("2026-06-24T11:00:00.000Z");
+    const cursorId = "request-2";
+    const prisma = {
+      userEntitlement: {
+        findUnique: jest.fn(() =>
+          Promise.resolve({ isPro: true, expiresAt: null }),
+        ),
+      },
+      reaction: {
+        count: jest.fn(() => Promise.resolve(1)),
+        findMany: jest.fn(() => Promise.resolve([])),
+      },
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await service.requests(user, {
+      limit: 2,
+      cursor: cursorFor(cursorCreatedAt, cursorId),
+    });
+
+    expect(prisma.reaction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { createdAt: { lt: cursorCreatedAt } },
+            { createdAt: cursorCreatedAt, id: { lt: cursorId } },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it("rejects an invalid request cursor", async () => {
+    const prisma = {
+      userEntitlement: { findUnique: jest.fn() },
+      reaction: { count: jest.fn(), findMany: jest.fn() },
+    };
+    const service = new ReactionsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.requests(user, { limit: 2, cursor: "not-a-cursor" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("prevents a host from leaving their own leank", async () => {

@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LeankCategory, LeankStatus, Prisma, User } from "@prisma/client";
+import { countUnreadChatRows } from "../attention/attention-counts.service";
 import { JobsService } from "../jobs/jobs.service";
 import { MediaService } from "../media/media.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -13,7 +14,7 @@ import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { categoryFromValue } from "./leank.constants";
 import { CreateLeankDto, UpdateLeankDto } from "./dto/create-leank.dto";
 import { FeedQueryDto } from "./dto/feed-query.dto";
-import { PaginationQueryDto } from "./dto/pagination-query.dto";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 import { presentLeank } from "./leank.presenter";
 
 const include = {
@@ -165,7 +166,33 @@ export class LeanksService {
     return { hosted, attended };
   }
 
-  async chats(user: User) {
+  async chats(user: User, query: PaginationQueryDto) {
+    const cursor = query.cursor ? this.decodeChatCursor(query.cursor) : null;
+    const membershipWhere = {
+      OR: [
+        { ownerId: user.id },
+        { participants: { some: { userId: user.id } } },
+      ],
+    } satisfies Prisma.LeankWhereInput;
+    const where = {
+      status: LeankStatus.ACTIVE,
+      AND: [
+        membershipWhere,
+        ...(cursor
+          ? [
+              {
+                OR: [
+                  { lastActivityAt: { lt: cursor.activityAt } },
+                  {
+                    lastActivityAt: cursor.activityAt,
+                    id: { lt: cursor.id },
+                  },
+                ],
+              },
+            ]
+          : []),
+      ],
+    } satisfies Prisma.LeankWhereInput;
     const chatInclude = {
       ...include,
       lastMessage: true,
@@ -174,38 +201,47 @@ export class LeanksService {
         take: 1,
       },
     } satisfies Prisma.LeankInclude;
-    const rows = await this.prisma.leank.findMany({
-      where: {
-        status: LeankStatus.ACTIVE,
-        OR: [
-          { ownerId: user.id },
-          { participants: { some: { userId: user.id } } },
-        ],
-      },
-      include: chatInclude,
-      orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
-      take: 100,
-    });
-    const metas = rows.flatMap((row) => row.chatMetadata);
-    const unreadCount = rows.filter((row) => {
-      if (
-        !row.lastMessageAt ||
-        !row.lastMessage ||
-        row.lastMessage.senderId === user.id
-      ) {
-        return false;
-      }
-      const readAt = row.chatMetadata[0]?.readAt;
-      return !readAt || readAt < row.lastMessageAt;
-    }).length;
+    const [rows, unreadRows] = await Promise.all([
+      this.prisma.leank.findMany({
+        where,
+        include: chatInclude,
+        orderBy: [{ lastActivityAt: "desc" }, { id: "desc" }],
+        take: query.limit + 1,
+      }),
+      this.prisma.leank.findMany({
+        where: {
+          status: LeankStatus.ACTIVE,
+          lastMessageAt: { not: null },
+          ...membershipWhere,
+        },
+        select: {
+          lastMessageAt: true,
+          lastMessage: { select: { senderId: true } },
+          chatMetadata: {
+            where: { userId: user.id },
+            select: { readAt: true },
+            take: 1,
+          },
+        },
+      }),
+    ]);
+    const hasMore = rows.length > query.limit;
+    const items = rows.slice(0, query.limit);
+    const last = items.at(-1);
+    const metas = items.flatMap((row) => row.chatMetadata);
 
     return {
-      items: rows.map((row) => ({
+      items: items.map((row) => ({
         ...presentLeank(row),
         lastMessage: row.lastMessage || undefined,
       })),
       metas,
-      unreadCount,
+      unreadCount: countUnreadChatRows(unreadRows, user.id),
+      nextCursor:
+        hasMore && last
+          ? this.encodeChatCursor(last.lastActivityAt, last.id)
+          : null,
+      hasMore,
     };
   }
 
@@ -268,6 +304,7 @@ export class LeanksService {
           status: LeankStatus.COMPLETED,
           lastMessageId: message.id,
           lastMessageAt: message.createdAt,
+          lastActivityAt: message.createdAt,
         },
         include,
       });
@@ -417,5 +454,25 @@ export class LeanksService {
         { createdAt: cursor.createdAt, id: { lt: cursor.id } },
       ],
     } satisfies Prisma.LeankWhereInput;
+  }
+
+  private encodeChatCursor(activityAt: Date, id: string) {
+    return Buffer.from(
+      JSON.stringify({ activityAt: activityAt.toISOString(), id }),
+    ).toString("base64url");
+  }
+
+  private decodeChatCursor(cursor: string): { activityAt: Date; id: string } {
+    try {
+      const value = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      );
+      if (!value.id || Number.isNaN(Date.parse(value.activityAt))) {
+        throw new Error("invalid");
+      }
+      return { id: String(value.id), activityAt: new Date(value.activityAt) };
+    } catch {
+      throw new BadRequestException("Invalid chat cursor");
+    }
   }
 }

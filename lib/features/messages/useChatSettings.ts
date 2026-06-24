@@ -70,6 +70,9 @@ export function useChatSettings() {
       await queryClient.invalidateQueries({
         queryKey: ["leanks", "profile"],
       });
+      await queryClient.invalidateQueries({
+        queryKey: ["messages", "tab", "chats"],
+      });
       goBackToChats();
     } catch (error) {
       console.error(error);
@@ -83,13 +86,26 @@ export function useChatSettings() {
     showLoader();
     try {
       await apiClient.closeChat(chatId);
+      await queryClient.invalidateQueries({
+        queryKey: ["messages", "tab", "chats"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["leanks", "profile"],
+      });
       goBackToChats();
     } catch (error) {
       console.error(error);
     } finally {
       hideLoader();
     }
-  }, [chatId, currentUser, goBackToChats, hideLoader, showLoader]);
+  }, [
+    chatId,
+    currentUser,
+    goBackToChats,
+    hideLoader,
+    queryClient,
+    showLoader,
+  ]);
 
   const removeUser = useCallback(
     async (leanker: Participants) => {
@@ -97,11 +113,14 @@ export function useChatSettings() {
       try {
         await apiClient.removeParticipant(chatId, leanker.user.id);
         setLeankers((prev) => prev.filter((item) => item.id !== leanker.id));
+        await queryClient.invalidateQueries({
+          queryKey: ["messages", "tab", "chats"],
+        });
       } catch (error) {
         console.error(error);
       }
     },
-    [chatId, currentUser],
+    [chatId, currentUser, queryClient],
   );
 
   const handleLeave = useCallback(() => {

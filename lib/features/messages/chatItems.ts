@@ -22,7 +22,7 @@ export const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
   const result: ChatListItem[] = [];
   let lastKey = "";
 
-  raw.forEach((msg, idx) => {
+  raw.forEach((msg) => {
     const createdAt =
       msg.createdAt || msg.updatedAt || new Date().toISOString();
     const dateObj = new Date(createdAt);
@@ -31,7 +31,7 @@ export const injectDateSeparators = (raw: Message[] = []): ChatListItem[] => {
     if (dateKey !== lastKey) {
       // Date separators are local UI rows only; the backend stores real messages.
       result.push({
-        id: `date-${dateKey}-${idx}`,
+        id: `date-${msg.leankId}-${dateKey}`,
         content: formatDateLabel(dateObj),
         senderId: null,
         senderName: "System",

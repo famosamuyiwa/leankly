@@ -3,17 +3,46 @@ import { Leank, LeankRequest, UserChatMeta } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { apiClient } from "@/lib/api/client";
+import { ChatListResponse } from "@/lib/api/types";
 import { realtime } from "@/lib/api/realtime";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+const MESSAGES_TAB_PAGE_SIZE = 20;
+
+function dedupeById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function dedupeMetas(items: UserChatMeta[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.id || `${item.leankId}:${item.userId}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function useMessagesTab() {
   const params = useLocalSearchParams<{ nav?: string }>();
+  const queryClient = useQueryClient();
   const {
     unreadChatCount,
     pendingRequestCount,
     setUnreadCount,
     setPendingRequestCount,
+    refreshAttentionCounts,
     currentUser,
     showLoader,
     hideLoader,
@@ -21,10 +50,7 @@ export function useMessagesTab() {
   const { isPro } = usePremium();
   const currentUserId = currentUser?.id;
   const [refreshing, setRefreshing] = useState(false);
-  const [chatRooms, setChatRooms] = useState<Leank[]>([]);
-  const [chatMetas, setChatMetas] = useState<UserChatMeta[]>([]);
-  const [requests, setRequests] = useState<LeankRequest[]>([]);
-  const [requestsLocked, setRequestsLocked] = useState(false);
+  const [refreshStartedEmpty, setRefreshStartedEmpty] = useState(false);
   const refreshTimersRef = useRef<{
     chats?: ReturnType<typeof setTimeout>;
     requests?: ReturnType<typeof setTimeout>;
@@ -36,6 +62,68 @@ export function useMessagesTab() {
       ? params.nav
       : NavbarOptions.REQUESTS;
   const isChats = nav === NavbarOptions.CHATS;
+  const chatsQueryKey = useMemo(
+    () => ["messages", "tab", "chats", currentUserId] as const,
+    [currentUserId],
+  );
+  const requestsQueryKey = useMemo(
+    () => ["messages", "tab", "requests", currentUserId] as const,
+    [currentUserId],
+  );
+
+  const chatsQuery = useInfiniteQuery({
+    queryKey: chatsQueryKey,
+    enabled: Boolean(currentUserId && isChats),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getChats({
+        limit: MESSAGES_TAB_PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+  const requestsQuery = useInfiniteQuery({
+    queryKey: requestsQueryKey,
+    enabled: Boolean(currentUserId && !isChats),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getRequests({
+        limit: MESSAGES_TAB_PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+  const chatRooms = useMemo<Leank[]>(() => {
+    return dedupeById(chatsQuery.data?.pages.flatMap((page) => page.chats) || []);
+  }, [chatsQuery.data]);
+
+  const chatMetas = useMemo<UserChatMeta[]>(() => {
+    return dedupeMetas(
+      chatsQuery.data?.pages.flatMap((page) => page.metas) || [],
+    );
+  }, [chatsQuery.data]);
+
+  const requests = useMemo<LeankRequest[]>(() => {
+    return dedupeById(
+      requestsQuery.data?.pages.flatMap((page) => page.requests) || [],
+    );
+  }, [requestsQuery.data]);
+
+  useEffect(() => {
+    chatIdsRef.current = new Set(chatRooms.map((chat) => chat.id));
+  }, [chatRooms]);
+
+  useEffect(() => {
+    const firstPage = chatsQuery.data?.pages[0];
+    if (firstPage) setUnreadCount(firstPage.unreadCount);
+  }, [chatsQuery.data, setUnreadCount]);
+
+  useEffect(() => {
+    const firstPage = requestsQuery.data?.pages[0];
+    if (firstPage) setPendingRequestCount(firstPage.totalPending || 0);
+  }, [requestsQuery.data, setPendingRequestCount]);
 
   const handleNavChange = useCallback(
     (nextNav: NavbarOptions) => {
@@ -45,31 +133,28 @@ export function useMessagesTab() {
     [nav],
   );
 
-  useEffect(() => {
-    chatIdsRef.current = new Set(chatRooms.map((chat) => chat.id));
-  }, [chatRooms]);
-
-  const loadChats = useCallback(async () => {
+  const invalidateChats = useCallback(async () => {
     if (!currentUserId) return;
-    const response = await apiClient.getChats();
-    setChatRooms(response.chats);
-    setChatMetas(response.metas);
-    setUnreadCount(response.unreadCount);
-  }, [currentUserId, setUnreadCount]);
+    await queryClient.invalidateQueries({
+      queryKey: chatsQueryKey,
+      exact: true,
+    });
+    await refreshAttentionCounts().catch(() => {});
+  }, [chatsQueryKey, currentUserId, queryClient, refreshAttentionCounts]);
 
-  const loadRequests = useCallback(async () => {
+  const invalidateRequests = useCallback(async () => {
     if (!currentUserId) return;
-    const response = await apiClient.getRequests();
-    setRequests(response.requests);
-    setRequestsLocked(Boolean(response.isLocked));
-    setPendingRequestCount(response.totalPending || 0);
-  }, [currentUserId, setPendingRequestCount]);
+    await queryClient.invalidateQueries({
+      queryKey: requestsQueryKey,
+      exact: true,
+    });
+    await refreshAttentionCounts().catch(() => {});
+  }, [currentUserId, queryClient, refreshAttentionCounts, requestsQueryKey]);
 
   const schedule = useCallback(
     (kind: "chats" | "requests", callback: () => Promise<void>) => {
       const timers = refreshTimersRef.current;
       if (timers[kind]) clearTimeout(timers[kind]);
-      // Realtime can deliver related row updates back-to-back; coalesce them to avoid flicker.
       timers[kind] = setTimeout(() => {
         void callback().catch(() => {});
       }, 300);
@@ -81,43 +166,49 @@ export function useMessagesTab() {
     async (request: LeankRequest) => {
       showLoader();
       try {
-        const response = await apiClient.acceptRequest(request.id);
-        setRequests(response.requests);
-        setRequestsLocked(Boolean(response.isLocked));
-        setPendingRequestCount(response.totalPending || 0);
-        await loadChats();
+        await apiClient.acceptRequest(request.id);
+        await Promise.all([
+          invalidateRequests(),
+          invalidateChats(),
+          queryClient.invalidateQueries({ queryKey: ["leanks", "profile"] }),
+        ]);
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, loadChats, setPendingRequestCount, showLoader],
+    [hideLoader, invalidateChats, invalidateRequests, queryClient, showLoader],
   );
 
   const handleDeclineRequest = useCallback(
     async (request: LeankRequest) => {
       showLoader();
       try {
-        const response = await apiClient.declineRequest(request.id);
-        setRequests(response.requests);
-        setRequestsLocked(Boolean(response.isLocked));
-        setPendingRequestCount(response.totalPending || 0);
+        await apiClient.declineRequest(request.id);
+        await invalidateRequests();
       } finally {
         hideLoader();
       }
     },
-    [hideLoader, setPendingRequestCount, showLoader],
+    [hideLoader, invalidateRequests, showLoader],
   );
 
   const handleChatPress = useCallback(
     (chat: Leank) => {
-      setChatMetas((prev) => {
-        const index = prev.findIndex(
-          (meta) => meta.leankId === chat.id && meta.userId === currentUserId,
-        );
-        if (index === -1) return prev;
-        const next = [...prev];
-        next[index] = { ...next[index], readAt: new Date().toISOString() };
-        return next;
+      queryClient.setQueryData<
+        InfiniteData<ChatListResponse, string | undefined>
+      >(chatsQueryKey, (prev) => {
+        if (!prev || !currentUserId) return prev;
+        return {
+          ...prev,
+          pages: prev.pages.map((page) => ({
+            ...page,
+            metas: page.metas.map((meta) =>
+              meta.leankId === chat.id && meta.userId === currentUserId
+                ? { ...meta, readAt: new Date().toISOString() }
+                : meta,
+            ),
+          })),
+        };
       });
 
       router.push({
@@ -125,56 +216,92 @@ export function useMessagesTab() {
         params: { chat: chat.id },
       });
     },
-    [currentUserId],
+    [chatsQueryKey, currentUserId, queryClient],
   );
 
   const handleRefresh = useCallback(async () => {
+    const wasEmpty = isChats ? chatRooms.length === 0 : requests.length === 0;
     try {
+      setRefreshStartedEmpty(wasEmpty);
       setRefreshing(true);
-      if (isChats) {
-        await loadChats();
-      } else {
-        await loadRequests();
-      }
+      await Promise.all([
+        isChats ? chatsQuery.refetch() : requestsQuery.refetch(),
+        refreshAttentionCounts(),
+      ]);
     } finally {
       setRefreshing(false);
+      setRefreshStartedEmpty(false);
     }
-  }, [isChats, loadChats, loadRequests]);
+  }, [
+    chatRooms.length,
+    chatsQuery,
+    isChats,
+    refreshAttentionCounts,
+    requests.length,
+    requestsQuery,
+  ]);
+
+  const handleChatsEndReached = useCallback(() => {
+    if (!chatsQuery.hasNextPage || chatsQuery.isFetchingNextPage) return;
+    void chatsQuery.fetchNextPage();
+  }, [chatsQuery]);
+
+  const handleRequestsEndReached = useCallback(() => {
+    if (!requestsQuery.hasNextPage || requestsQuery.isFetchingNextPage) return;
+    void requestsQuery.fetchNextPage();
+  }, [requestsQuery]);
+
+  const retryNextPage = useCallback(() => {
+    if (isChats) {
+      void chatsQuery.fetchNextPage();
+      return;
+    }
+    void requestsQuery.fetchNextPage();
+  }, [chatsQuery, isChats, requestsQuery]);
+
+  const retryInitialPage = useCallback(() => {
+    if (isChats) {
+      void chatsQuery.refetch();
+      return;
+    }
+    void requestsQuery.refetch();
+  }, [chatsQuery, isChats, requestsQuery]);
 
   useFocusEffect(
     useCallback(() => {
-      void loadChats().catch(() => {});
-      void loadRequests().catch(() => {});
-    }, [loadChats, loadRequests]),
+      if (!currentUserId) return;
+      const queryKey = isChats ? chatsQueryKey : requestsQueryKey;
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    }, [chatsQueryKey, currentUserId, isChats, queryClient, requestsQueryKey]),
   );
 
   useEffect(() => {
     if (!currentUserId) return;
     const unsubscribers = [
-      realtime.subscribe("connect", () => schedule("chats", loadChats)),
+      realtime.subscribe("connect", () => {
+        schedule("chats", invalidateChats);
+        schedule("requests", invalidateRequests);
+      }),
       realtime.subscribe("reaction.updated", () =>
-        schedule("requests", loadRequests),
+        schedule("requests", invalidateRequests),
       ),
       realtime.subscribe("attention.changed", () =>
-        schedule("requests", loadRequests),
+        schedule("requests", invalidateRequests),
       ),
-      realtime.subscribe("leank.updated", (payload) => {
-        const chatId = payload?.leankId || payload?.id;
-        if (!chatId || chatIdsRef.current.has(chatId)) {
-          schedule("chats", loadChats);
-        }
-      }),
+      realtime.subscribe("leank.updated", () =>
+        schedule("chats", invalidateChats),
+      ),
       realtime.subscribe("message.created", (payload) => {
         const chatId = payload?.leankId;
-        if (chatId && chatIdsRef.current.has(chatId)) {
-          schedule("chats", loadChats);
+        if (!chatId || chatIdsRef.current.has(chatId)) {
+          schedule("chats", invalidateChats);
         }
       }),
       realtime.subscribe("chatMeta.updated", () =>
-        schedule("chats", loadChats),
+        schedule("chats", invalidateChats),
       ),
       realtime.subscribe("unread.changed", () =>
-        schedule("chats", loadChats),
+        schedule("chats", invalidateChats),
       ),
     ];
 
@@ -184,7 +311,7 @@ export function useMessagesTab() {
         if (timer) clearTimeout(timer);
       });
     };
-  }, [currentUserId, loadChats, loadRequests, schedule]);
+  }, [currentUserId, invalidateChats, invalidateRequests, schedule]);
 
   useEffect(() => {
     const unsubscribers = chatRooms.map((chat) =>
@@ -198,9 +325,20 @@ export function useMessagesTab() {
   }, [requests]);
 
   const shouldShowRequestsPaywall = useMemo(
-    () => !isChats && !isPro && requestsLocked,
-    [isChats, isPro, requestsLocked],
+    () => !isChats && !isPro && Boolean(requestsQuery.data?.pages[0]?.isLocked),
+    [isChats, isPro, requestsQuery.data],
   );
+
+  const isInitialLoading = isChats
+    ? chatsQuery.isPending
+    : requestsQuery.isPending;
+  const isInitialError = isChats ? chatsQuery.isError : requestsQuery.isError;
+  const isFetchingNextPage = isChats
+    ? chatsQuery.isFetchingNextPage
+    : requestsQuery.isFetchingNextPage;
+  const isFetchNextPageError = isChats
+    ? chatsQuery.isFetchNextPageError
+    : requestsQuery.isFetchNextPageError;
 
   return {
     chatMetas,
@@ -210,13 +348,21 @@ export function useMessagesTab() {
     handleChatPress,
     handleNavChange,
     handleDeclineRequest,
+    handleEndReached: isChats ? handleChatsEndReached : handleRequestsEndReached,
     handleRefresh,
     isChats,
+    isFetchNextPageError,
+    isFetchingNextPage,
+    isInitialError,
+    isInitialLoading,
     nav,
+    pendingRequestCount,
+    refreshStartedEmpty,
     refreshing,
     requests,
+    retryInitialPage,
+    retryNextPage,
     shouldShowRequestsPaywall,
-    pendingRequestCount,
     unreadChatCount,
     visibleRequests,
   };

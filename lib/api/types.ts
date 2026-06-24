@@ -28,6 +28,7 @@ export type ChatMessage = Message;
 export type ChatMessagePage = {
   messages: ChatMessage[];
   nextCursor: string | null;
+  hasMore: boolean;
 };
 
 export type RequestSummary = LeankRequest;
@@ -64,6 +65,8 @@ export type ChatListResponse = {
   chats: ChatSummary[];
   metas: UserChatMeta[];
   unreadCount: number;
+  nextCursor: string | null;
+  hasMore: boolean;
 };
 
 export type ChatDetailResponse = {
@@ -74,7 +77,10 @@ export type RequestListResponse = {
   requests: RequestSummary[];
   totalPending?: number;
   visibleCount?: number;
+  isPro?: boolean;
   isLocked?: boolean;
+  nextCursor: string | null;
+  hasMore: boolean;
 };
 
 export type ParticipantListResponse = {

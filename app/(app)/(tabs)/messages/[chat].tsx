@@ -51,7 +51,11 @@ export default function Chat() {
     chatId,
     currentLeank,
     currentUser,
+    fetchOlderMessages,
+    isFetchingOlderMessages,
     isLoading,
+    isMessagesError,
+    isOlderMessagesError,
     listRef,
     messageContent,
     messages,
@@ -59,6 +63,8 @@ export default function Chat() {
     openSwipeRef,
     openUserPreview,
     replyTo,
+    retryMessages,
+    retryOlderMessages,
     sendMessage,
     setMessageContent,
     setReplyTo,
@@ -120,6 +126,43 @@ export default function Chat() {
     );
   }
 
+  if (isMessagesError) {
+    return (
+      <View className="flex-1 justify-center items-center gap-3 bg-white px-5">
+        <Text className="font-plus-jakarta-bold text-lg text-gray-700">
+          Couldn&apos;t load messages
+        </Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={retryMessages}
+          className="rounded-full bg-gray-100 px-5 py-3"
+        >
+          <Text className="font-plus-jakarta-semibold text-gray-700">
+            Retry
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const olderMessagesHeader = isFetchingOlderMessages ? (
+    <View className="items-center justify-center py-4">
+      <ActivityIndicator color={Colors.primary} size="small" />
+    </View>
+  ) : isOlderMessagesError ? (
+    <View className="items-center justify-center py-4">
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={retryOlderMessages}
+        className="rounded-full bg-gray-100 px-5 py-3"
+      >
+        <Text className="font-plus-jakarta-semibold text-gray-700">
+          Retry loading older messages
+        </Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
   return (
     <Reanimated.View
       layout={LinearTransition}
@@ -169,6 +212,9 @@ export default function Chat() {
             maintainScrollAtEnd
             maintainScrollAtEndThreshold={0.5}
             maintainVisibleContentPosition
+            onStartReached={fetchOlderMessages}
+            onStartReachedThreshold={0.5}
+            ListHeaderComponent={olderMessagesHeader}
             showsVerticalScrollIndicator={false}
           />
         )}

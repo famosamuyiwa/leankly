@@ -199,6 +199,7 @@ model Leank {
   peopleRequired Int           @default(1) @map("people_required")
   lastMessageId  String?       @map("last_message_id") @db.Uuid
   lastMessageAt  DateTime?     @map("last_message_at")
+  lastActivityAt DateTime      @default(now()) @map("last_activity_at")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
@@ -211,6 +212,8 @@ model Leank {
 
   @@index([status, createdAt, id])
   @@index([ownerId, createdAt, id])
+  @@index([status, lastActivityAt, id])
+  @@index([ownerId, lastActivityAt, id])
   @@index([eventDate, status])
   @@index([category, status])
   @@index([locationLat, locationLng])
@@ -246,6 +249,7 @@ model Reaction {
 
   @@unique([userId, leankId])
   @@index([leankId, isLiked, status, createdAt])
+  @@index([status, isLiked, createdAt, id])
   @@map("reactions")
 }
 

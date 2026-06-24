@@ -15,6 +15,7 @@ import {
   User,
 } from "@prisma/client";
 import { AttentionCountsService } from "../attention/attention-counts.service";
+import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
 import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
@@ -135,9 +136,25 @@ export class ReactionsService {
     return result;
   }
 
-  async requests(user: User) {
-    const [isPro, total, requests] = await Promise.all([
-      this.isPro(this.prisma, user.id),
+  async requests(user: User, query: PaginationQueryDto) {
+    const decodedCursor = query.cursor ? this.decodeCursor(query.cursor) : null;
+    const isPro = await this.isPro(this.prisma, user.id);
+    const cursor = isPro ? decodedCursor : null;
+    const effectiveLimit = isPro ? query.limit : 1;
+    const where = {
+      isLiked: true,
+      status: ReactionStatus.PENDING,
+      leank: { ownerId: user.id },
+      ...(cursor
+        ? {
+            OR: [
+              { createdAt: { lt: cursor.createdAt } },
+              { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+            ],
+          }
+        : {}),
+    } satisfies Prisma.ReactionWhereInput;
+    const [total, requests] = await Promise.all([
       this.prisma.reaction.count({
         where: {
           isLiked: true,
@@ -146,22 +163,20 @@ export class ReactionsService {
         },
       }),
       this.prisma.reaction.findMany({
-        where: {
-          isLiked: true,
-          status: ReactionStatus.PENDING,
-          leank: { ownerId: user.id },
-        },
+        where,
         include: {
           user: {
             select: { id: true, name: true, age: true, avatarUrl: true },
           },
           leank: { select: { id: true, title: true, ownerId: true } },
         },
-        orderBy: { createdAt: "desc" },
-        take: 50,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: effectiveLimit + (isPro ? 1 : 0),
       }),
     ]);
-    const visible = isPro ? requests : requests.slice(0, 1);
+    const hasMore = isPro && requests.length > effectiveLimit;
+    const visible = requests.slice(0, effectiveLimit);
+    const last = visible.at(-1);
     return {
       requests: visible.map((request) => ({
         id: request.id,
@@ -180,6 +195,9 @@ export class ReactionsService {
       visibleCount: visible.length,
       isPro,
       isLocked: !isPro && total > visible.length,
+      nextCursor:
+        hasMore && last ? this.encodeCursor(last.createdAt, last.id) : null,
+      hasMore,
     };
   }
 
@@ -451,7 +469,11 @@ export class ReactionsService {
     });
     await tx.leank.update({
       where: { id: leankId },
-      data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
+      data: {
+        lastMessageId: message.id,
+        lastMessageAt: message.createdAt,
+        lastActivityAt: message.createdAt,
+      },
     });
     return message;
   }
@@ -461,6 +483,26 @@ export class ReactionsService {
       return (await this.attention.getCounts(userId)).totalCount;
     } catch {
       return undefined;
+    }
+  }
+
+  private encodeCursor(createdAt: Date, id: string) {
+    return Buffer.from(
+      JSON.stringify({ createdAt: createdAt.toISOString(), id }),
+    ).toString("base64url");
+  }
+
+  private decodeCursor(cursor: string): { createdAt: Date; id: string } {
+    try {
+      const value = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      );
+      if (!value.id || Number.isNaN(Date.parse(value.createdAt))) {
+        throw new Error("invalid");
+      }
+      return { id: String(value.id), createdAt: new Date(value.createdAt) };
+    } catch {
+      throw new BadRequestException("Invalid requests cursor");
     }
   }
 }

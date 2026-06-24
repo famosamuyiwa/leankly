@@ -1,7 +1,7 @@
 import { LeankCard } from "@/components/Cards";
 import EmptyLeanks from "@/components/EmptyLeanks";
 import NavBar from "@/components/NavBar";
-import { Colors } from "@/constants/common";
+import { LeankCardSkeletonList } from "@/components/SkeletonLoaders";
 import { NavbarOptions, Screens } from "@/constants/enums";
 import images from "@/constants/images";
 import { Leank } from "@/interfaces";
@@ -9,23 +9,13 @@ import { useGlobalContext } from "@/lib/GlobalContext";
 import { usePremium } from "@/lib/PremiumContext";
 import { apiClient } from "@/lib/api/client";
 import { Fontisto } from "@expo/vector-icons";
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
 import { LegendList } from "@legendapp/list";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { cssInterop } from "nativewind";
-import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { RefreshControl, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Interop the Image component to recognize the 'className' prop
@@ -37,7 +27,6 @@ const PROFILE_PAGE_SIZE = 20;
 
 export default function Profile() {
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
 
   const params = useLocalSearchParams<{
     nav?: string;
@@ -48,6 +37,7 @@ export default function Profile() {
       : NavbarOptions.HOSTED;
 
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshStartedEmpty, setRefreshStartedEmpty] = useState(false);
 
   const { currentUser } = useGlobalContext();
   const { isPro, openPaywall } = usePremium();
@@ -63,7 +53,6 @@ export default function Profile() {
     () => ["leanks", "profile", "attended", currentUserId] as const,
     [currentUserId],
   );
-  const selectedQueryKey = isHosted ? hostedQueryKey : attendedQueryKey;
   const countsQuery = useQuery({
     queryKey: ["leanks", "profile", "counts", currentUserId],
     queryFn: apiClient.getProfileLeankCounts,
@@ -99,13 +88,13 @@ export default function Profile() {
   const selectedQuery = isHosted ? hostedQuery : attendedQuery;
   const leanks = useMemo<Leank[]>(() => {
     const seen = new Set<string>();
-    return (selectedQuery.data?.pages.flatMap((page) => page.items) || []).filter(
-      (item) => {
-        if (seen.has(item.id)) return false;
-        seen.add(item.id);
-        return true;
-      },
-    );
+    return (
+      selectedQuery.data?.pages.flatMap((page) => page.items) || []
+    ).filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
   }, [selectedQuery.data]);
   const leankCounts = {
     hosted: countsQuery.data ? countsQuery.data.hosted : "...",
@@ -135,12 +124,11 @@ export default function Profile() {
   );
 
   const listEmptyComponent = () => {
-    if (selectedQuery.isPending) {
-      return (
-        <View className="h-3/4 items-center justify-center">
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
-      );
+    if (
+      (selectedQuery.isPending && leanks.length === 0) ||
+      (refreshing && refreshStartedEmpty)
+    ) {
+      return <LeankCardSkeletonList count={2} />;
     }
 
     if (selectedQuery.isError) {
@@ -179,13 +167,12 @@ export default function Profile() {
   };
 
   const handleRefresh = async () => {
+    const wasEmpty = leanks.length === 0;
     try {
+      setRefreshStartedEmpty(wasEmpty);
       setRefreshing(true);
       const refreshTasks: Promise<unknown>[] = [
-        queryClient.resetQueries(
-          { queryKey: selectedQueryKey, exact: true },
-          { throwOnError: true },
-        ),
+        selectedQuery.refetch(),
         countsQuery.refetch(),
       ];
 
@@ -198,6 +185,7 @@ export default function Profile() {
       console.log(e);
     } finally {
       setRefreshing(false);
+      setRefreshStartedEmpty(false);
     }
   };
 
@@ -208,11 +196,7 @@ export default function Profile() {
 
   const listFooterComponent = () => {
     if (selectedQuery.isFetchingNextPage) {
-      return (
-        <View className="items-center justify-center py-6">
-          <ActivityIndicator color={Colors.primary} size="small" />
-        </View>
-      );
+      return <LeankCardSkeletonList count={2} />;
     }
 
     if (selectedQuery.isFetchNextPageError) {
@@ -246,7 +230,9 @@ export default function Profile() {
         <Fontisto name="player-settings" size={30} />
       </TouchableOpacity>
       <Image
-        source={profileAvatar ? { uri: profileAvatar } : images.avatarPlaceholder}
+        source={
+          profileAvatar ? { uri: profileAvatar } : images.avatarPlaceholder
+        }
         className="w-20 h-20 rounded-full"
         contentFit="cover"
       />

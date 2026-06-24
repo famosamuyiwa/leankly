@@ -82,7 +82,11 @@ export class MessagesService {
       });
       await tx.leank.update({
         where: { id: leankId },
-        data: { lastMessageId: message.id, lastMessageAt: message.createdAt },
+        data: {
+          lastMessageId: message.id,
+          lastMessageAt: message.createdAt,
+          lastActivityAt: message.createdAt,
+        },
       });
       await tx.userChatMeta.upsert({
         where: { leankId_userId: { leankId, userId: user.id } },
@@ -222,7 +226,13 @@ export class MessagesService {
       const cursor = JSON.parse(
         Buffer.from(value, "base64url").toString("utf8"),
       ) as { createdAt: string; id: string };
-      if (!cursor.createdAt || !cursor.id) throw new Error();
+      if (
+        !cursor.createdAt ||
+        !cursor.id ||
+        Number.isNaN(Date.parse(cursor.createdAt))
+      ) {
+        throw new Error();
+      }
       return { createdAt: new Date(cursor.createdAt), id: cursor.id };
     } catch {
       throw new BadRequestException("Invalid message cursor");

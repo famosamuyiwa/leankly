@@ -11,6 +11,11 @@ const cursorFor = (createdAt: Date, id: string) =>
     JSON.stringify({ createdAt: createdAt.toISOString(), id }),
   ).toString("base64url");
 
+const chatCursorFor = (activityAt: Date, id: string) =>
+  Buffer.from(
+    JSON.stringify({ activityAt: activityAt.toISOString(), id }),
+  ).toString("base64url");
+
 const leankRow = (id: string, createdAt: Date, ownerId = userId) => ({
   id,
   coverUrl: "https://example.com/cover.jpg",
@@ -31,6 +36,7 @@ const leankRow = (id: string, createdAt: Date, ownerId = userId) => ({
   participants: ownerId === userId ? [] : [{ userId }],
   lastMessageId: null,
   lastMessageAt: null,
+  lastActivityAt: createdAt,
   createdAt,
   updatedAt: createdAt,
 });
@@ -102,6 +108,7 @@ describe("LeanksService", () => {
       owner: { id: userId, name: "Owner", age: 25, avatarUrl: null },
       participants: [],
       createdAt: new Date("2026-06-20T12:00:00.000Z"),
+      lastActivityAt: unreadAt,
       updatedAt: unreadAt,
     };
     const unreadMessage = {
@@ -185,15 +192,26 @@ describe("LeanksService", () => {
       {} as never,
     );
 
-    const result = await service.chats(user);
+    const result = await service.chats(user, { limit: 20 });
 
-    expect(findMany).toHaveBeenCalledWith(
+    expect(findMany).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         include: expect.objectContaining({
           lastMessage: true,
           chatMetadata: { where: { userId }, take: 1 },
         }),
-        orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
+        orderBy: [{ lastActivityAt: "desc" }, { id: "desc" }],
+        take: 21,
+      }),
+    );
+    expect(findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        select: expect.objectContaining({
+          lastMessageAt: true,
+          lastMessage: { select: { senderId: true } },
+        }),
       }),
     );
     expect(result.items[0].lastMessage).toEqual(unreadMessage);
@@ -202,6 +220,117 @@ describe("LeanksService", () => {
       ...rows[2].chatMetadata,
     ]);
     expect(result.unreadCount).toBe(1);
+    expect(result.hasMore).toBe(false);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it("returns a chat page with a next cursor when more rows exist", async () => {
+    const first = {
+      ...leankRow(
+        "00000000-0000-4000-8000-000000000030",
+        new Date("2026-06-24T12:00:00.000Z"),
+      ),
+      lastMessage: null,
+      chatMetadata: [],
+    };
+    const second = {
+      ...leankRow(
+        "00000000-0000-4000-8000-000000000020",
+        new Date("2026-06-23T12:00:00.000Z"),
+      ),
+      lastMessage: null,
+      chatMetadata: [],
+    };
+    const extra = {
+      ...leankRow(
+        "00000000-0000-4000-8000-000000000010",
+        new Date("2026-06-22T12:00:00.000Z"),
+      ),
+      lastMessage: null,
+      chatMetadata: [],
+    };
+    const findMany = jest.fn((args) =>
+      Promise.resolve(args.select ? [] : [first, second, extra]),
+    );
+    const service = new LeanksService(
+      { leank: { findMany } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.chats(user, { limit: 2 });
+
+    expect(findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: LeankStatus.ACTIVE,
+          AND: [
+            {
+              OR: [{ ownerId: userId }, { participants: { some: { userId } } }],
+            },
+          ],
+        }),
+        orderBy: [{ lastActivityAt: "desc" }, { id: "desc" }],
+        take: 3,
+      }),
+    );
+    expect(result.items.map((item) => item.id)).toEqual([first.id, second.id]);
+    expect(result.hasMore).toBe(true);
+    expect(result.nextCursor).toBe(
+      chatCursorFor(second.lastActivityAt, second.id),
+    );
+  });
+
+  it("applies the chat cursor predicate", async () => {
+    const cursorActivityAt = new Date("2026-06-23T12:00:00.000Z");
+    const cursorId = "00000000-0000-4000-8000-000000000020";
+    const row = {
+      ...leankRow(
+        "00000000-0000-4000-8000-000000000010",
+        new Date("2026-06-22T12:00:00.000Z"),
+      ),
+      lastMessage: null,
+      chatMetadata: [],
+    };
+    const findMany = jest.fn((args) =>
+      Promise.resolve(args.select ? [] : [row]),
+    );
+    const service = new LeanksService(
+      { leank: { findMany } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    const result = await service.chats(user, {
+      limit: 2,
+      cursor: chatCursorFor(cursorActivityAt, cursorId),
+    });
+
+    expect(findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            {
+              OR: [{ ownerId: userId }, { participants: { some: { userId } } }],
+            },
+            {
+              OR: [
+                { lastActivityAt: { lt: cursorActivityAt } },
+                { lastActivityAt: cursorActivityAt, id: { lt: cursorId } },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
+    expect(result.items.map((item) => item.id)).toEqual([row.id]);
+    expect(result.hasMore).toBe(false);
   });
 
   it("returns a hosted page with a next cursor when more rows exist", async () => {
@@ -291,6 +420,20 @@ describe("LeanksService", () => {
 
     await expect(
       service.hosted(user, { limit: 2, cursor: "not-a-cursor" }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("rejects an invalid chat pagination cursor", async () => {
+    const service = new LeanksService(
+      { leank: { findMany: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await expect(
+      service.chats(user, { limit: 2, cursor: "not-a-cursor" }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

@@ -49,8 +49,10 @@ export class LeanksController {
   }
 
   @Get("chats")
-  chats(@CurrentUser() user: User) {
-    return this.leanks.chats(user);
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  chats(@CurrentUser() user: User, @Query() query: PaginationQueryDto) {
+    return this.leanks.chats(user, query);
   }
 
   @Get(":id")

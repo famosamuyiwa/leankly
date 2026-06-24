@@ -131,16 +131,20 @@ export const apiClient = {
     apiFetch<PaginatedLeanksResponse>(`/v1/leanks/attended?${params(query)}`),
   getProfileLeankCounts: () =>
     apiFetch<ProfileLeankCountsResponse>("/v1/leanks/profile-counts"),
-  async getChats(): Promise<ChatListResponse> {
+  async getChats(query: Record<string, unknown> = {}): Promise<ChatListResponse> {
     const result = await apiFetch<{
       items: Leank[];
       metas: UserChatMeta[];
       unreadCount: number;
-    }>("/v1/leanks/chats");
+      nextCursor: string | null;
+      hasMore: boolean;
+    }>(`/v1/leanks/chats?${params(query)}`);
     return {
       chats: result.items,
       metas: result.metas,
       unreadCount: result.unreadCount,
+      nextCursor: result.nextCursor,
+      hasMore: result.hasMore,
     };
   },
   async getChat(chatId: string): Promise<ChatDetailResponse> {
@@ -182,14 +186,13 @@ export const apiClient = {
   },
   getAttentionCounts: () =>
     apiFetch<AttentionCountsResponse>("/v1/users/me/attention-counts"),
-  getRequests: () => apiFetch<RequestListResponse>("/v1/reactions/requests"),
+  getRequests: (query: Record<string, unknown> = {}) =>
+    apiFetch<RequestListResponse>(`/v1/reactions/requests?${params(query)}`),
   async acceptRequest(requestId: string) {
-    await apiFetch(`/v1/reactions/${requestId}/accept`, { method: "POST" });
-    return this.getRequests();
+    return apiFetch(`/v1/reactions/${requestId}/accept`, { method: "POST" });
   },
   async declineRequest(requestId: string) {
-    await apiFetch(`/v1/reactions/${requestId}/decline`, { method: "POST" });
-    return this.getRequests();
+    return apiFetch(`/v1/reactions/${requestId}/decline`, { method: "POST" });
   },
   leaveChat: (chatId: string) =>
     apiFetch(`/v1/leanks/${chatId}/leave`, { method: "POST" }),

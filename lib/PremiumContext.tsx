@@ -21,15 +21,24 @@ import {
   isRevenueCatNativeAvailable,
 } from "./revenuecat";
 import { useAuthSession } from "./auth/AuthContext";
+import { apiClient } from "./api/client";
+import { EntitlementsResponse } from "./api/types";
+import { queryClient } from "./queryClient";
 
 type PremiumContextType = {
   isPro: boolean;
+  paidActive: boolean;
+  bypassActive: boolean;
+  developerModeEnabled: boolean;
+  canUseDeveloperMode: boolean;
   loading: boolean;
   customerInfo: CustomerInfo | null;
   packages: PurchasesPackage[];
   currentOffering: PurchasesOffering | null;
   upgradeToPro: (selectedPackage?: PurchasesPackage) => Promise<boolean>;
   restorePurchases: () => Promise<boolean>;
+  refreshEntitlements: () => Promise<void>;
+  setDeveloperMode: (enabled: boolean) => Promise<boolean>;
   openPaywall: (reason?: string) => void;
 };
 
@@ -43,12 +52,17 @@ export const PremiumProvider = ({
   const { currentUser } = useGlobalContext();
   const { identity } = useAuthSession();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [backendEntitlement, setBackendEntitlement] =
+    useState<EntitlementsResponse | null>(null);
   const [currentOffering, setCurrentOffering] =
     useState<PurchasesOffering | null>(null);
   const [loading, setLoading] = useState(true);
+  const [entitlementLoading, setEntitlementLoading] = useState(false);
+  const [developerModeLoading, setDeveloperModeLoading] = useState(false);
   const [userResolved, setUserResolved] = useState(false);
   const lastAppUserIdRef = React.useRef<string | null>(null);
   const router = useRouter();
+  const currentUserId = currentUser?.id;
 
   const fetchOfferings = useCallback(async () => {
     if (!ensureRevenueCatConfigured()) return;
@@ -103,6 +117,54 @@ export const PremiumProvider = ({
   }, [currentUser]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      setBackendEntitlement(null);
+      setEntitlementLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadEntitlements = async () => {
+      try {
+        setEntitlementLoading(true);
+        const entitlement = await apiClient.getEntitlements();
+        if (!cancelled) setBackendEntitlement(entitlement);
+      } catch (error) {
+        console.warn("[Entitlements] Unable to fetch backend state", error);
+      } finally {
+        if (!cancelled) setEntitlementLoading(false);
+      }
+    };
+
+    void loadEntitlements();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId]);
+
+  const refreshEntitlements = useCallback(async () => {
+    if (!currentUserId) {
+      setBackendEntitlement(null);
+      return;
+    }
+    try {
+      setEntitlementLoading(true);
+      const entitlement = await apiClient.getEntitlements();
+      setBackendEntitlement(entitlement);
+    } finally {
+      setEntitlementLoading(false);
+    }
+  }, [currentUserId]);
+
+  const invalidatePremiumQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["usage"] }),
+      queryClient.invalidateQueries({ queryKey: ["leanks"] }),
+      queryClient.invalidateQueries({ queryKey: ["messages"] }),
+    ]);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const identify = async () => {
       if (!userResolved) return;
@@ -152,6 +214,7 @@ export const PremiumProvider = ({
           await Purchases.purchasePackage(packageToBuy);
         setCustomerInfo(info);
         await fetchOfferings();
+        await refreshEntitlements().catch(() => undefined);
         return hasActiveEntitlement(info);
       } catch (error: any) {
         if (error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
@@ -163,7 +226,7 @@ export const PremiumProvider = ({
         setLoading(false);
       }
     },
-    [currentOffering, fetchOfferings],
+    [currentOffering, fetchOfferings, refreshEntitlements],
   );
 
   const restorePurchases = useCallback(async () => {
@@ -174,6 +237,7 @@ export const PremiumProvider = ({
       const info = await Purchases.restorePurchases();
       setCustomerInfo(info);
       await fetchOfferings();
+      await refreshEntitlements().catch(() => undefined);
       return hasActiveEntitlement(info);
     } catch (error) {
       console.error("[RevenueCat] Restore failed", error);
@@ -181,12 +245,34 @@ export const PremiumProvider = ({
     } finally {
       setLoading(false);
     }
-  }, [fetchOfferings]);
+  }, [fetchOfferings, refreshEntitlements]);
 
-  const isPro = useMemo(
+  const setDeveloperMode = useCallback(
+    async (enabled: boolean) => {
+      try {
+        setDeveloperModeLoading(true);
+        const entitlement = await apiClient.setDeveloperMode(enabled);
+        setBackendEntitlement(entitlement);
+        await invalidatePremiumQueries();
+        return entitlement.isPro;
+      } finally {
+        setDeveloperModeLoading(false);
+      }
+    },
+    [invalidatePremiumQueries],
+  );
+
+  const revenueCatActive = useMemo(
     () => hasActiveEntitlement(customerInfo),
     [customerInfo],
   );
+  const isPro = Boolean(backendEntitlement?.isPro || revenueCatActive);
+  const paidActive = Boolean(backendEntitlement?.paidActive || revenueCatActive);
+  const bypassActive = Boolean(backendEntitlement?.bypassActive);
+  const developerModeEnabled = Boolean(
+    backendEntitlement?.developerModeEnabled,
+  );
+  const canUseDeveloperMode = Boolean(backendEntitlement?.canUseDeveloperMode);
   const packages = useMemo(
     () => currentOffering?.availablePackages ?? [],
     [currentOffering],
@@ -203,12 +289,18 @@ export const PremiumProvider = ({
     <PremiumContext.Provider
       value={{
         isPro,
-        loading,
+        paidActive,
+        bypassActive,
+        developerModeEnabled,
+        canUseDeveloperMode,
+        loading: loading || entitlementLoading || developerModeLoading,
         customerInfo,
         packages,
         currentOffering,
         upgradeToPro,
         restorePurchases,
+        refreshEntitlements,
+        setDeveloperMode,
         openPaywall,
       }}
     >

@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   GoneException,
 } from "@nestjs/common";
+import { UserRole } from "@prisma/client";
 import { AppwriteAuthGuard } from "./appwrite-auth.guard";
 
 const identity = {
@@ -114,5 +115,50 @@ describe("AppwriteAuthGuard", () => {
         context({ headers: { authorization: "Bearer token" } }),
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it("uses configured role priority when an Appwrite ID appears in multiple lists", async () => {
+    appwrite.verifyJwt.mockResolvedValueOnce({
+      ...identity,
+      $id: "shared-user",
+    });
+    (config.get as jest.Mock).mockImplementation((key: string) => {
+      if (key === "ADMIN_APPWRITE_USER_IDS") return "shared-user";
+      if (key === "QA_APPWRITE_USER_IDS") return "shared-user,qa-user";
+      if (key === "DEV_APPWRITE_USER_IDS") return "shared-user,dev-user";
+      return "";
+    });
+    const prisma = {
+      user: {
+        findUnique: jest.fn(() => Promise.resolve(null)),
+        upsert: jest.fn(() =>
+          Promise.resolve({
+            id: "domain-user",
+            role: UserRole.ADMIN,
+            isActive: true,
+            suspendedAt: null,
+            deletedAt: null,
+          }),
+        ),
+      },
+    };
+    const guard = new AppwriteAuthGuard(
+      reflector as never,
+      appwrite as never,
+      prisma as never,
+      config as never,
+    );
+
+    await expect(
+      guard.canActivate(
+        context({ headers: { authorization: "Bearer token" } }),
+      ),
+    ).resolves.toBe(true);
+    expect(prisma.user.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ role: UserRole.ADMIN }),
+        update: expect.objectContaining({ role: UserRole.ADMIN }),
+      }),
+    );
   });
 });

@@ -5,6 +5,7 @@ import { UpdatePushTargetDto } from "./dto/update-push-target.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { MediaService } from "../media/media.service";
 import { AttentionCountsService } from "../attention/attention-counts.service";
+import { permissionsForRole } from "../auth/permissions";
 
 @Injectable()
 export class UsersService {
@@ -109,6 +110,8 @@ export class UsersService {
       id: user.id,
       email: user.email,
       emailVerified: user.emailVerified,
+      role: user.role,
+      permissions: permissionsForRole(user.role),
       name: user.name,
       avatar: user.avatarUrl || "",
       avatarFileId: user.avatarFileId,

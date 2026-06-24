@@ -219,6 +219,34 @@
         ]
       }
     },
+    "/v1/entitlements/me": {
+      "get": {
+        "operationId": "EntitlementsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Entitlements"
+        ]
+      }
+    },
+    "/v1/entitlements/me/developer-mode": {
+      "patch": {
+        "operationId": "EntitlementsController_setDeveloperMode",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Entitlements"
+        ]
+      }
+    },
     "/v1/leanks": {
       "post": {
         "operationId": "LeanksController_create",
@@ -574,20 +602,6 @@
         },
         "tags": [
           "Messages"
-        ]
-      }
-    },
-    "/v1/entitlements/me": {
-      "get": {
-        "operationId": "EntitlementsController_get",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Entitlements"
         ]
       }
     },

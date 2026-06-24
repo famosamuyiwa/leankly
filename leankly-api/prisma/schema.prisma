@@ -10,6 +10,8 @@ datasource db {
 enum UserRole {
   USER
   ADMIN
+  QA
+  DEV
 }
 
 enum UsageFeature {
@@ -156,13 +158,15 @@ model DailyUsage {
 }
 
 model UserEntitlement {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String    @unique @map("user_id") @db.Uuid
-  isPro       Boolean   @default(false) @map("is_pro")
-  expiresAt   DateTime? @map("expires_at")
-  lastEventAt DateTime? @map("last_event_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String    @unique @map("user_id") @db.Uuid
+  isPro                  Boolean   @default(false) @map("is_pro")
+  expiresAt              DateTime? @map("expires_at")
+  lastEventAt            DateTime? @map("last_event_at")
+  developerModeEnabled   Boolean   @default(false) @map("developer_mode_enabled")
+  developerModeUpdatedAt DateTime? @map("developer_mode_updated_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

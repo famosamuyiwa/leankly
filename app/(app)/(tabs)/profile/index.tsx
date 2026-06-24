@@ -40,7 +40,7 @@ export default function Profile() {
   const [refreshStartedEmpty, setRefreshStartedEmpty] = useState(false);
 
   const { currentUser } = useGlobalContext();
-  const { isPro, openPaywall } = usePremium();
+  const { isPro } = usePremium();
   const currentUserId = currentUser?.id;
   const profileAvatar = currentUser?.avatar ?? "";
   const profileName = currentUser?.name ?? "";
@@ -239,24 +239,11 @@ export default function Profile() {
       <Text className="font-plus-jakarta-extrabold text-2xl">
         {profileName}
       </Text>
-      {!isPro && (
-        <View className="flex-row items-center gap-3 flex-wrap">
-          {interestsLeft !== null && (
-            <Text className="text-secondary-300 font-plus-jakarta-regular">
-              {interestsLeft} interests left today
-              {bonusInterests > 0 ? ` (+${bonusInterests} bonus)` : ""}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={async () => openPaywall("Unlock Leankly+")}
-            activeOpacity={0.7}
-            className={"bg-black px-4 py-2 rounded-xl"}
-          >
-            <Text className="text-white font-plus-jakarta-semibold">
-              Unlock Leankly+
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {!isPro && interestsLeft !== null && (
+        <Text className="text-secondary-300 font-plus-jakarta-regular">
+          {interestsLeft} interests left today
+          {bonusInterests > 0 ? ` (+${bonusInterests} bonus)` : ""}
+        </Text>
       )}
       <View className="flex-row gap-5">
         <Text className="color-gray-400">

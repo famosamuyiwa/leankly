@@ -17,9 +17,14 @@ export interface BackendEntity {
   updatedAt?: string;
 }
 
+export type UserRole = "USER" | "ADMIN" | "QA" | "DEV";
+export type UserPermission = "leankly_plus_bypass";
+
 export interface User extends BackendEntity {
   avatar: string;
   avatarFileId?: string | null;
+  role: UserRole;
+  permissions: UserPermission[];
   name: string;
   email: string;
   emailVerified: boolean;

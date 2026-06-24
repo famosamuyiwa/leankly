@@ -4,10 +4,12 @@ export const Colors = {
   primary: "#00BFFF",
   primaryLight: "#00BFFF2A",
   primaryExtralight: "#00BFFF1A",
-  accent: "#FF7F50",
-  secondary: "#000000",
-  secondaryLight: "#0000002A",
-  secondaryExtralight: "#0000001A",
+  secondary: "#FF7F50",
+  secondaryLight: "#FF7F502A",
+  secondaryExtralight: "#FF7F501A",
+  accent: "#000000",
+  accentLight: "#0000002A",
+  accentExtraLight: "#0000001A",
 };
 
 export const ImagePickerMediaTypes = {

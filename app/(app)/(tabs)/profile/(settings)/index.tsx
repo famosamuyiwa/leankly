@@ -1,5 +1,6 @@
 import { Links, Screens } from "@/constants/enums";
 import { useGlobalContext } from "@/lib/GlobalContext";
+import { usePremium } from "@/lib/PremiumContext";
 import { useProfileContext } from "@/lib/ProfileContext";
 import { useAuthSession } from "@/lib/auth/AuthContext";
 import {
@@ -13,8 +14,8 @@ import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import { cssInterop } from "nativewind";
-import { useCallback, useMemo } from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import { Alert, Switch, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
 
 // Interop the Image component to recognize the 'className' prop
@@ -24,8 +25,15 @@ cssInterop(Image, {
 
 export default function Settings() {
   const { logout } = useAuthSession();
-  const { alertComingSoon } = useGlobalContext();
+  const { alertComingSoon, displayToast } = useGlobalContext();
+  const {
+    canUseDeveloperMode,
+    developerModeEnabled,
+    loading: premiumLoading,
+    setDeveloperMode,
+  } = usePremium();
   const { avatar, name } = useProfileContext();
+  const [developerModeUpdating, setDeveloperModeUpdating] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -73,6 +81,30 @@ export default function Settings() {
       router.navigate(route);
     },
     [alertComingSoon],
+  );
+
+  const handleDeveloperModeChange = useCallback(
+    async (enabled: boolean) => {
+      try {
+        setDeveloperModeUpdating(true);
+        await setDeveloperMode(enabled);
+        displayToast({
+          type: "success",
+          description: enabled
+            ? "Developer Mode enabled"
+            : "Developer Mode disabled",
+        });
+      } catch (error) {
+        displayToast({
+          type: "error",
+          description: "Could not update Developer Mode",
+        });
+        console.log(error);
+      } finally {
+        setDeveloperModeUpdating(false);
+      }
+    },
+    [displayToast, setDeveloperMode],
   );
 
   const memoizedProfile = useMemo(() => {
@@ -123,7 +155,7 @@ export default function Settings() {
           className="w-full flex-row justify-between bg-white p-5 rounded-2xl"
         >
           <View className="flex-row items-center gap-3">
-            <View className="bg-red-600 rounded-2xl p-2">
+            <View className="bg-secondary-300 rounded-2xl p-2">
               <Octicons name="bell-fill" color="white" />
             </View>
             <Text className="font-plus-jakarta-semibold">Notifications</Text>
@@ -144,7 +176,7 @@ export default function Settings() {
             className="w-full flex-row justify-between "
           >
             <View className="flex-row items-center gap-3">
-              <View className="bg-green-600 rounded-2xl p-2">
+              <View className="bg-secondary-300 rounded-2xl p-2">
                 <MaterialCommunityIcons name="account-plus" color="white" />
               </View>
               <Text className="font-plus-jakarta-semibold">Refer and Earn</Text>
@@ -160,7 +192,7 @@ export default function Settings() {
             className="w-full flex-row justify-between "
           >
             <View className="flex-row items-center gap-3">
-              <View className="bg-yellow-600 rounded-2xl p-2">
+              <View className="bg-secondary-300 rounded-2xl p-2">
                 <MaterialCommunityIcons name="shield-check" color="white" />
               </View>
               <Text className="font-plus-jakarta-semibold">Privacy Policy</Text>
@@ -175,7 +207,7 @@ export default function Settings() {
             className="w-full flex-row justify-between "
           >
             <View className="flex-row items-center gap-3">
-              <View className="bg-blue-600 rounded-2xl p-2">
+              <View className="bg-secondary-300 rounded-2xl p-2">
                 <Ionicons name="mail" color="white" />
               </View>
               <Text className="font-plus-jakarta-semibold">
@@ -192,7 +224,7 @@ export default function Settings() {
             className="w-full flex-row justify-between "
           >
             <View className="flex-row items-center gap-3">
-              <View className="bg-black rounded-2xl p-2">
+              <View className="bg-secondary-300 rounded-2xl p-2">
                 <FontAwesome6 name="x-twitter" color="white" />
               </View>
               <Text className="font-plus-jakarta-semibold">
@@ -203,6 +235,35 @@ export default function Settings() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {canUseDeveloperMode && (
+        <View className="bg-white rounded-2xl p-5 mt-10">
+          <View className="flex-row items-center justify-between gap-4">
+            <View className="flex-row items-center gap-3 flex-1">
+              <View className="bg-black rounded-2xl p-2">
+                <MaterialCommunityIcons
+                  name="code-tags"
+                  color="white"
+                  size={18}
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="font-plus-jakarta-semibold">
+                  Developer Mode
+                </Text>
+                <Text className="font-plus-jakarta-regular color-gray-400">
+                  Leankly+ access
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={developerModeEnabled}
+              disabled={developerModeUpdating || premiumLoading}
+              onValueChange={handleDeveloperModeChange}
+            />
+          </View>
+        </View>
+      )}
 
       {/* Sign Out */}
       <TouchableOpacity

@@ -53,12 +53,7 @@ export class AppwriteAuthGuard implements CanActivate {
       throw new GoneException("This Leankly profile has been deleted");
     }
 
-    const adminIds = new Set(
-      (this.config.get<string>("ADMIN_APPWRITE_USER_IDS") || "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    );
+    const configuredRole = this.configuredRole(identity.$id);
     const fallbackName =
       identity.name?.trim() || this.makeFallbackName(identity.$id);
     const user = await this.prisma.user.upsert({
@@ -69,12 +64,12 @@ export class AppwriteAuthGuard implements CanActivate {
         emailVerified: identity.emailVerification,
         name: fallbackName,
         avatarUrl: this.makeInitialsAvatar(fallbackName),
-        role: adminIds.has(identity.$id) ? UserRole.ADMIN : UserRole.USER,
+        role: configuredRole ?? UserRole.USER,
       },
       update: {
         email: identity.email,
         emailVerified: identity.emailVerification,
-        role: adminIds.has(identity.$id) ? UserRole.ADMIN : existing?.role,
+        role: configuredRole ?? existing?.role,
       },
     });
 
@@ -103,6 +98,28 @@ export class AppwriteAuthGuard implements CanActivate {
 
   private makeFallbackName(appwriteUserId: string) {
     return `Leanker-${appwriteUserId.slice(-6)}`;
+  }
+
+  private configuredRole(appwriteUserId: string) {
+    if (this.configuredIds("ADMIN_APPWRITE_USER_IDS").has(appwriteUserId)) {
+      return UserRole.ADMIN;
+    }
+    if (this.configuredIds("QA_APPWRITE_USER_IDS").has(appwriteUserId)) {
+      return UserRole.QA;
+    }
+    if (this.configuredIds("DEV_APPWRITE_USER_IDS").has(appwriteUserId)) {
+      return UserRole.DEV;
+    }
+    return null;
+  }
+
+  private configuredIds(key: string) {
+    return new Set(
+      (this.config.get<string>(key) || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
   }
 
   private makeInitialsAvatar(name: string) {

@@ -41,18 +41,26 @@ const leankRow = (id: string, createdAt: Date, ownerId = userId) => ({
   updatedAt: createdAt,
 });
 
+const makeEntitlements = (isPro = false) => ({
+  isEffectivePro: jest.fn(() => Promise.resolve(isPro)),
+});
+
+const makeService = (prisma: unknown, isPro = false) =>
+  new LeanksService(
+    prisma as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    makeEntitlements(isPro) as never,
+  );
+
 describe("LeanksService", () => {
   it("rejects Pro-only filters when the entitlement cache is inactive", async () => {
     const prisma = {
       userEntitlement: { findUnique: jest.fn(() => Promise.resolve(null)) },
     };
-    const service = new LeanksService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
     await expect(
       service.feed(user, { limit: 10, radiusKm: 25, categories: ["Other"] }),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -64,13 +72,7 @@ describe("LeanksService", () => {
       userEntitlement: { findUnique: jest.fn() },
       leank: { findMany },
     };
-    const service = new LeanksService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
     await service.feed(user, { limit: 10, radiusKm: 25 });
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -184,13 +186,7 @@ describe("LeanksService", () => {
       },
     ];
     const findMany = jest.fn(() => Promise.resolve(rows));
-    const service = new LeanksService(
-      { leank: { findMany } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany } });
 
     const result = await service.chats(user, { limit: 20 });
 
@@ -252,13 +248,7 @@ describe("LeanksService", () => {
     const findMany = jest.fn((args) =>
       Promise.resolve(args.select ? [] : [first, second, extra]),
     );
-    const service = new LeanksService(
-      { leank: { findMany } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany } });
 
     const result = await service.chats(user, { limit: 2 });
 
@@ -298,13 +288,7 @@ describe("LeanksService", () => {
     const findMany = jest.fn((args) =>
       Promise.resolve(args.select ? [] : [row]),
     );
-    const service = new LeanksService(
-      { leank: { findMany } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany } });
 
     const result = await service.chats(user, {
       limit: 2,
@@ -347,13 +331,7 @@ describe("LeanksService", () => {
       new Date("2026-06-22T12:00:00.000Z"),
     );
     const findMany = jest.fn(() => Promise.resolve([first, second, extra]));
-    const service = new LeanksService(
-      { leank: { findMany } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany } });
 
     const result = await service.hosted(user, { limit: 2 });
 
@@ -378,13 +356,7 @@ describe("LeanksService", () => {
       otherUserId,
     );
     const findMany = jest.fn(() => Promise.resolve([row]));
-    const service = new LeanksService(
-      { leank: { findMany } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany } });
 
     const result = await service.attended(user, {
       limit: 2,
@@ -410,13 +382,7 @@ describe("LeanksService", () => {
   });
 
   it("rejects an invalid profile pagination cursor", async () => {
-    const service = new LeanksService(
-      { leank: { findMany: jest.fn() } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany: jest.fn() } });
 
     await expect(
       service.hosted(user, { limit: 2, cursor: "not-a-cursor" }),
@@ -424,13 +390,7 @@ describe("LeanksService", () => {
   });
 
   it("rejects an invalid chat pagination cursor", async () => {
-    const service = new LeanksService(
-      { leank: { findMany: jest.fn() } } as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService({ leank: { findMany: jest.fn() } });
 
     await expect(
       service.chats(user, { limit: 2, cursor: "not-a-cursor" }),
@@ -442,13 +402,7 @@ describe("LeanksService", () => {
       leank: { count: jest.fn(() => Promise.resolve(7)) },
       participant: { count: jest.fn(() => Promise.resolve(4)) },
     };
-    const service = new LeanksService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     await expect(service.profileCounts(user)).resolves.toEqual({
       hosted: 7,

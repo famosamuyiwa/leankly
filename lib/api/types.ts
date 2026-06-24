@@ -61,6 +61,16 @@ export type UsageResponse = {
   };
 };
 
+export type EntitlementsResponse = {
+  isPro: boolean;
+  paidActive: boolean;
+  bypassActive: boolean;
+  developerModeEnabled: boolean;
+  canUseDeveloperMode: boolean;
+  expiresAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ChatListResponse = {
   chats: ChatSummary[];
   metas: UserChatMeta[];

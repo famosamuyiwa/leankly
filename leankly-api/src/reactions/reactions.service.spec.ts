@@ -12,6 +12,27 @@ const cursorFor = (createdAt: Date, id: string) =>
     JSON.stringify({ createdAt: createdAt.toISOString(), id }),
   ).toString("base64url");
 
+const makeEntitlements = (isPro = false) => ({
+  isEffectivePro: jest.fn(() => Promise.resolve(isPro)),
+});
+
+const makeService = (
+  prisma: unknown,
+  options: {
+    jobs?: unknown;
+    realtime?: unknown;
+    attention?: unknown;
+    isPro?: boolean;
+  } = {},
+) =>
+  new ReactionsService(
+    prisma as never,
+    (options.jobs ?? {}) as never,
+    (options.realtime ?? {}) as never,
+    (options.attention ?? {}) as never,
+    makeEntitlements(options.isPro) as never,
+  );
+
 describe("ReactionsService", () => {
   it("locks quota state in a serializable transaction before post-commit effects", async () => {
     const events: string[] = [];
@@ -76,12 +97,7 @@ describe("ReactionsService", () => {
         }),
       ),
     };
-    const service = new ReactionsService(
-      prisma as never,
-      jobs as never,
-      realtime as never,
-      attention as never,
-    );
+    const service = makeService(prisma, { jobs, realtime, attention });
 
     await service.react(user, { leankId: "leank-1", action: "like" });
 
@@ -152,12 +168,7 @@ describe("ReactionsService", () => {
         }),
       ),
     };
-    const service = new ReactionsService(
-      prisma as never,
-      jobs as never,
-      realtime as never,
-      attention as never,
-    );
+    const service = makeService(prisma, { jobs, realtime, attention });
 
     await service.accept(user, "reaction-1");
 
@@ -200,12 +211,7 @@ describe("ReactionsService", () => {
         findMany: jest.fn(() => Promise.resolve(requests)),
       },
     };
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     await expect(service.requests(user, { limit: 20 })).resolves.toEqual(
       expect.objectContaining({
@@ -260,12 +266,7 @@ describe("ReactionsService", () => {
         findMany: jest.fn(() => Promise.resolve(requests)),
       },
     };
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma, { isPro: true });
 
     const result = await service.requests(user, { limit: 2 });
 
@@ -301,12 +302,7 @@ describe("ReactionsService", () => {
         findMany: jest.fn(() => Promise.resolve(requests)),
       },
     };
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     const result = await service.requests(user, {
       limit: 20,
@@ -335,12 +331,7 @@ describe("ReactionsService", () => {
         findMany: jest.fn(() => Promise.resolve([])),
       },
     };
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma, { isPro: true });
 
     await service.requests(user, {
       limit: 2,
@@ -364,12 +355,7 @@ describe("ReactionsService", () => {
       userEntitlement: { findUnique: jest.fn() },
       reaction: { count: jest.fn(), findMany: jest.fn() },
     };
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     await expect(
       service.requests(user, { limit: 2, cursor: "not-a-cursor" }),
@@ -386,12 +372,7 @@ describe("ReactionsService", () => {
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     await expect(service.leave(user, "leank-1")).rejects.toBeInstanceOf(
       BadRequestException,
@@ -408,12 +389,7 @@ describe("ReactionsService", () => {
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
-    const service = new ReactionsService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = makeService(prisma);
 
     await expect(
       service.remove(user, "leank-1", "participant-1"),

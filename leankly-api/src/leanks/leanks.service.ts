@@ -9,6 +9,7 @@ import { LeankCategory, LeankStatus, Prisma, User } from "@prisma/client";
 import { countUnreadChatRows } from "../attention/attention-counts.service";
 import { JobsService } from "../jobs/jobs.service";
 import { MediaService } from "../media/media.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { categoryFromValue } from "./leank.constants";
@@ -30,6 +31,7 @@ export class LeanksService {
     private readonly jobs: JobsService,
     private readonly config: ConfigService,
     private readonly realtime: RealtimeGateway,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async create(user: User, input: CreateLeankDto) {
@@ -78,7 +80,7 @@ export class LeanksService {
       query.ageMin ||
       query.ageMax,
     );
-    if (hasProFilter && !(await this.isPro(user.id))) {
+    if (hasProFilter && !(await this.entitlements.isEffectivePro(user))) {
       throw new ForbiddenException({
         code: "PRO_REQUIRED",
         message: "This feed filter requires Leankly+",
@@ -324,16 +326,6 @@ export class LeanksService {
     if (!leank) throw new NotFoundException("Leank not found");
     if (leank.ownerId !== user.id)
       throw new ForbiddenException("Only the host can update this leank");
-  }
-
-  private async isPro(userId: string) {
-    const entitlement = await this.prisma.userEntitlement.findUnique({
-      where: { userId },
-    });
-    return Boolean(
-      entitlement?.isPro &&
-      (!entitlement.expiresAt || entitlement.expiresAt > new Date()),
-    );
   }
 
   private defaultCover() {

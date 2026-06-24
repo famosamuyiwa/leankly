@@ -14,6 +14,7 @@ import {
   ChatDetailResponse,
   ChatListResponse,
   ChatMessagePage,
+  EntitlementsResponse,
   PaginatedLeanksResponse,
   ProfileLeankCountsResponse,
   RequestListResponse,
@@ -238,7 +239,10 @@ export const apiClient = {
     ),
   getUsage: () => apiFetch<UsageResponse>("/v1/users/me/usage"),
   getEntitlements: () =>
-    apiFetch<{ isPro: boolean; expiresAt: string | null }>(
-      "/v1/entitlements/me",
-    ),
+    apiFetch<EntitlementsResponse>("/v1/entitlements/me"),
+  setDeveloperMode: (enabled: boolean) =>
+    apiFetch<EntitlementsResponse>("/v1/entitlements/me/developer-mode", {
+      method: "PATCH",
+      body: JSON.stringify({ enabled }),
+    }),
 };

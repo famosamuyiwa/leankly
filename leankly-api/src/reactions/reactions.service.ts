@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { AttentionCountsService } from "../attention/attention-counts.service";
 import { PaginationQueryDto } from "../common/dto/pagination-query.dto";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { JobsService } from "../jobs/jobs.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { RealtimeGateway } from "../realtime/realtime.gateway";
@@ -29,6 +30,7 @@ export class ReactionsService {
     private readonly jobs: JobsService,
     private readonly realtime: RealtimeGateway,
     private readonly attention: AttentionCountsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async react(user: User, input: CreateReactionDto) {
@@ -64,7 +66,7 @@ export class ReactionsService {
         }
 
         if (isLiked) {
-          await this.consumeInterest(tx, user.id);
+          await this.consumeInterest(tx, user);
           shouldNotify = true;
         }
         const reaction = await tx.reaction.upsert({
@@ -114,7 +116,7 @@ export class ReactionsService {
         if (reaction.status === ReactionStatus.ACCEPTED) {
           throw new ConflictException("Accepted requests cannot be undone");
         }
-        if (!(await this.isPro(tx, user.id))) {
+        if (!(await this.entitlements.isEffectivePro(user, tx))) {
           const usage = await this.usage(tx, user.id, UsageFeature.UNDO);
           if (usage.count >= FREE_LIMITS.undos) {
             throw new HttpException(
@@ -138,7 +140,7 @@ export class ReactionsService {
 
   async requests(user: User, query: PaginationQueryDto) {
     const decodedCursor = query.cursor ? this.decodeCursor(query.cursor) : null;
-    const isPro = await this.isPro(this.prisma, user.id);
+    const isPro = await this.entitlements.isEffectivePro(user);
     const cursor = isPro ? decodedCursor : null;
     const effectiveLimit = isPro ? query.limit : 1;
     const where = {
@@ -376,10 +378,10 @@ export class ReactionsService {
     return { leankId, userId: participantUserId, removed: result.removed };
   }
 
-  private async consumeInterest(tx: Prisma.TransactionClient, userId: string) {
-    await this.lockUser(tx, userId);
-    if (await this.isPro(tx, userId)) return;
-    const usage = await this.usage(tx, userId, UsageFeature.INTEREST);
+  private async consumeInterest(tx: Prisma.TransactionClient, user: User) {
+    await this.lockUser(tx, user.id);
+    if (await this.entitlements.isEffectivePro(user, tx)) return;
+    const usage = await this.usage(tx, user.id, UsageFeature.INTEREST);
     if (usage.count < FREE_LIMITS.interests) {
       await tx.dailyUsage.update({
         where: { id: usage.id },
@@ -387,13 +389,13 @@ export class ReactionsService {
       });
       return;
     }
-    const user = await tx.user.findUniqueOrThrow({
-      where: { id: userId },
+    const quotaUser = await tx.user.findUniqueOrThrow({
+      where: { id: user.id },
       select: { bonusInterests: true },
     });
-    if (user.bonusInterests > 0) {
+    if (quotaUser.bonusInterests > 0) {
       await tx.user.update({
-        where: { id: userId },
+        where: { id: user.id },
         data: { bonusInterests: { decrement: 1 } },
       });
       return;
@@ -420,19 +422,6 @@ export class ReactionsService {
       create: { userId, feature, usageDate: utcUsageDate(), count: 0 },
       update: {},
     });
-  }
-
-  private async isPro(
-    tx: Prisma.TransactionClient | PrismaService,
-    userId: string,
-  ) {
-    const entitlement = await tx.userEntitlement.findUnique({
-      where: { userId },
-    });
-    return Boolean(
-      entitlement?.isPro &&
-      (!entitlement.expiresAt || entitlement.expiresAt > new Date()),
-    );
   }
 
   private async lockUser(tx: Prisma.TransactionClient, userId: string) {

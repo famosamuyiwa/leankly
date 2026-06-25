@@ -136,7 +136,11 @@ export default function Settings() {
       <View className="flex-row flex-wrap gap-x-5 gap-y-2 px-5 pt-5">
         <View className="flex-row items-center gap-3">
           <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-            <Ionicons name="calendar-clear" size={16} color={Colors.accent} />
+            <Ionicons
+              name="calendar-clear"
+              size={16}
+              color={Colors.secondary}
+            />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
             {activeLeank ? formatDate(activeLeank.date) : "--"}
@@ -147,7 +151,7 @@ export default function Settings() {
             <MaterialCommunityIcons
               name="clock-time-three"
               size={16}
-              color={Colors.accent}
+              color={Colors.secondary}
             />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
@@ -157,7 +161,7 @@ export default function Settings() {
 
         <View className="flex-row items-center gap-3">
           <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-            <Entypo name="location" size={16} color={Colors.accent} />
+            <Entypo name="location" size={16} color={Colors.secondary} />
           </View>
           <Text className="font-plus-jakarta-bold flex-shrink">
             {activeLeank?.location}

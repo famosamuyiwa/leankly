@@ -25,7 +25,7 @@ export const HeaderStyles = {
 };
 
 export const BadgeStyle = {
-  backgroundColor: Colors.accent,
+  backgroundColor: Colors.secondary,
   minWidth: 14, // reduce badge width
   height: 14, // reduce badge height
   borderRadius: 7, // make it perfectly round
@@ -41,7 +41,7 @@ export const BadgeStyle = {
 export const CalendarRangeTheme: CalendarTheme = {
   rowMonth: {
     content: {
-      color: Colors.accent,
+      color: Colors.secondary,
       fontWeight: "700",
     },
   },
@@ -52,7 +52,7 @@ export const CalendarRangeTheme: CalendarTheme = {
       borderStyle: "solid",
     },
   },
-  itemWeekName: { content: { color: Colors.secondary } },
+  itemWeekName: { content: { color: Colors.accent } },
   itemDayContainer: {
     activeDayFiller: {
       backgroundColor: Colors.primary,
@@ -65,7 +65,7 @@ export const CalendarRangeTheme: CalendarTheme = {
         borderRadius: 4,
       },
       content: {
-        color: !isPressed ? Colors.secondary : "#ffffff",
+        color: !isPressed ? Colors.accent : "#ffffff",
       },
     }),
     today: ({ isPressed }) => ({
@@ -75,7 +75,7 @@ export const CalendarRangeTheme: CalendarTheme = {
         backgroundColor: isPressed ? Colors.primary : "transparent",
       },
       content: {
-        color: isPressed ? "#ffffff" : Colors.secondary,
+        color: isPressed ? "#ffffff" : Colors.accent,
       },
     }),
     active: ({ isEndOfRange, isStartOfRange, isDisabled }) => ({

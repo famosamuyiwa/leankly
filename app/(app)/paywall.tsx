@@ -140,7 +140,7 @@ export default function PaywallScreen() {
         <View className="mt-4 mb-8 gap-2">
           <View className="flex-row items-center gap-3">
             <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-              <Ionicons name="infinite" size={20} color={Colors.accent} />
+              <Ionicons name="infinite" size={20} color={Colors.secondary} />
             </View>
             <Text className="text-base font-plus-jakarta-medium">
               Unlimited interests
@@ -148,7 +148,7 @@ export default function PaywallScreen() {
           </View>
           <View className="flex-row items-center gap-3">
             <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-              <Ionicons name="filter" size={20} color={Colors.accent} />
+              <Ionicons name="filter" size={20} color={Colors.secondary} />
             </View>
             <Text className="text-base font-plus-jakarta-medium">
               Access all filters
@@ -159,7 +159,7 @@ export default function PaywallScreen() {
               <Ionicons
                 name="return-down-back"
                 size={20}
-                color={Colors.accent}
+                color={Colors.secondary}
               />
             </View>
             <Text className="text-base font-plus-jakarta-medium">
@@ -168,7 +168,7 @@ export default function PaywallScreen() {
           </View>
           <View className="flex-row items-center gap-3">
             <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-              <Ionicons name="list" size={20} color={Colors.accent} />
+              <Ionicons name="list" size={20} color={Colors.secondary} />
             </View>
             <Text className="text-base font-plus-jakarta-medium">
               See all requests at once
@@ -176,7 +176,7 @@ export default function PaywallScreen() {
           </View>
           <View className="flex-row items-center gap-3">
             <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
-              <MaterialCommunityIcons name="medal" color={Colors.accent} />
+              <MaterialCommunityIcons name="medal" color={Colors.secondary} />
             </View>
             <Text className="text-base font-plus-jakarta-medium">
               Make your requests stand out
@@ -187,7 +187,7 @@ export default function PaywallScreen() {
               <MaterialCommunityIcons
                 name="advertisements"
                 size={20}
-                color={Colors.accent}
+                color={Colors.secondary}
               />
             </View>
             <Text className="text-base font-plus-jakarta-medium">

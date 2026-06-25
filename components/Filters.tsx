@@ -6,7 +6,7 @@ import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { Portal } from "@gorhom/portal";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ScrollView, Text, TouchableOpacity } from "react-native";
 import { filterCategories } from "../constants/data";
 import { FilterBottomSheet } from "./BottomSheet";
@@ -133,7 +133,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
                   <MaterialCommunityIcons
                     name="crown"
                     size={16}
-                    color={Colors.accent}
+                    color={Colors.secondary}
                   />
                 ) : (
                   <Ionicons
@@ -146,7 +146,7 @@ const Filters = ({ screen }: { screen: Screens }) => {
                 <MaterialCommunityIcons
                   name="crown"
                   size={16}
-                  color={Colors.accent}
+                  color={Colors.secondary}
                 />
               )}
             </TouchableOpacity>

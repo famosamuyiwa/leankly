@@ -236,7 +236,7 @@ export const LeankCardBig = ({
                 <AntDesign
                   name="notification"
                   size={16}
-                  color={Colors.accent}
+                  color={Colors.secondary}
                 />
                 <Text
                   className="flex-1 font-plus-jakarta-regular text-black-300"
@@ -266,7 +266,7 @@ export const LeankCardBig = ({
                   <Ionicons
                     name="calendar-clear"
                     size={15}
-                    color={Colors.accent}
+                    color={Colors.secondary}
                   />
                 </View>
                 <Text className="font-plus-jakarta-semibold text-black-300 line-clamp-2">
@@ -276,7 +276,7 @@ export const LeankCardBig = ({
 
               <View className="flex-1 rounded-2xl bg-secondary-100 px-3 py-5">
                 <View className="mb-2 flex-row items-center gap-2">
-                  <Entypo name="location" size={16} color={Colors.accent} />
+                  <Entypo name="location" size={16} color={Colors.secondary} />
                 </View>
                 <Text className="font-plus-jakarta-semibold  text-black-300 line-clamp-2">
                   {location}
@@ -286,7 +286,7 @@ export const LeankCardBig = ({
 
             <View className="flex-row items-center gap-3 rounded-2xl  ">
               <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
-                <Entypo name="clock" size={16} color={Colors.accent} />
+                <Entypo name="clock" size={16} color={Colors.secondary} />
               </View>
               <Text className="flex-1 font-plus-jakarta-bold text-sm text-gray-500 line-clamp-2">
                 {timeLabel}
@@ -304,7 +304,11 @@ export const LeankCardBig = ({
         <View className="flex-1 rounded-3xl bg-white px-4 py-4">
           <View className="mt-4 flex-1 flex-row items-start gap-3 py-4">
             <View className="items-center justify-center rounded-full bg-secondary-200 size-10">
-              <AntDesign name="notification" size={16} color={Colors.accent} />
+              <AntDesign
+                name="notification"
+                size={16}
+                color={Colors.secondary}
+              />
             </View>
             <ScrollView
               className="flex-1"
@@ -474,7 +478,7 @@ export const LockedRequestPlaceholder = () => {
           <MaterialCommunityIcons
             name="crown"
             size={16}
-            color={Colors.accent}
+            color={Colors.secondary}
           />
           <Text className="font-plus-jakarta-semibold text-gray-700">
             Unlock all requests

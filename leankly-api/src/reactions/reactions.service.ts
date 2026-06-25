@@ -265,6 +265,9 @@ export class ReactionsService {
       id: result.reaction.id,
       status: ReactionStatus.ACCEPTED,
     });
+    this.realtime.emitLeank(result.reaction.leankId, "participants.updated", {
+      leankId: result.reaction.leankId,
+    });
     if (result.systemMessage) {
       this.realtime.emitLeank(
         result.reaction.leankId,
@@ -304,21 +307,50 @@ export class ReactionsService {
     return { reaction: updated };
   }
 
-  async participants(user: User, leankId: string) {
+  async participants(user: User, leankId: string, query: PaginationQueryDto) {
     await this.assertMember(user, leankId);
-    const rows = await this.prisma.participant.findMany({
-      where: { leankId },
-      include: {
-        user: { select: { id: true, name: true, age: true, avatarUrl: true } },
-      },
-      orderBy: { joinedAt: "asc" },
-    });
+    const cursor = query.cursor
+      ? this.decodeParticipantCursor(query.cursor)
+      : null;
+    const where = {
+      leankId,
+      ...(cursor
+        ? {
+            OR: [
+              { joinedAt: { gt: cursor.joinedAt } },
+              { joinedAt: cursor.joinedAt, id: { gt: cursor.id } },
+            ],
+          }
+        : {}),
+    } satisfies Prisma.ParticipantWhereInput;
+    const [totalParticipants, rows] = await Promise.all([
+      this.prisma.participant.count({ where: { leankId } }),
+      this.prisma.participant.findMany({
+        where,
+        include: {
+          user: {
+            select: { id: true, name: true, age: true, avatarUrl: true },
+          },
+        },
+        orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
+        take: query.limit + 1,
+      }),
+    ]);
+    const hasMore = rows.length > query.limit;
+    const visible = rows.slice(0, query.limit);
+    const last = visible.at(-1);
     return {
-      participants: rows.map((row) => ({
+      participants: visible.map((row) => ({
         id: row.id,
         joinedAt: row.joinedAt,
         user: { ...row.user, avatar: row.user.avatarUrl || "" },
       })),
+      totalParticipants,
+      nextCursor:
+        hasMore && last
+          ? this.encodeParticipantCursor(last.joinedAt, last.id)
+          : null,
+      hasMore,
     };
   }
 
@@ -342,6 +374,8 @@ export class ReactionsService {
     });
     if (result.message)
       this.realtime.emitLeank(leankId, "message.created", result.message);
+    if (result.left)
+      this.realtime.emitLeank(leankId, "participants.updated", { leankId });
     return { leankId, left: result.left };
   }
 
@@ -371,6 +405,8 @@ export class ReactionsService {
     });
     if (result.message)
       this.realtime.emitLeank(leankId, "message.created", result.message);
+    if (result.removed)
+      this.realtime.emitLeank(leankId, "participants.updated", { leankId });
     this.realtime.emitUser(participantUserId, "leank.updated", {
       leankId,
       removed: result.removed,
@@ -492,6 +528,29 @@ export class ReactionsService {
       return { id: String(value.id), createdAt: new Date(value.createdAt) };
     } catch {
       throw new BadRequestException("Invalid requests cursor");
+    }
+  }
+
+  private encodeParticipantCursor(joinedAt: Date, id: string) {
+    return Buffer.from(
+      JSON.stringify({ joinedAt: joinedAt.toISOString(), id }),
+    ).toString("base64url");
+  }
+
+  private decodeParticipantCursor(cursor: string): {
+    joinedAt: Date;
+    id: string;
+  } {
+    try {
+      const value = JSON.parse(
+        Buffer.from(cursor, "base64url").toString("utf8"),
+      );
+      if (!value.id || Number.isNaN(Date.parse(value.joinedAt))) {
+        throw new Error("invalid");
+      }
+      return { id: String(value.id), joinedAt: new Date(value.joinedAt) };
+    } catch {
+      throw new BadRequestException("Invalid participants cursor");
     }
   }
 }

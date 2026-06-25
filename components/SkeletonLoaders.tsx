@@ -117,11 +117,35 @@ export const RequestCardSkeleton = () => {
   );
 };
 
+export const LeankerRowSkeleton = () => {
+  return (
+    <SkeletonPulse>
+      <View className="flex-row items-center justify-between py-1">
+        <View className="flex-row items-center gap-5">
+          <SkeletonBlock className="size-14 rounded-full" />
+          <SkeletonBlock className="h-5 w-28 rounded-full" />
+        </View>
+        <SkeletonBlock className="h-4 w-14 rounded-full" />
+      </View>
+    </SkeletonPulse>
+  );
+};
+
 export const LeankCardSkeletonList = ({ count = 4 }: SkeletonListProps) => {
   return (
     <View>
       {Array.from({ length: count }).map((_, index) => (
         <LeankCardSkeleton key={`leank-card-skeleton-${index}`} />
+      ))}
+    </View>
+  );
+};
+
+export const LeankerRowSkeletonList = ({ count = 4 }: SkeletonListProps) => {
+  return (
+    <View className="gap-5">
+      {Array.from({ length: count }).map((_, index) => (
+        <LeankerRowSkeleton key={`leanker-row-skeleton-${index}`} />
       ))}
     </View>
   );

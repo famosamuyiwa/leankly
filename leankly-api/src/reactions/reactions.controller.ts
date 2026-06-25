@@ -46,8 +46,14 @@ export class ReactionsController {
   }
 
   @Get("leanks/:id/participants")
-  participants(@CurrentUser() user: User, @Param("id") id: string) {
-    return this.reactions.participants(user, id);
+  @ApiQuery({ name: "cursor", required: false, type: String })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  participants(
+    @CurrentUser() user: User,
+    @Param("id") id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.reactions.participants(user, id, query);
   }
 
   @Post("leanks/:id/leave")

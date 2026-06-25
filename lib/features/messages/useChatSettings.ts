@@ -3,10 +3,62 @@ import { BasicUser, Participants } from "@/interfaces";
 import { useGlobalContext } from "@/lib/GlobalContext";
 import { useMessagesContext } from "@/lib/MessagesContext";
 import { apiClient } from "@/lib/api/client";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
+import { PaginatedParticipantsResponse } from "@/lib/api/types";
+import { realtime } from "@/lib/api/realtime";
+import { chatDetailQueryKey, chatParticipantsQueryKey } from "./queryKeys";
+
+const CHAT_SETTINGS_PARTICIPANTS_PAGE_SIZE = 20;
+
+type ParticipantsInfiniteData = InfiniteData<
+  PaginatedParticipantsResponse,
+  string | undefined
+>;
+
+const dedupeParticipants = (participants: Participants[]) => {
+  const seen = new Set<string>();
+  return participants.filter((participant) => {
+    if (seen.has(participant.id)) return false;
+    seen.add(participant.id);
+    return true;
+  });
+};
+
+const removeParticipantFromPages = (
+  data: ParticipantsInfiniteData | undefined,
+  leanker: Participants,
+) => {
+  if (!data) return data;
+  const exists = data.pages.some((page) =>
+    page.participants.some(
+      (participant) =>
+        participant.id === leanker.id ||
+        participant.user.id === leanker.user.id,
+    ),
+  );
+  if (!exists) return data;
+
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      participants: page.participants.filter(
+        (participant) =>
+          participant.id !== leanker.id &&
+          participant.user.id !== leanker.user.id,
+      ),
+      totalParticipants: Math.max(0, page.totalParticipants - 1),
+    })),
+  };
+};
 
 export function useChatSettings() {
   const { currentLeank, setCurrentLeank } = useMessagesContext();
@@ -16,42 +68,72 @@ export function useChatSettings() {
   const currentUserId = currentUser?.id;
   const params = useLocalSearchParams<{ chat?: string }>();
   const chatId = Array.isArray(params.chat) ? params.chat[0] : params.chat;
-  const [leankers, setLeankers] = useState<Participants[]>([]);
-  const [isLeankLoading, setIsLeankLoading] = useState(true);
-  const activeLeank = currentLeank?.id === chatId ? currentLeank : undefined;
+  const detailQueryKey = useMemo(() => chatDetailQueryKey(chatId), [chatId]);
+  const participantsQueryKey = useMemo(
+    () => chatParticipantsQueryKey(chatId),
+    [chatId],
+  );
+  const activeContextLeank =
+    currentLeank?.id === chatId ? currentLeank : undefined;
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshStartedEmpty, setRefreshStartedEmpty] = useState(false);
 
-  const loadLeank = useCallback(async () => {
+  const chatDetailQuery = useQuery({
+    queryKey: detailQueryKey,
+    enabled: Boolean(chatId),
+    initialData: activeContextLeank ? { chat: activeContextLeank } : undefined,
+    queryFn: () => apiClient.getChat(chatId!),
+  });
+
+  const activeLeank = chatDetailQuery.data?.chat || activeContextLeank;
+
+  const participantsQuery = useInfiniteQuery({
+    queryKey: participantsQueryKey,
+    enabled: Boolean(chatId && currentUserId),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      apiClient.getParticipants(chatId!, {
+        limit: CHAT_SETTINGS_PARTICIPANTS_PAGE_SIZE,
+        cursor: pageParam,
+      }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+  const leankers = useMemo(() => {
+    return dedupeParticipants(
+      participantsQuery.data?.pages.flatMap((page) => page.participants) || [],
+    );
+  }, [participantsQuery.data]);
+
+  useEffect(() => {
+    const chat = chatDetailQuery.data?.chat;
+    if (!chat || chat.id !== chatId) return;
+    setCurrentLeank(chat);
+  }, [chatDetailQuery.data, chatId, setCurrentLeank]);
+
+  useEffect(() => {
     if (!chatId) return;
-    if (activeLeank) {
-      setIsLeankLoading(false);
-      return;
-    }
+    const unsubscribeRoom = realtime.subscribeLeank(chatId);
+    const unsubscribeParticipants = realtime.subscribe(
+      "participants.updated",
+      (payload) => {
+        if (payload?.leankId !== chatId) return;
+        void queryClient.invalidateQueries({
+          queryKey: participantsQueryKey,
+          exact: true,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: detailQueryKey,
+          exact: true,
+        });
+      },
+    );
 
-    try {
-      const { chat } = await apiClient.getChat(chatId);
-      setCurrentLeank(chat);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setIsLeankLoading(false);
-    }
-  }, [activeLeank, chatId, setCurrentLeank]);
-
-  const loadParticipants = useCallback(async () => {
-    if (!chatId || !currentUserId) return;
-    const response = await apiClient.getParticipants(chatId);
-    setLeankers(response.participants);
-  }, [chatId, currentUserId]);
-
-  useEffect(() => {
-    // Context is only a fast path; route params keep settings valid on deep links and reloads.
-    void loadLeank();
-  }, [loadLeank]);
-
-  useEffect(() => {
-    if (!activeLeank) return;
-    void loadParticipants().catch((error) => console.log(error));
-  }, [activeLeank, loadParticipants]);
+    return () => {
+      unsubscribeParticipants();
+      unsubscribeRoom();
+    };
+  }, [chatId, detailQueryKey, participantsQueryKey, queryClient]);
 
   const goBackToChats = useCallback(() => {
     router.dismissTo({
@@ -110,18 +192,73 @@ export function useChatSettings() {
   const removeUser = useCallback(
     async (leanker: Participants) => {
       if (!chatId || !currentUser) return;
+      const previousParticipants =
+        queryClient.getQueryData<ParticipantsInfiniteData>(
+          participantsQueryKey,
+        );
+      queryClient.setQueryData<ParticipantsInfiniteData>(
+        participantsQueryKey,
+        (prev) => removeParticipantFromPages(prev, leanker),
+      );
+
       try {
         await apiClient.removeParticipant(chatId, leanker.user.id);
-        setLeankers((prev) => prev.filter((item) => item.id !== leanker.id));
-        await queryClient.invalidateQueries({
-          queryKey: ["messages", "tab", "chats"],
-        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: participantsQueryKey,
+            exact: true,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: detailQueryKey,
+            exact: true,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["messages", "tab", "chats"],
+          }),
+        ]);
       } catch (error) {
+        queryClient.setQueryData(participantsQueryKey, previousParticipants);
         console.error(error);
       }
     },
-    [chatId, currentUser, queryClient],
+    [
+      chatId,
+      currentUser,
+      detailQueryKey,
+      participantsQueryKey,
+      queryClient,
+    ],
   );
+
+  const handleRefresh = useCallback(async () => {
+    const wasEmpty = leankers.length === 0;
+    try {
+      setRefreshStartedEmpty(wasEmpty);
+      setRefreshing(true);
+      await Promise.all([chatDetailQuery.refetch(), participantsQuery.refetch()]);
+    } finally {
+      setRefreshing(false);
+      setRefreshStartedEmpty(false);
+    }
+  }, [chatDetailQuery, leankers.length, participantsQuery]);
+
+  const handleEndReached = useCallback(() => {
+    if (
+      !participantsQuery.hasNextPage ||
+      participantsQuery.isFetchingNextPage
+    ) {
+      return;
+    }
+    void participantsQuery.fetchNextPage();
+  }, [participantsQuery]);
+
+  const retryInitialParticipants = useCallback(() => {
+    void participantsQuery.refetch();
+  }, [participantsQuery]);
+
+  const retryNextParticipantsPage = useCallback(() => {
+    void participantsQuery.fetchNextPage();
+  }, [participantsQuery]);
 
   const handleLeave = useCallback(() => {
     Alert.alert("Leave", "Are you sure you want to leave this leank?", [
@@ -162,18 +299,34 @@ export function useChatSettings() {
     [openUserPreview],
   );
 
-  const leankerCount = useMemo(() => leankers.length + 1, [leankers.length]);
+  const participantTotal =
+    participantsQuery.data?.pages[0]?.totalParticipants ??
+    activeLeank?.participantIds?.length ??
+    leankers.length;
+  const leankerCount = participantTotal + 1;
 
   return {
     activeLeank,
     chatId,
     currentUserId,
+    handleEndReached,
     handleClose,
     handleLeave,
     handleRemove,
-    isLeankLoading,
+    handleRefresh,
+    isFetchNextPageError: participantsQuery.isFetchNextPageError,
+    isFetchingNextPage: participantsQuery.isFetchingNextPage,
+    isInitialParticipantsError:
+      participantsQuery.isError && !participantsQuery.data,
+    isLeankLoading: chatDetailQuery.isPending && !chatDetailQuery.data,
+    isParticipantsLoading:
+      participantsQuery.isPending && leankers.length === 0,
     leankerCount,
     leankers,
     openLeankerPreview,
+    refreshStartedEmpty,
+    refreshing,
+    retryInitialParticipants,
+    retryNextParticipantsPage,
   };
 }

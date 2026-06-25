@@ -2,7 +2,6 @@ import { account, appwriteConfig } from "@/appwrite/config";
 import {
   Leank,
   Message,
-  Participants,
   User,
   UserChatMeta,
 } from "@/interfaces";
@@ -16,6 +15,7 @@ import {
   ChatMessagePage,
   EntitlementsResponse,
   PaginatedLeanksResponse,
+  PaginatedParticipantsResponse,
   ProfileLeankCountsResponse,
   RequestListResponse,
   UnreadCountResponse,
@@ -156,9 +156,9 @@ export const apiClient = {
       `/v1/leanks/${chatId}/messages?${params({ cursor, limit })}`,
     );
   },
-  getParticipants(chatId: string) {
-    return apiFetch<{ participants: Participants[] }>(
-      `/v1/leanks/${chatId}/participants`,
+  getParticipants(chatId: string, query: Record<string, unknown> = {}) {
+    return apiFetch<PaginatedParticipantsResponse>(
+      `/v1/leanks/${chatId}/participants?${params(query)}`,
     );
   },
   async sendMessage(

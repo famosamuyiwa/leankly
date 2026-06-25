@@ -236,6 +236,7 @@ model Participant {
   @@unique([leankId, userId])
   @@index([userId, joinedAt])
   @@index([userId, leankId])
+  @@index([leankId, joinedAt, id])
   @@map("participants")
 }
 

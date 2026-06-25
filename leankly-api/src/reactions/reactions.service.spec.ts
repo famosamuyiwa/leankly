@@ -12,6 +12,11 @@ const cursorFor = (createdAt: Date, id: string) =>
     JSON.stringify({ createdAt: createdAt.toISOString(), id }),
   ).toString("base64url");
 
+const participantCursorFor = (joinedAt: Date, id: string) =>
+  Buffer.from(
+    JSON.stringify({ joinedAt: joinedAt.toISOString(), id }),
+  ).toString("base64url");
+
 const makeEntitlements = (isPro = false) => ({
   isEffectivePro: jest.fn(() => Promise.resolve(isPro)),
 });
@@ -181,6 +186,11 @@ describe("ReactionsService", () => {
     expect(realtime.emitUser).toHaveBeenCalledWith(
       "requester-1",
       "unread.changed",
+      { leankId: "leank-1" },
+    );
+    expect(realtime.emitLeank).toHaveBeenCalledWith(
+      "leank-1",
+      "participants.updated",
       { leankId: "leank-1" },
     );
   });
@@ -360,6 +370,183 @@ describe("ReactionsService", () => {
     await expect(
       service.requests(user, { limit: 2, cursor: "not-a-cursor" }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("returns a paginated participants page with exact total count", async () => {
+    const firstJoinedAt = new Date("2026-06-24T10:00:00.000Z");
+    const secondJoinedAt = new Date("2026-06-24T11:00:00.000Z");
+    const rows = [
+      {
+        id: "participant-1",
+        joinedAt: firstJoinedAt,
+        user: { id: "user-1", name: "A", age: 25, avatarUrl: null },
+      },
+      {
+        id: "participant-2",
+        joinedAt: secondJoinedAt,
+        user: { id: "user-2", name: "B", age: 26, avatarUrl: "avatar.jpg" },
+      },
+      {
+        id: "participant-3",
+        joinedAt: new Date("2026-06-24T12:00:00.000Z"),
+        user: { id: "user-3", name: "C", age: 27, avatarUrl: null },
+      },
+    ];
+    const prisma = {
+      leank: { findFirst: jest.fn(() => Promise.resolve({ id: "leank-1" })) },
+      participant: {
+        count: jest.fn(() => Promise.resolve(3)),
+        findMany: jest.fn(() => Promise.resolve(rows)),
+      },
+    };
+    const service = makeService(prisma);
+
+    const result = await service.participants(user, "leank-1", { limit: 2 });
+
+    expect(prisma.participant.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { leankId: "leank-1" },
+        orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
+        take: 3,
+      }),
+    );
+    expect(result.participants.map((participant) => participant.id)).toEqual([
+      "participant-1",
+      "participant-2",
+    ]);
+    expect(result.totalParticipants).toBe(3);
+    expect(result.hasMore).toBe(true);
+    expect(result.nextCursor).toBe(
+      participantCursorFor(secondJoinedAt, "participant-2"),
+    );
+    expect(result.participants[1].user.avatar).toBe("avatar.jpg");
+  });
+
+  it("applies the participant cursor predicate", async () => {
+    const cursorJoinedAt = new Date("2026-06-24T11:00:00.000Z");
+    const cursorId = "participant-2";
+    const prisma = {
+      leank: { findFirst: jest.fn(() => Promise.resolve({ id: "leank-1" })) },
+      participant: {
+        count: jest.fn(() => Promise.resolve(1)),
+        findMany: jest.fn(() => Promise.resolve([])),
+      },
+    };
+    const service = makeService(prisma);
+
+    await service.participants(user, "leank-1", {
+      limit: 2,
+      cursor: participantCursorFor(cursorJoinedAt, cursorId),
+    });
+
+    expect(prisma.participant.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          leankId: "leank-1",
+          OR: [
+            { joinedAt: { gt: cursorJoinedAt } },
+            { joinedAt: cursorJoinedAt, id: { gt: cursorId } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("rejects an invalid participant cursor", async () => {
+    const prisma = {
+      leank: { findFirst: jest.fn(() => Promise.resolve({ id: "leank-1" })) },
+      participant: { count: jest.fn(), findMany: jest.fn() },
+    };
+    const service = makeService(prisma);
+
+    await expect(
+      service.participants(user, "leank-1", {
+        limit: 2,
+        cursor: "not-a-cursor",
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("blocks non-members from reading participants", async () => {
+    const prisma = {
+      leank: { findFirst: jest.fn(() => Promise.resolve(null)) },
+      participant: { count: jest.fn(), findMany: jest.fn() },
+    };
+    const service = makeService(prisma);
+
+    await expect(
+      service.participants(user, "leank-1", { limit: 2 }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.participant.findMany).not.toHaveBeenCalled();
+  });
+
+  it("emits participants.updated after a user leaves", async () => {
+    const systemMessage = {
+      id: "message-1",
+      leankId: "leank-1",
+      content: "Tester left the leank",
+      createdAt: new Date("2026-06-24T12:00:00.000Z"),
+    };
+    const tx = {
+      leank: {
+        findUnique: jest.fn(() => Promise.resolve({ ownerId: "host-1" })),
+        update: jest.fn(() => Promise.resolve()),
+      },
+      participant: {
+        deleteMany: jest.fn(() => Promise.resolve({ count: 1 })),
+      },
+      message: { create: jest.fn(() => Promise.resolve(systemMessage)) },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    };
+    const realtime = { emitLeank: jest.fn(), emitUser: jest.fn() };
+    const service = makeService(prisma, { realtime });
+
+    await service.leave(user, "leank-1");
+
+    expect(realtime.emitLeank).toHaveBeenCalledWith(
+      "leank-1",
+      "participants.updated",
+      { leankId: "leank-1" },
+    );
+  });
+
+  it("emits participants.updated after the host removes a user", async () => {
+    const systemMessage = {
+      id: "message-1",
+      leankId: "leank-1",
+      content: "A participant was removed",
+      createdAt: new Date("2026-06-24T12:00:00.000Z"),
+    };
+    const tx = {
+      leank: {
+        findUnique: jest.fn(() => Promise.resolve({ ownerId: user.id })),
+        update: jest.fn(() => Promise.resolve()),
+      },
+      user: { findUnique: jest.fn(() => Promise.resolve({ name: "A" })) },
+      participant: {
+        deleteMany: jest.fn(() => Promise.resolve({ count: 1 })),
+      },
+      message: { create: jest.fn(() => Promise.resolve(systemMessage)) },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    };
+    const realtime = { emitLeank: jest.fn(), emitUser: jest.fn() };
+    const service = makeService(prisma, { realtime });
+
+    await service.remove(user, "leank-1", "participant-user-1");
+
+    expect(realtime.emitLeank).toHaveBeenCalledWith(
+      "leank-1",
+      "participants.updated",
+      { leankId: "leank-1" },
+    );
   });
 
   it("prevents a host from leaving their own leank", async () => {

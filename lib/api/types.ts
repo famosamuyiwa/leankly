@@ -96,3 +96,10 @@ export type RequestListResponse = {
 export type ParticipantListResponse = {
   participants: Participants[];
 };
+
+export type PaginatedParticipantsResponse = {
+  participants: Participants[];
+  totalParticipants: number;
+  nextCursor: string | null;
+  hasMore: boolean;
+};

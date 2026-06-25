@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import { useVideoPlayer, VideoView } from "expo-video";
+import { VideoView } from "expo-video";
 import {
   Alert,
   Platform,
@@ -16,23 +16,33 @@ import images from "@/constants/images";
 import { useGoogleSSO } from "@/hooks/useGoogleSignIn";
 import { useWarmUpBrowser } from "@/hooks/useWarmUpBrowser";
 import {
+  getAuthPlaybackPlayer,
+  pauseAuthPlaybackVideo,
+  playAuthPlaybackVideo,
+} from "@/lib/auth-playback-video";
+import {
   AntDesign,
   Ionicons,
   MaterialCommunityIcons,
 } from "@expo/vector-icons";
 import { router } from "expo-router";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { useEffect, useState } from "react";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from "react-native-reanimated";
 
 const SignIn = () => {
   useWarmUpBrowser();
-  const videoPlayer = useVideoPlayer(
-    { assetId: require("@/assets/videos/auth_playback.mov") },
-    (player) => {
-      player.loop = false;
-      player.muted = true;
-      player.play();
-    },
-  );
+  const [hasRenderedVideoFrame, setHasRenderedVideoFrame] = useState(false);
+  const videoPlayer = getAuthPlaybackPlayer();
+
+  useEffect(() => {
+    playAuthPlaybackVideo();
+
+    return pauseAuthPlaybackVideo;
+  }, []);
 
   const { signInWithApple, signInWithGoogle } = useGoogleSSO();
 
@@ -63,7 +73,21 @@ const SignIn = () => {
         style={styles.backgroundVideo}
         contentFit="cover"
         nativeControls={false}
+        onFirstFrameRender={() => setHasRenderedVideoFrame(true)}
       />
+      {!hasRenderedVideoFrame ? (
+        <Animated.View
+          pointerEvents="none"
+          exiting={FadeOut.duration(250)}
+          style={styles.videoPoster}
+        >
+          <Image
+            source={images.authPlaybackPoster}
+            style={styles.backgroundVideo}
+            contentFit="cover"
+          />
+        </Animated.View>
+      ) : null}
       <View pointerEvents="none" style={styles.overlay} />
 
       <Animated.View
@@ -154,6 +178,10 @@ const styles = StyleSheet.create({
   },
   backgroundVideo: {
     ...StyleSheet.absoluteFill,
+  },
+  videoPoster: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "black",
   },
   overlay: {
     ...StyleSheet.absoluteFill,

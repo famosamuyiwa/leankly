@@ -1,5 +1,4 @@
 import { Colors } from "@/constants/common";
-import { mascotPoses } from "@/constants/data";
 import images from "@/constants/images";
 import { usePremium } from "@/lib/PremiumContext";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -131,12 +130,6 @@ export default function PaywallScreen() {
         </Text>
       </View>
       <View className="flex-1 px-6">
-        <Image
-          source={{ uri: mascotPoses.POWER_UP }}
-          className="h-60 w-full absolute -right-32 top-5"
-          contentFit="contain"
-        />
-
         <View className="mt-4 mb-8 gap-2">
           <View className="flex-row items-center gap-3">
             <View className="flex flex-row items-center justify-center bg-secondary-100 rounded-full size-10">
